@@ -1,0 +1,12 @@
+{
+  "name": "Visa Monitor Companion",
+  "short_name": "Visa Monitor",
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "id": "/",
+  "categories": ["productivity", "utilities"],
+  "background_color": "#101418",
+  "theme_color": "#101418",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

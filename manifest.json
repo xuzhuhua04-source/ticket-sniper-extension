@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Official U.S. Visa Earlier Appointment Alert",
+  "version": "3.2.0",
+  "description": "Alerts you when an earlier U.S. visa appointment appears on supported official scheduling portals. It never books automatically.",
+  "permissions": ["alarms", "identity", "notifications", "storage", "tabs"],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "https://*.usvisascheduling.com/*",
+    "https://atlasauth.b2clogin.com/*",
+    "https://ais.usvisa-info.com/*",
+    "https://*.ustraveldocs.com/*",
+    "https://cgifederal.secure.force.com/*",
+    "https://gmail.googleapis.com/*",
+    "http://127.0.0.1:4390/*"
+  ],
+  "oauth2": {
+    "client_id": "406636064391-bojutoiijkag2ae82t69dihsimlf5bsq.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/gmail.metadata"]
+  },
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Visa Earlier Appointment Alert"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.usvisascheduling.com/*",
+        "https://atlasauth.b2clogin.com/*",
+        "https://ais.usvisa-info.com/*",
+        "https://*.ustraveldocs.com/*",
+        "https://cgifederal.secure.force.com/*"
+      ],
+      "js": ["date-parser.js", "content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["crawler-signals.js", "runtime-collector.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-runtime-hooks.js"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
+  "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" }
+}

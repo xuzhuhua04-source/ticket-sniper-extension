@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Organ9 Runtime Diagnostics</title>
+  <link rel="stylesheet" href="runtime-diagnostics.css">
+</head>
+<body>
+  <a class="skip-link" href="#home-view">Skip to content</a>
+  <main>
+    <header class="topbar">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">O9</span>
+        <div>
+          <p class="eyebrow">Runtime Intelligence Platform</p>
+          <h1>Organ9</h1>
+        </div>
+      </div>
+      <div class="top-actions" aria-label="Primary navigation and workspace controls">
+        <nav class="nav-cluster" aria-label="Organ9 website">
+          <button id="nav-home" class="secondary" type="button" aria-controls="home-view">Home</button>
+          <button id="nav-dashboard" class="secondary" type="button" aria-controls="dashboard-view">Dashboard</button>
+          <button id="nav-modules" class="secondary" type="button" aria-controls="modules-view">Modules</button>
+          <button id="nav-rankings" class="secondary" type="button" aria-controls="rankings-view">Rankings</button>
+          <button id="nav-plans" class="secondary" type="button" aria-controls="plans-view">Pricing</button>
+          <button id="nav-docs" class="secondary" type="button" aria-controls="docs-view">Docs</button>
+        </nav>
+        <div class="workspace-cluster" aria-label="Workspace controls">
+          <span id="account-chip" class="account-chip" role="status" aria-live="polite">Signed out</span>
+          <button id="nav-sign-in" class="secondary" type="button" aria-controls="sign-in-view">Sign in</button>
+          <button id="sign-out-button" class="secondary" type="button">Sign out</button>
+        </div>
+        <div class="runtime-cluster" aria-label="Runtime controls">
+          <button id="normal-mode" class="secondary" type="button" aria-pressed="true">Normal</button>
+          <button id="dev-mode" class="secondary" type="button" aria-pressed="false">Dev Pro</button>
+          <button id="toggle-diagnostics" class="secondary" type="button" aria-pressed="true">Live on</button>
+          <button id="refresh" type="button">Refresh</button>
+          <button id="export-json" class="secondary" type="button">Export</button>
+          <button id="export-all-json" class="secondary" type="button">Export all</button>
+          <button id="clear" class="danger" type="button">Clear</button>
+        </div>
+      </div>
+    </header>
+    <p id="export-status" class="status-message" role="status" aria-live="polite"></p>
+
+    <section id="home-view" class="home-view app-view" aria-label="Organ9 public homepage">
+      <div class="home-hero">
+        <div>
+          <p class="eyebrow">Organ9 Runtime Intelligence</p>
+          <h2>Commercial browser monitoring for teams that need structure, risk, performance, and AI activity signals.</h2>
+          <p>Organ9 turns live website behavior into paid product modules: customer-readable dashboards, protected developer diagnostics, and subscription-gated structural intelligence.</p>
+          <div class="home-actions">
+            <button id="home-start" type="button">Start monitoring</button>
+            <button id="home-pricing" class="secondary" type="button">View pricing</button>
+          </div>
+          <div class="trust-ribbon" aria-label="Product readiness">
+            <span>Runtime-safe</span>
+            <span>Authorize.Net-ready</span>
+            <span>Redacted exports</span>
+            <span>Module entitlements</span>
+          </div>
+        </div>
+        <div class="home-proof">
+          <article><span>Products</span><strong>5 modules</strong><p>Separate paid views for security, performance, updates, risk, and AI activity.</p></article>
+          <article><span>Developer access</span><strong>Paid add-on</strong><p>Dev Mode Pro unlocks raw ledgers, Organ9 internals, signatures, and exports.</p></article>
+          <article><span>Billing</span><strong>Authorize.Net-ready</strong><p>Accept Hosted checkout, signed webhooks, and server-side entitlements.</p></article>
+        </div>
+      </div>
+      <div class="readiness-strip" aria-label="Commercial readiness checkpoints">
+        <article>
+          <span>Customer view</span>
+          <strong>Readable by non-engineers</strong>
+          <p>Normal mode translates runtime evidence into health, pressure, risk, change, and recommended action.</p>
+        </article>
+        <article>
+          <span>Developer view</span>
+          <strong>Paid evidence layer</strong>
+          <p>Dev Mode Pro keeps raw facts, signatures, Organ9 graphs, and exports behind entitlement checks.</p>
+        </article>
+        <article>
+          <span>Runtime boundary</span>
+          <strong>No fake omniscience</strong>
+          <p>Browser-blocked or first-party-only collectors are labeled clearly instead of pretending full access.</p>
+        </article>
+        <article>
+          <span>Commercial path</span>
+          <strong>Billing-ready architecture</strong>
+          <p>Plans, modules, add-ons, portal actions, and webhook-driven access are separated cleanly.</p>
+        </article>
+      </div>
+      <div class="product-flow" aria-label="Organ9 product flow">
+        <article>
+          <span>1</span>
+          <strong>Monitor a live website</strong>
+          <p>Enter any HTTP or HTTPS target and collect runtime facts from a secure rendered browser session.</p>
+        </article>
+        <article>
+          <span>2</span>
+          <strong>Translate facts into products</strong>
+          <p>Normal view explains health, pressure, update cadence, risk, and AI activity in customer language.</p>
+        </article>
+        <article>
+          <span>3</span>
+          <strong>Unlock deeper modules</strong>
+          <p>Paid packages expose separate product pages, exports, signatures, and developer evidence.</p>
+        </article>
+      </div>
+      <div class="home-use-cases" aria-label="Organ9 buyer use cases">
+        <article>
+          <span>For operators</span>
+          <strong>Explain website health without raw logs</strong>
+          <p>Normal view turns runtime changes into health, pressure, urgency, and recommended action so non-engineers can make decisions.</p>
+        </article>
+        <article>
+          <span>For developers</span>
+          <strong>Unlock the evidence ledger when details matter</strong>
+          <p>Dev Mode Pro exposes raw facts, channels, Organ9 graph state, spectrum closure, signatures, and export-ready diagnostics.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="sign-in-view" class="auth-view app-view">
+      <div class="auth-layout">
+        <section class="auth-copy">
+          <p class="eyebrow">Website Intelligence</p>
+          <h2>Give teams a readable operating picture of any live website.</h2>
+          <p>Runtime Diagnostics turns browser behavior into plain-language health, change, risk, and performance signals, with Dev Mode Pro available for raw structural evidence.</p>
+          <div class="auth-proof">
+            <div><strong>1s</strong><span>live refresh</span></div>
+            <div><strong>9</strong><span>organ views</span></div>
+            <div><strong>0</strong><span>passwords stored</span></div>
+          </div>
+          <div class="product-preview" aria-hidden="true">
+            <div class="preview-header"><span></span><span></span><span></span></div>
+            <div class="preview-grid">
+              <div><strong>Stable</strong><small>Website health</small></div>
+              <div><strong>0.18</strong><small>Risk score</small></div>
+              <div><strong>32</strong><small>Runtime facts</small></div>
+            </div>
+            <div class="preview-bars">
+              <span style="height: 32%"></span><span style="height: 62%"></span><span style="height: 44%"></span><span style="height: 78%"></span><span style="height: 52%"></span><span style="height: 68%"></span>
+            </div>
+          </div>
+        </section>
+        <section class="login-panel">
+          <div class="auth-tabs" role="tablist" aria-label="Account mode">
+            <button id="auth-sign-in" class="active" type="button" role="tab" aria-selected="true" aria-controls="auth-copy">Sign in</button>
+            <button id="auth-sign-up" class="secondary" type="button" role="tab" aria-selected="false" aria-controls="auth-copy">Sign up</button>
+          </div>
+          <p class="eyebrow">Account</p>
+          <h2 id="auth-title">Sign in to your workspace</h2>
+          <p id="auth-copy">Sign in first. The live website data dashboard stays locked until a workspace session is active.</p>
+          <div class="login-grid">
+            <input id="account-name" type="text" autocomplete="name" placeholder="Full name" aria-label="Full name">
+            <input id="account-email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">
+            <input id="account-password" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+            <button id="login-button" type="button">Sign in</button>
+          </div>
+          <p class="auth-fine-print">This development build stores workspace sessions in this browser. Production deployments should connect server-side auth and Authorize.Net Accept Hosted checkout.</p>
+          <p id="account-status" class="status-message" role="status" aria-live="polite">Signed out. Create or sign into a workspace to open the dashboard.</p>
+        </section>
+      </div>
+    </section>
+
+    <section id="plans-view" class="plans-view app-view" aria-label="Subscription plans">
+      <div class="plans-heading">
+        <p class="eyebrow">Organ9 Commercial Suite</p>
+        <h2>Pricing is split into plans, modules, and paid add-ons.</h2>
+        <p>Core plans define account limits. Modules unlock product surfaces. Add-ons unlock advanced capabilities like Dev Mode Pro.</p>
+        <div class="pricing-assurance" aria-label="Billing readiness">
+          <span>Authorize.Net hosted checkout</span>
+          <span>Server-side entitlements</span>
+          <span>Locked previews before upgrade</span>
+        </div>
+        <p id="plan-status" class="status-message" role="status" aria-live="polite"></p>
+      </div>
+      <div class="pricing-section">
+        <div class="section-title">
+          <h2>Core Plans</h2>
+          <span>Subscription base</span>
+        </div>
+        <div class="plans-panel">
+          <article class="plan-card">
+            <span>Starter</span>
+            <strong>Starter</strong>
+            <small class="plan-price" data-billing-price="starter">$49/mo</small>
+            <p>Customer-readable website monitoring for small teams and single-target analysis.</p>
+            <ul><li>1 monitored target</li><li>7-day retention</li><li>Update Radar included</li></ul>
+            <button data-billing-item="starter" type="button">Choose Starter</button>
+          </article>
+          <article class="plan-card featured">
+            <span>Professional</span>
+            <strong>Professional</strong>
+            <small class="plan-price" data-billing-price="professional">$199/mo</small>
+            <p>Commercial website intelligence with performance and update visibility.</p>
+            <ul><li>5 monitored targets</li><li>30-day retention</li><li>Performance Spectrum included</li></ul>
+            <button data-billing-item="professional" type="button">Choose Professional</button>
+          </article>
+          <article class="plan-card">
+            <span>Enterprise</span>
+            <strong>Enterprise</strong>
+            <small class="plan-price" data-billing-price="enterprise">Contact sales</small>
+            <p>Full Organ9 suite with Dev Mode Pro, security, risk, AI activity, and team access.</p>
+            <ul><li>50 monitored targets</li><li>365-day retention</li><li>All modules included</li></ul>
+            <button data-billing-item="enterprise" class="secondary" type="button">Discuss Enterprise</button>
+          </article>
+        </div>
+      </div>
+      <div class="pricing-section">
+        <div class="section-title">
+          <h2>Paid Modules</h2>
+          <span>Product surfaces</span>
+        </div>
+      <div class="plans-panel package-plan-panel module-plan-panel">
+        <article class="plan-card">
+          <span>Package A</span>
+          <strong>Structure Monitor</strong>
+          <small class="plan-price" data-plan-price="structure-monitor" data-billing-price="structure-monitor">Request access</small>
+          <p>Security-grade structural topology and behavioral frequency fingerprinting for SOC, finance, and government review.</p>
+          <ul><li>Topology maps</li><li>Dependency chains</li><li>Malicious frequency fingerprints</li></ul>
+          <button data-plan="structure-monitor" data-billing-item="structure-monitor" class="secondary" type="button" aria-label="Discuss Enterprise for Structure Monitor">Discuss Enterprise</button>
+        </article>
+        <article class="plan-card featured">
+          <span>Package B</span>
+          <strong>Performance Spectrum</strong>
+          <small class="plan-price" data-plan-price="performance-spectrum" data-billing-price="performance-spectrum">Request access</small>
+          <p>Real-time rhythm graphs for frame, layout, paint, longtask, script, network, and style storms.</p>
+          <ul><li>Performance rhythm graph</li><li>Risk waves</li><li>Frequency trend export</li></ul>
+          <button data-plan="performance-spectrum" data-billing-item="performance-spectrum" type="button" aria-label="Request Performance Spectrum access">Request Performance</button>
+        </article>
+        <article class="plan-card">
+          <span>Package C</span>
+          <strong>Update Radar</strong>
+          <small class="plan-price" data-plan-price="update-radar" data-billing-price="update-radar">Request access</small>
+          <p>Competitive intelligence for DOM, VDOM, CSSOM, resource, cadence, intensity, and change waveforms.</p>
+          <ul><li>Update cadence</li><li>Intensity classification</li><li>Structural change detection</li></ul>
+          <button data-plan="update-radar" data-billing-item="update-radar" class="secondary" type="button" aria-label="Request Update Radar access">Request Update Radar</button>
+        </article>
+        <article class="plan-card">
+          <span>Package D</span>
+          <strong>Risk Score Engine</strong>
+          <small class="plan-price" data-plan-price="risk-score-engine" data-billing-price="risk-score-engine">Request access</small>
+          <p>Executive risk numbers grounded in frequency deviation across behavior, resources, JS, network, and GPU jitter.</p>
+          <ul><li>Risk score</li><li>Risk waveform</li><li>Risk trend graph</li></ul>
+          <button data-plan="risk-score-engine" data-billing-item="risk-score-engine" class="secondary" type="button" aria-label="Discuss Enterprise for Risk Score Engine">Discuss Enterprise</button>
+        </article>
+        <article class="plan-card">
+          <span>Package E</span>
+          <strong>AI Activity Detector</strong>
+          <small class="plan-price" data-plan-price="ai-activity-detector" data-billing-price="ai-activity-detector">Request access</small>
+          <p>Compliance-oriented detection of browser-side inference shapes: WASM, workers, microtasks, GPU jitter, and model loading.</p>
+          <ul><li>Inference indicators</li><li>Worker frequency</li><li>Local model loading signals</li></ul>
+          <button data-plan="ai-activity-detector" data-billing-item="ai-activity-detector" class="secondary" type="button" aria-label="Discuss Enterprise for AI Activity Detector">Discuss Enterprise</button>
+        </article>
+      </div>
+      </div>
+      <div class="pricing-section">
+        <div class="section-title">
+          <h2>Add-ons</h2>
+          <span>Paid unlocks</span>
+        </div>
+        <div class="plans-panel package-plan-panel addon-plan-panel">
+          <article class="plan-card featured">
+            <span>Add-on</span>
+            <strong>Dev Mode Pro</strong>
+            <small class="plan-price" data-billing-price="dev-mode-pro">$99/mo add-on</small>
+            <p>Unlock raw facts, channel ledgers, Organ9 internals, Frequency Spectrum, Structure Engine signatures, and developer exports.</p>
+            <ul><li>Raw runtime ledger</li><li>Organ9 developer graph</li><li>Signature and export tools</li></ul>
+            <button data-billing-item="dev-mode-pro" type="button">Unlock Dev Mode Pro</button>
+          </article>
+          <article class="plan-card">
+            <span>Add-on</span>
+            <strong>Extended Retention</strong>
+            <small class="plan-price" data-billing-price="extended-retention">$49/mo add-on</small>
+            <p>Keep diagnostic history longer for audits, customer reports, and investigation handoffs.</p>
+            <ul><li>Longer history</li><li>Audit-ready timelines</li><li>Retention controls</li></ul>
+            <button data-billing-item="extended-retention" class="secondary" type="button">Add Retention</button>
+          </article>
+          <article class="plan-card">
+            <span>Add-on</span>
+            <strong>Exports + API Access</strong>
+            <small class="plan-price" data-billing-price="exports-api">$79/mo add-on</small>
+            <p>Enable commercial exports and API-ready diagnostic payloads for teams and integrations.</p>
+            <ul><li>Export JSON</li><li>API-ready data</li><li>Team handoff</li></ul>
+            <button data-billing-item="exports-api" class="secondary" type="button">Add Exports</button>
+          </article>
+        </div>
+      </div>
+      <div class="pricing-section faq-section">
+        <div class="section-title">
+          <h2>Buying FAQ</h2>
+          <span>Commercial readiness</span>
+        </div>
+        <div class="faq-grid">
+          <article>
+            <strong>Can every module be bought separately?</strong>
+            <p>Yes. Core plans set account limits, while paid modules and add-ons unlock product surfaces through server-side entitlements.</p>
+          </article>
+          <article>
+            <strong>Is Dev mode included for everyone?</strong>
+            <p>No. Dev mode is a paid Pro add-on and is included automatically only with Enterprise access.</p>
+          </article>
+          <article>
+            <strong>What happens before billing is configured?</strong>
+          <p>The UI clearly marks sandbox preview access. Production sales require Authorize.Net API credentials, item amounts, and signed webhook configuration.</p>
+          </article>
+        </div>
+      </div>
+      <div class="pricing-section deployment-section">
+        <div class="section-title">
+          <h2>Production Deployment Checklist</h2>
+          <span>Before charging customers</span>
+        </div>
+        <div class="deployment-grid">
+          <article><span>Required</span><strong>Hosted auth</strong><p>Replace browser-only sessions with server-side accounts before public launch.</p></article>
+          <article><span>Required</span><strong>Authorize.Net credentials</strong><p>Configure API Login ID, Transaction Key, Signature Key, item amounts, and signed webhooks.</p></article>
+          <article><span>Required</span><strong>Entitlement store</strong><p>Keep plan, module, add-on, retention, export, and API limits on the server.</p></article>
+          <article><span>Required</span><strong>Runtime workers</strong><p>Run monitored browsers as supervised worker processes with restart and timeout policies.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="modules-view" class="modules-view app-view" aria-label="Paid Organ9 modules">
+      <div class="modules-shell">
+        <aside class="module-nav-panel">
+          <p class="eyebrow">Paid Modules</p>
+          <h2>Package access</h2>
+          <p>Each Organ9 package is treated as its own paid product surface. Locked modules show what they would report, but keep their live analysis behind checkout.</p>
+          <div id="module-tabs" class="module-tabs" role="tablist" aria-label="Organ9 package modules"></div>
+        </aside>
+        <section id="module-detail" class="module-detail" aria-live="polite">
+          <p class="eyebrow">Select a module</p>
+          <h2>Choose a package to inspect access.</h2>
+          <p>Module pages update from the same runtime ledger after you analyze a website.</p>
+        </section>
+      </div>
+      <section class="layer-coverage-page" aria-label="Paid runtime layer evidence">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Structure Monitor / Dev Mode Pro Evidence</p>
+            <h2>Runtime Layer Coverage</h2>
+            <p>Detailed collector coverage is paid technical evidence. Normal users see the plain-language summary; paid users can inspect capture mode, browser limitations, and evidence counts.</p>
+          </div>
+          <span id="layer-evidence-lock">Paid evidence</span>
+        </div>
+        <div id="coverage-grid" class="coverage-grid" aria-label="Runtime layer coverage"></div>
+      </section>
+    </section>
+
+    <section id="rankings-view" class="rankings-view app-view" aria-label="Organ9 website rankings">
+      <div class="ranking-hero">
+        <div>
+          <p class="eyebrow">Organ9 Website Rankings</p>
+          <h2>Market-style runtime rankings across every Organ9 package.</h2>
+          <p>Rankings combine the benchmark corpus, local live samples, and scheduled crawler samples. Click a website to see the normal diagnostic explanation first; paid modules unlock deeper package evidence.</p>
+          <div class="ranking-proof" aria-label="Ranking data sources">
+            <span>Expanded benchmark corpus</span>
+            <span>Local live samples</span>
+            <span>Scheduled crawler</span>
+            <span>Paid evidence unlocks</span>
+          </div>
+        </div>
+        <div class="ranking-command-card">
+          <span>Data Engine</span>
+          <strong id="ranking-corpus-count">0 websites</strong>
+          <p id="ranking-crawler-state">Crawler idle. Start scheduled collection to replace seed assumptions with measured samples.</p>
+          <div class="ranking-actions">
+            <button id="ranking-start-crawler" type="button">Start crawler</button>
+            <button id="ranking-run-once" class="secondary" type="button">Run batch</button>
+            <button id="ranking-stop-crawler" class="secondary" type="button">Stop</button>
+          </div>
+        </div>
+        <p id="ranking-status" class="status-message" role="status" aria-live="polite"></p>
+      </div>
+      <div class="ranking-ops-grid" aria-label="Ranking operations">
+        <article><span>Corpus</span><strong id="ranking-op-corpus">0</strong><p>Seed and locally collected website samples retained in this workspace.</p></article>
+        <article><span>Crawler queue</span><strong id="ranking-op-queue">0</strong><p>URLs available for scheduled local collection.</p></article>
+        <article><span>Crawler results</span><strong id="ranking-op-results">0</strong><p>Measured samples returned from the local crawler service.</p></article>
+        <article><span>Collection mode</span><strong id="ranking-op-mode">Seed</strong><p>Shows whether rankings are seed-only, mixed, or crawler-backed.</p></article>
+      </div>
+      <div class="ranking-toolbar">
+        <div class="ranking-actions">
+          <button id="ranking-add-current" type="button">Add current target</button>
+          <button id="ranking-import-crawler" class="secondary" type="button">Import crawler results</button>
+          <button id="ranking-seed" class="secondary" type="button">Seed benchmark set</button>
+          <button id="ranking-export" class="secondary" type="button">Export rankings</button>
+        </div>
+        <p>Local crawler samples are collected from this machine. Production mass data still requires hosted workers, durable storage, and scheduled fleet orchestration.</p>
+      </div>
+      <div class="ranking-shell">
+        <aside class="ranking-sidebar">
+          <h2>Ranking boards</h2>
+          <p>Overall is a weighted blend of all five packages. Individual boards expose which package drives each site.</p>
+          <div id="ranking-tabs" class="ranking-tabs" role="tablist" aria-label="Ranking categories"></div>
+        </aside>
+        <section class="ranking-main">
+          <div class="section-title">
+            <div>
+              <h2 id="ranking-title">Overall Ranking</h2>
+              <p id="ranking-subtitle">Weighted score across all Organ9 packages.</p>
+            </div>
+            <span id="ranking-count">0 websites</span>
+          </div>
+          <div id="ranking-list" class="ranking-list"></div>
+        </section>
+        <section class="ranking-detail">
+          <div id="ranking-detail" aria-live="polite">
+            <p class="eyebrow">Select a website</p>
+            <h2>Open a ranking entry.</h2>
+            <p>Normal diagnostics appear here first. Paid package details remain locked until the relevant module is unlocked.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="docs-view" class="docs-view app-view" aria-label="Organ9 documentation">
+      <div class="plans-heading">
+        <p class="eyebrow">Docs / FAQ</p>
+        <h2>How Organ9 packages map to the runtime engine.</h2>
+        <p>Normal mode is built for customers. Dev Mode Pro is a paid developer surface. Modules are separate paid product views over the same live runtime ledger.</p>
+      </div>
+      <div class="plans-panel">
+        <article class="plan-card"><span>Architecture</span><strong>Runtime ledger</strong><p>Collectors produce redacted structural facts. The product pages decide how much evidence each entitlement can see.</p></article>
+        <article class="plan-card"><span>Access</span><strong>Server entitlements</strong><p>Subscription status, modules, add-ons, and limits come from the billing API, not local UI state.</p></article>
+        <article class="plan-card"><span>Privacy</span><strong>No private analytics claim</strong><p>Organ9 observes the selected website session and does not claim access to every visitor unless the target site exposes those signals.</p></article>
+      </div>
+      <div class="docs-boundary">
+        <article>
+          <span>Operator promise</span>
+          <strong>One target, one clear live picture</strong>
+          <p>Runtime Diagnostics monitors the selected URL and updates the customer dashboard without mixing Visa Monitor or unrelated product surfaces.</p>
+        </article>
+        <article>
+          <span>Developer promise</span>
+          <strong>Evidence is inspectable</strong>
+          <p>Dev Mode Pro exposes collector capability markers, raw facts, structure signatures, package scores, and exportable evidence.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="dashboard-view" class="dashboard-view app-view">
+    <section class="dashboard-hero">
+      <div>
+        <p class="eyebrow">Live Site Console</p>
+        <h2>Monitor one target clearly, then drill into paid evidence when needed.</h2>
+        <p>Normal view keeps the full runtime coverage but explains channels, technology, structure, Organ9, frequency, signatures, and recent facts in language a buyer can understand.</p>
+      </div>
+      <div class="hero-metric">
+        <span>Current mode</span>
+        <strong id="dashboard-mode-label">Normal</strong>
+      </div>
+    </section>
+    <section class="portal-tools">
+      <div>
+        <label for="portal-url">Analyze website</label>
+        <div class="url-row">
+          <input id="portal-url" type="url" placeholder="https://www.roblox.com/">
+          <button id="open-url" type="button">Analyze</button>
+          <button id="focus-latest" class="secondary" type="button">Focus target</button>
+        </div>
+        <div class="frequency-controls">
+          <label for="frequency-window">Spectrum window</label>
+          <select id="frequency-window">
+            <option value="100">100 ms</option>
+            <option value="250">250 ms</option>
+            <option value="1000">1 second</option>
+            <option value="5000">5 seconds</option>
+          </select>
+        </div>
+        <p id="portal-help">Diagnostics collect redacted runtime facts from the typed HTTP or HTTPS website every second.</p>
+      </div>
+      <div class="status-panel">
+        <strong id="latest-host">No portal observed</strong>
+        <span id="latest-time">No runtime facts yet</span>
+        <small id="stream-state" role="status" aria-live="polite">Live stream not connected</small>
+        <small id="system-health" role="status" aria-live="polite">System health unknown</small>
+      </div>
+    </section>
+
+    <section class="command-strip" aria-label="Runtime operating status">
+      <article>
+        <span>Target</span>
+        <strong id="target-summary">Not monitoring</strong>
+        <small id="target-detail">Enter a website URL to start a live structural read.</small>
+      </article>
+      <article>
+        <span>Signal quality</span>
+        <strong id="signal-summary">Waiting</strong>
+        <small id="signal-detail">No runtime facts have been received yet.</small>
+      </article>
+      <article>
+        <span>Layer coverage</span>
+        <strong id="coverage-status">0 layers ready</strong>
+        <small id="coverage-detail">Coverage appears after the first collector sample.</small>
+      </article>
+      <article>
+        <span>Browser boundary</span>
+        <strong id="boundary-status">Browser-safe</strong>
+        <small id="boundary-detail">Protected browser internals are labeled instead of guessed.</small>
+      </article>
+    </section>
+
+    <section class="normal-insights" aria-label="Readable runtime diagnostics">
+      <div class="section-title">
+        <div>
+          <h2>Normal View Diagnostics</h2>
+          <p>All graph systems are represented here for non-technical users.</p>
+        </div>
+        <span id="normal-coverage">0 systems active</span>
+      </div>
+      <div id="normal-insight-grid" class="normal-insight-grid">
+        <article class="normal-insight-card">
+          <span>Waiting</span>
+          <strong>No runtime data yet</strong>
+          <p>Sign in, enter a website, and Runtime Diagnostics will translate the graphs into readable sections.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="package-suite" aria-label="Organ9 commercial package suite">
+      <div class="section-title">
+        <div>
+          <h2>Organ9 Commercial Package Suite</h2>
+          <p>Five paid modules scored from the current website's live structural frequency evidence. Open Modules to view package-specific pages and locks.</p>
+        </div>
+        <span id="package-suite-summary">0 / 5 active</span>
+      </div>
+      <div id="package-suite-grid" class="package-suite-grid">
+        <article class="package-card">
+          <span>Waiting</span>
+          <strong>No commercial package evidence yet</strong>
+          <p>Analyze a website to score Structure Monitor, Performance Spectrum, Update Radar, Risk Score Engine, and AI Activity Detector.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Runtime summary">
+      <div><span id="total-facts">0</span><small>Signals captured</small></div>
+      <div><span id="channel-count">0</span><small>Evidence channels</small></div>
+      <div><span id="high-count">0</span><small>High urgency</small></div>
+      <div><span id="medium-count">0</span><small>Watch items</small></div>
+    </section>
+
+    <section id="plain-dashboard" class="plain-dashboard" aria-label="Plain-English website health">
+      <article>
+        <span>Website health</span>
+        <strong id="plain-health">Waiting for data</strong>
+        <p id="plain-health-detail">Enter a website URL to start a live structural read.</p>
+      </article>
+      <article>
+        <span>What changed</span>
+        <strong id="plain-change">No changes yet</strong>
+        <p id="plain-change-detail">Structural facts will appear here in plain language.</p>
+      </article>
+      <article>
+        <span>Performance pressure</span>
+        <strong id="plain-pressure">Unknown</strong>
+        <p id="plain-pressure-detail">Long tasks, layout churn, and resource pressure are summarized here.</p>
+      </article>
+      <article>
+        <span>Recommended action</span>
+        <strong id="plain-action">Start monitoring</strong>
+        <p id="plain-action-detail">Normal view explains the data. Dev mode shows the full graph ledger.</p>
+      </article>
+    </section>
+
+    <section class="scope-note">
+      <strong>Scope:</strong>
+      Runtime Diagnostics observes the selected website's rendered page structure, network/resource behavior, and runtime mutations from the monitored browser session. It does not claim access to private server analytics or every visitor's activity unless that website exposes those signals.
+    </section>
+
+    <section class="layout dev-only">
+      <aside>
+        <h2>Channels</h2>
+        <div id="channels" class="channel-list"></div>
+      </aside>
+
+      <section class="content">
+        <section>
+          <div class="section-title">
+            <h2>Technology Profile</h2>
+            <span id="profile-count">0 signals</span>
+          </div>
+          <div id="technology-profile" class="profile-grid"></div>
+        </section>
+
+        <section>
+          <div class="section-title">
+            <h2>Structural Pipeline</h2>
+            <span id="pipeline-count">0 classifications</span>
+          </div>
+          <div id="pipeline-profile" class="profile-grid"></div>
+        </section>
+
+        <section>
+          <div class="section-title">
+            <h2>Organ Structural Rendering</h2>
+            <span id="organ-count">0 organ facts</span>
+          </div>
+          <div id="organ-summary" class="organ-summary"></div>
+          <div id="organ-panels" class="organ-grid"></div>
+          <div id="organ-errors" class="organ-errors"></div>
+        </section>
+
+        <section>
+          <div class="section-title">
+            <h2>Frequency Spectrum Graph</h2>
+            <span id="spectrum-count">0 spectrum nodes</span>
+          </div>
+          <div id="spectrum-profile" class="profile-grid"></div>
+        </section>
+
+        <section>
+          <div class="section-title">
+            <h2>Structure Engine</h2>
+            <span id="structure-signature">No signature</span>
+          </div>
+          <div id="structure-engine" class="profile-grid"></div>
+        </section>
+
+        <section>
+          <div class="section-title">
+            <h2>Recent Facts</h2>
+            <select id="channel-filter">
+              <option value="">All channels</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Channel</th>
+                  <th>Severity</th>
+                  <th>Summary</th>
+                </tr>
+              </thead>
+              <tbody id="fact-table"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </section>
+    </section>
+    <footer class="site-footer" aria-label="Organ9 product footer">
+      <div>
+        <strong>Organ9 Runtime Diagnostics</strong>
+        <p>Commercial runtime intelligence for website structure, performance, risk, updates, and browser-side AI activity.</p>
+      </div>
+      <div class="footer-links">
+        <button id="footer-pricing" class="secondary" type="button">Pricing</button>
+        <button id="footer-dashboard" class="secondary" type="button">Dashboard</button>
+        <button id="footer-docs" class="secondary" type="button">Docs</button>
+      </div>
+    </footer>
+  </main>
+  <script src="organ-frequency-engine.js"></script>
+  <script src="organ-pipeline.js"></script>
+  <script src="runtime-diagnostics.js"></script>
+</body>
+</html>

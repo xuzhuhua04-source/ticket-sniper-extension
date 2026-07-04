@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.ticket-sniper-secure-browser/
+.ticket-sniper-visa-secure-browser/
+.ticket-sniper-runtime-diagnostics-browser/
+.ticket-sniper-*-fallback-*/
+standalone-server.*.log
+server-*.log
+*.log
+qa-*.png
+runtime-diagnostics-snippet.js

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visa Monitor</title>
+  <link rel="stylesheet" href="visa-monitor.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Ticket Sniper</p>
+        <h1>Visa Monitor</h1>
+      </div>
+      <nav>
+        <a href="options.html">Detection settings</a>
+      </nav>
+    </header>
+
+    <section class="layout">
+      <section class="surface monitor">
+        <div class="section-title">
+          <div>
+            <h2>Monitor target</h2>
+            <p>Visa scheduling analysis only.</p>
+          </div>
+          <span id="monitor-state" class="state-pill">idle</span>
+        </div>
+
+        <label for="target-url">Website URL</label>
+        <div class="url-row">
+          <input id="target-url" type="url" placeholder="https://ais.usvisa-info.com/">
+          <button id="analyze-now">Analyze</button>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <label for="target-consulate">Consulate / post filter</label>
+            <input id="target-consulate" placeholder="Example: Beijing">
+          </div>
+          <div>
+            <label for="cutoff-date">Earlier than</label>
+            <input id="cutoff-date" type="date">
+          </div>
+          <div>
+            <label for="monitor-interval">Notification cadence</label>
+            <select id="monitor-interval">
+              <option value="1">1 second</option>
+              <option value="5" selected>5 seconds</option>
+              <option value="30">30 seconds</option>
+              <option value="60">1 minute</option>
+            </select>
+          </div>
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="structural">Structural URL analysis</option>
+              <option value="visa">Visa portal structural monitor</option>
+            </select>
+          </div>
+          <div>
+            <label for="evidence-source">Evidence source</label>
+            <select id="evidence-source">
+              <option value="fetch">Public source fetch</option>
+              <option value="secure">Secure rendered browser</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="secure-browser-panel">
+          <div>
+            <strong>Secure browser session</strong>
+            <p id="secure-browser-status">Closed. Open it, sign in manually, then monitor the active rendered page.</p>
+          </div>
+          <div class="secure-actions">
+            <button id="open-secure-browser" class="secondary">Open secure browser</button>
+            <button id="analyze-rendered" class="secondary">Analyze rendered page</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="toggle-monitor">Start monitoring</button>
+        </div>
+
+        <article class="status-card">
+          <strong id="status-title">No target analyzed</strong>
+          <p id="status-message">Enter a URL and run analysis. The local UI fetches and analyzes the page through the standalone server.</p>
+          <small id="status-time"></small>
+        </article>
+      </section>
+
+      <aside class="surface diagnostics-side">
+        <div class="section-title">
+          <div>
+            <h2>Diagnostics side</h2>
+            <p>Visa-only structural facts from this monitor.</p>
+          </div>
+          <span id="diagnostic-severity" class="state-pill">idle</span>
+        </div>
+        <div class="metric-grid">
+          <div><strong id="fact-count">0</strong><span>facts</span></div>
+          <div><strong id="channel-count">0</strong><span>channels</span></div>
+          <div><strong id="high-count">0</strong><span>high</span></div>
+          <div><strong id="calendar-count">0</strong><span>calendar hints</span></div>
+        </div>
+        <div id="diagnostic-cards" class="diagnostic-cards">
+          <p class="empty">No diagnostics yet.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="surface recent">
+      <div class="section-title">
+        <h2>Recent analysis</h2>
+        <button id="export-json" class="secondary">Export JSON</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Channel</th><th>Severity</th><th>Summary</th></tr></thead>
+          <tbody id="fact-table"><tr><td colspan="4" class="empty">No facts yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="date-parser.js"></script>
+  <script src="visa-monitor.js"></script>
+</body>
+</html>

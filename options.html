@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visa Slot Alert Settings</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="options">
+  <main>
+    <header class="settings-header">
+      <img src="icon-48.png" alt="" width="48" height="48">
+      <div>
+        <h1>Calendar Detection</h1>
+        <p class="subtle">Adjust only when the official portal's calendar is not detected correctly.</p>
+      </div>
+    </header>
+
+    <section class="settings-panel">
+      <label for="date-order">Numeric date format used by your portal</label>
+      <select id="date-order">
+        <option value="mdy">Month / day / year</option>
+        <option value="dmy">Day / month / year</option>
+      </select>
+
+      <label for="available-date-selector">Additional available-date CSS selector</label>
+      <input id="available-date-selector" placeholder="Example: .appointment-calendar .day.available">
+      <p class="field-help">Leave blank to use the built-in detectors. This selector only reads visible calendar elements.</p>
+
+      <label for="target-consulate">Monitored consulate / post</label>
+      <input id="target-consulate" placeholder="Example: Beijing">
+      <p class="field-help">Optional but recommended. When set, visa calendar notifications are sent only when the official page DOM says this is the active consulate. Runtime diagnostics for other websites are not filtered by this.</p>
+
+      <label for="reschedule-url">Official reschedule appointment URL</label>
+      <input id="reschedule-url" type="url" placeholder="https://official-portal.example/reschedule">
+      <p class="field-help">Copy the exact reschedule-page URL from your official embassy-linked scheduling portal. Notification clicks open this page; the extension never selects or submits an appointment.</p>
+
+      <div class="supported-hosts">
+        <strong>Supported official scheduling hosts</strong>
+        <code>*.usvisascheduling.com</code>
+        <code>atlasauth.b2clogin.com</code>
+        <code>ais.usvisa-info.com</code>
+        <code>*.ustraveldocs.com</code>
+        <code>cgifederal.secure.force.com</code>
+      </div>
+
+      <div class="actions">
+        <button id="save">Save settings</button>
+        <button id="reset" class="secondary">Restore defaults</button>
+      </div>
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-panel">
+      <div class="section-title">
+        <div>
+          <h2>Companion App</h2>
+          <p class="subtle">Forward sanitized events to the local installable app.</p>
+        </div>
+      </div>
+      <label class="check-row"><input id="companion-enabled" type="checkbox"><span>Forward visa and Gmail events</span></label>
+      <label for="companion-url">Local app endpoint</label>
+      <input id="companion-url" value="http://127.0.0.1:4390">
+      <label for="companion-token">Pairing token</label>
+      <input id="companion-token" type="password" autocomplete="off" placeholder="Same value as COMPANION_TOKEN">
+      <p class="field-help">Provider secrets remain in the companion app's `.env`. This token only authenticates the extension to your local app.</p>
+      <div class="actions">
+        <button id="save-companion">Save app connection</button>
+        <button id="open-companion" class="secondary">Open app</button>
+      </div>
+      <p id="companion-status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section class="policy-panel">
+      <h2>Operational limits</h2>
+      <p>The extension does not refresh pages, submit forms, reserve appointments, bypass CAPTCHA or queues, access hidden endpoints, or store usernames and passwords. The official portal's rules and session limits always control.</p>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

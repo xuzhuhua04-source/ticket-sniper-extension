@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1014">
+  <meta name="description" content="Secure delivery companion for Visa Monitor alerts.">
+  <title>Visa Monitor Companion</title>
+  <link rel="manifest" href="/app.webmanifest">
+  <link rel="icon" href="/icon.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><img src="/icon.svg" alt="" width="38" height="38"><div><strong>Visa Monitor</strong><span>Companion</span></div></div>
+      <nav aria-label="Application">
+        <button class="nav-item active" data-view="overview">Overview</button>
+        <button class="nav-item" data-view="channels">Channels</button>
+        <button class="nav-item" data-view="activity">Activity</button>
+        <button class="nav-item" data-view="billing">Billing</button>
+        <button class="nav-item" data-view="account">Account</button>
+        <button class="nav-item" data-view="settings">Settings</button>
+      </nav>
+      <div class="sidebar-status"><span id="service-dot" class="dot"></span><div><strong id="service-small">Connecting</strong><span>Local service</span></div></div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div><span class="eyebrow" id="view-eyebrow">Workspace</span><h1 id="view-title">Overview</h1></div>
+        <div class="topbar-actions"><button id="account-button" class="secondary">Sign in</button><button id="install" class="secondary" hidden>Install app</button><button id="refresh" class="secondary">Refresh</button><button id="test">Send test</button></div>
+      </header>
+
+      <main>
+        <div id="message" role="status" aria-live="polite"></div>
+
+        <section class="view active" data-panel="overview">
+          <div class="metrics">
+            <div><span>Service</span><strong id="service">Checking</strong><small>Bound to this computer</small></div>
+            <div><span>Recent events</span><strong id="event-count">0</strong><small>Persisted locally</small></div>
+            <div><span>Channels ready</span><strong id="channel-count">0 / 3</strong><small>Provider connections</small></div>
+          </div>
+          <div class="split-layout">
+            <section class="surface"><div class="section-title"><div><span class="eyebrow">Delivery</span><h2>Channel health</h2></div><button class="text-button" data-open-view="channels">Manage</button></div><div id="channel-summary" class="compact-list"></div></section>
+            <section class="surface"><div class="section-title"><div><span class="eyebrow">Activity</span><h2>Latest alerts</h2></div><button class="text-button" data-open-view="activity">View all</button></div><div id="event-summary" class="compact-list"></div></section>
+          </div>
+          <section class="notice"><strong>Manual booking boundary</strong><p>This app delivers notifications only. It does not log in, reserve appointments, bypass safeguards, or submit forms.</p></section>
+        </section>
+
+        <section class="view" data-panel="channels">
+          <div class="section-heading"><div><span class="eyebrow">Messaging APIs</span><h2>Delivery channels</h2><p>Provider secrets stay in the local companion service, outside extension storage.</p></div></div>
+          <div class="channel-grid">
+            <article class="channel-card"><div class="card-heading"><span id="wecom-dot" class="dot"></span><div><h3>WeCom Robot</h3><p>Group webhook delivery</p></div><span id="wecom-state" class="state">Not configured</span></div><p>Fast operational alerts to a WeCom group using its official robot webhook.</p><code>WECOM_WEBHOOK_URL</code></article>
+            <article class="channel-card"><div class="card-heading"><span id="wechat-dot" class="dot"></span><div><h3>WeChat</h3><p>Official Account template</p></div><span id="wechat-state" class="state">Not configured</span></div><p>Template notifications to an eligible follower through the Official Account API.</p><code>WECHAT_APP_ID + template fields</code></article>
+            <article class="channel-card"><div class="card-heading"><span id="whatsapp-dot" class="dot"></span><div><h3>WhatsApp</h3><p>Cloud API template</p></div><span id="whatsapp-state" class="state">Not configured</span></div><p>Approved WhatsApp template delivery through Meta's hosted Cloud API.</p><code>WHATSAPP_PHONE_NUMBER_ID + token</code></article>
+          </div>
+          <section class="surface setup-note"><h2>Provider configuration</h2><p>Add only the providers you use to the companion `.env` file, restart the app, and return here. Sending a test never contacts an unconfigured provider.</p></section>
+        </section>
+
+        <section class="view" data-panel="activity">
+          <div class="section-heading"><div><span class="eyebrow">Local history</span><h2>Alert activity</h2><p>Up to 100 sanitized events are retained on this computer.</p></div></div>
+          <div id="events" class="event-list"><p class="empty">Pair the app to view event history.</p></div>
+        </section>
+
+        <section class="view" data-panel="billing">
+          <div class="section-heading billing-heading"><div><span class="eyebrow">Subscription</span><h2>Plans and payment</h2><p>Checkout happens through Authorize.Net Accept Hosted. This app never receives or stores card details.</p></div><button id="manage-billing" class="secondary">Manage merchant account</button></div>
+          <div id="plans" class="plan-grid"></div>
+          <section class="payment-note"><strong>Secure hosted payment</strong><p>Available cards, settlement, fraud controls, taxes, and recurring-payment rules are controlled by the connected Authorize.Net merchant account.</p></section>
+        </section>
+
+        <section class="view" data-panel="account">
+          <div class="section-heading"><div><span class="eyebrow">Identity</span><h2>Your account</h2><p>Use a verified provider to create an account or return to an existing one.</p></div></div>
+          <div id="signed-out-account" class="auth-layout">
+            <section class="auth-panel">
+              <div class="auth-mode" role="tablist"><button class="active" data-auth-mode="signin" role="tab">Sign in</button><button data-auth-mode="signup" role="tab">Create account</button></div>
+              <div class="auth-copy"><h2 id="auth-title">Welcome back</h2><p id="auth-description">Continue with a verified identity provider.</p></div>
+              <div class="provider-list">
+                <button data-provider="google"><span>G</span><strong>Continue with Google</strong><small id="google-availability">Not configured</small></button>
+                <button data-provider="wechat"><span>W</span><strong>Continue with WeChat</strong><small id="wechat-auth-availability">Not configured</small></button>
+                <button data-provider="wecom"><span>WC</span><strong>Continue with WeCom</strong><small id="wecom-auth-availability">Not configured</small></button>
+              </div>
+              <div class="auth-divider"><span>or verify by WhatsApp</span></div>
+              <form id="whatsapp-request-form" class="whatsapp-form">
+                <label for="auth-phone">WhatsApp number</label>
+                <div class="input-action"><input id="auth-phone" type="tel" autocomplete="tel" placeholder="+12025550123"><button type="submit" id="send-code">Send code</button></div>
+              </form>
+              <form id="whatsapp-verify-form" class="whatsapp-form" hidden>
+                <label for="auth-code">Six-digit code</label>
+                <div class="input-action"><input id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"><button type="submit">Verify</button></div>
+              </form>
+            </section>
+            <aside class="auth-assurance"><span class="eyebrow">Security</span><h2>Verified access</h2><ul><li>OAuth state validation and Google PKCE</li><li>Remembered 30-day HttpOnly session</li><li>Hashed WhatsApp codes with expiration</li><li>No provider passwords stored by this app</li></ul><p>WhatsApp authentication requires an approved authentication template. WeCom sign-in is intended for members of the configured organization.</p></aside>
+          </div>
+          <section id="signed-in-account" class="profile-panel" hidden>
+            <div class="profile-avatar" id="profile-avatar">U</div><div><span class="eyebrow">Signed in</span><h2 id="profile-name">Visa Monitor user</h2><p id="profile-providers"></p></div><button id="sign-out" class="secondary">Sign out</button>
+          </section>
+        </section>
+
+        <section class="view" data-panel="settings">
+          <div class="section-heading"><div><span class="eyebrow">Local connection</span><h2>Pairing and setup</h2><p>Use the same token here and in the browser extension options.</p></div></div>
+          <section class="settings-form surface">
+            <label for="token">Pairing token</label>
+            <div class="input-action"><input id="token" type="password" autocomplete="off" placeholder="At least 16 characters"><button id="save-token">Save token</button></div>
+            <small>The token is retained for this app session. Provider secrets remain in `.env`.</small>
+          </section>
+          <div class="settings-columns">
+            <section><span class="step">1</span><h3>Configure service</h3><p>Copy `.env.example` to `.env`, set a long companion token, and add provider configuration.</p></section>
+            <section><span class="step">2</span><h3>Pair extension</h3><p>Open extension settings and enter the same local URL and pairing token.</p></section>
+            <section><span class="step">3</span><h3>Verify delivery</h3><p>Use Send test, then confirm each configured channel reports a successful delivery.</p></section>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

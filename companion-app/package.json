@@ -1,0 +1,48 @@
+{
+  "name": "visa-monitor-companion",
+  "version": "1.1.0",
+  "description": "Secure desktop companion for Visa Monitor notification delivery.",
+  "author": "Neuro",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "desktop": "electron desktop/main.mjs",
+    "dist:win": "electron-builder --win nsis",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "node tests/verify-browser.mjs"
+  },
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest"
+  },
+  "build": {
+    "appId": "com.neuro.visamonitor",
+    "productName": "Visa Monitor Companion",
+    "asar": true,
+    "files": [
+      "desktop/**/*",
+      "public/**/*",
+      "src/**/*",
+      "server.mjs",
+      ".env.example",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist-app"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Visa-Monitor-Companion-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

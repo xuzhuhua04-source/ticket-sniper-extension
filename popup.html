@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visa Earlier Appointment Alert</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="popup">
+  <main>
+    <header class="product-header">
+      <img src="icon-48.png" alt="" width="38" height="38">
+      <div><h1>Visa Slot Alert</h1><p>Official portals only</p></div>
+      <span id="state-dot" class="state-dot"></span>
+    </header>
+
+    <section class="control-section">
+      <label for="cutoff-date">Alert me for appointments earlier than</label>
+      <input id="cutoff-date" type="date">
+
+      <label for="interval">Check an open calendar tab every</label>
+      <select id="interval">
+        <option value="5">5 minutes</option>
+        <option value="10" selected>10 minutes</option>
+        <option value="15">15 minutes</option>
+        <option value="30">30 minutes</option>
+      </select>
+
+      <div class="actions">
+        <button id="toggle">Start monitoring</button>
+        <button id="check" class="secondary">Check now</button>
+      </div>
+    </section>
+
+    <section class="monitor-card" aria-live="polite">
+      <strong id="status-title">Not monitoring</strong>
+      <p id="status">Open the official appointment calendar and sign in manually.</p>
+      <small id="last-check"></small>
+    </section>
+
+    <section class="monitor-card crawler-card" aria-live="polite">
+      <div class="mini-heading">
+        <strong>Portal protection signals</strong>
+        <span id="crawler-severity" class="severity-pill">idle</span>
+      </div>
+      <p id="crawler-status">No crawler or anti-bot challenge signals observed.</p>
+      <small id="crawler-last-check"></small>
+    </section>
+
+    <section class="gmail-section" aria-labelledby="gmail-heading">
+      <div class="section-heading">
+        <div>
+          <strong id="gmail-heading">Gmail timestamp alert</strong>
+          <p>Google API monitoring. Gmail does not need to stay open.</p>
+        </div>
+        <span id="gmail-dot" class="state-dot"></span>
+      </div>
+
+      <label for="gmail-mailbox">Watch mailbox</label>
+      <select id="gmail-mailbox">
+        <option value="both">Inbox and Sent</option>
+        <option value="inbox">Inbox only</option>
+        <option value="sent">Sent only</option>
+      </select>
+
+      <label for="gmail-interval">Check Gmail every</label>
+      <select id="gmail-interval">
+        <option value="1">1 minute</option>
+        <option value="2" selected>2 minutes</option>
+        <option value="5">5 minutes</option>
+        <option value="10">10 minutes</option>
+      </select>
+
+      <div class="actions">
+        <button id="gmail-toggle" class="secondary">Connect Gmail</button>
+        <button id="check-gmail" class="secondary">Check Gmail now</button>
+      </div>
+
+      <div class="gmail-status" aria-live="polite">
+        <strong id="gmail-current-time" class="gmail-current-time">--</strong>
+        <span id="gmail-status">Gmail monitoring is off.</span>
+        <small id="gmail-last-change"></small>
+      </div>
+      <div class="gmail-links">
+        <button id="gmail-setup" class="text-button compact">OAuth setup guide</button>
+        <button id="gmail-disconnect" class="text-button compact">Disconnect account</button>
+      </div>
+    </section>
+
+    <button id="options" class="text-button">Calendar detection settings</button>
+    <button id="companion-app" class="text-button">Open companion app</button>
+    <p class="safety-note">Alerts only. No automatic booking, login, CAPTCHA handling, page refreshing or hidden API access.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
