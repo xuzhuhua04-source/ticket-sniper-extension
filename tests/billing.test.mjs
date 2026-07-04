@@ -24,8 +24,8 @@ test("checkout URL requires Authorize.Net credentials and item amounts", () => {
   const env = {
     AUTHORIZE_NET_API_LOGIN_ID: "login",
     AUTHORIZE_NET_TRANSACTION_KEY: "transaction",
-    AUTHORIZE_NET_PERFORMANCE_SPECTRUM_AMOUNT: "499.00",
-    AUTHORIZE_NET_PERFORMANCE_SPECTRUM_PRICE_LABEL: "$499/mo"
+    AUTHORIZE_NET_PERFORMANCE_SPECTRUM_AMOUNT: "2500.00",
+    AUTHORIZE_NET_PERFORMANCE_SPECTRUM_PRICE_LABEL: "$2,500/mo"
   };
   assert.equal(checkoutUrl("performance-spectrum", env), "https://test.authorize.net/payment/payment");
   assert.throws(() => checkoutUrl("update-radar", env), /checkout is not configured/);
@@ -37,7 +37,7 @@ test("Authorize.Net Accept Hosted token creation validates provider response", a
   const env = {
     AUTHORIZE_NET_API_LOGIN_ID: "login",
     AUTHORIZE_NET_TRANSACTION_KEY: "transaction",
-    AUTHORIZE_NET_PROFESSIONAL_AMOUNT: "199.00",
+    AUTHORIZE_NET_PROFESSIONAL_AMOUNT: "1999.00",
     AUTHORIZE_NET_SUCCESS_URL: "https://organ9.example/success",
     AUTHORIZE_NET_CANCEL_URL: "https://organ9.example/cancel"
   };

@@ -331,13 +331,18 @@ function cleanLabel(value) {
 
 function defaultPriceLabel(id) {
   return ({
-    starter: "$49/mo",
-    professional: "$199/mo",
-    enterprise: "Contact sales",
-    "dev-mode-pro": "$99/mo add-on",
-    "extended-retention": "$49/mo add-on",
-    "team-seats": "$29/seat/mo",
-    "exports-api": "$79/mo add-on"
+    starter: "$499/mo",
+    professional: "$1,999/mo",
+    enterprise: "From $12,000/mo",
+    "structure-monitor": "From $4,000/mo",
+    "performance-spectrum": "$2,500/mo",
+    "update-radar": "$1,500/mo",
+    "risk-score-engine": "From $5,000/mo",
+    "ai-activity-detector": "From $6,000/mo",
+    "dev-mode-pro": "$799/mo add-on",
+    "extended-retention": "$499/mo add-on",
+    "team-seats": "$199/seat/mo",
+    "exports-api": "$699/mo add-on"
   })[id] || "Module subscription";
 }
 
