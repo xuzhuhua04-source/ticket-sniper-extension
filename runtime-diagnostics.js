@@ -157,6 +157,9 @@ let activeRankingBoard = localStorage.getItem("runtimeDiagnosticsRankingBoard") 
 let rankingLedger = [];
 let rankingCrawlerStatus = null;
 let activeLanguage = normalizeLanguage(localStorage.getItem(globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage") || navigator.language || "en");
+let languageObserver = null;
+let localizingText = false;
+const originalTextNodes = new WeakMap();
 const hasExtensionRuntime = Boolean(globalThis.chrome?.runtime?.sendMessage && chrome.storage?.local && chrome.storage?.sync);
 const standaloneState = {
   timer: null,
@@ -320,12 +323,85 @@ function languageText(key, fallback = "") {
   return current[key] || english[key] || fallback || key;
 }
 
+function phraseText(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean || activeLanguage === "en") return clean;
+  const current = languagePacket(activeLanguage)?.phrases || {};
+  const english = languagePacket("en")?.phrases || {};
+  return current[clean] || english[clean] || clean;
+}
+
+function localizeVisibleText(root = document.body) {
+  if (!root || activeLanguage === "en" || localizingText) return;
+  localizingText = true;
+  try {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const value = node.nodeValue || "";
+        if (!value.trim()) return NodeFilter.FILTER_REJECT;
+        const parent = node.parentElement;
+        if (!parent || ["SCRIPT", "STYLE", "TEXTAREA", "OPTION"].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+        if (parent.closest("[data-no-i18n], input, select, textarea, code, pre")) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      if (!originalTextNodes.has(node)) originalTextNodes.set(node, node.nodeValue);
+      const original = originalTextNodes.get(node);
+      const prefix = original.match(/^\s*/)?.[0] || "";
+      const suffix = original.match(/\s*$/)?.[0] || "";
+      const translated = phraseText(original);
+      if (translated && translated !== original.trim()) node.nodeValue = `${prefix}${translated}${suffix}`;
+    }
+  } finally {
+    localizingText = false;
+  }
+}
+
+function resetVisibleTextToEnglish(root = document.body) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    if (originalTextNodes.has(node)) node.nodeValue = originalTextNodes.get(node);
+  }
+}
+
+function scheduleLanguagePass(root = document.body) {
+  requestAnimationFrame(() => {
+    if (activeLanguage === "en") resetVisibleTextToEnglish(root);
+    else localizeVisibleText(root);
+  });
+}
+
+function ensureLanguageObserver() {
+  if (languageObserver || !document.body) return;
+  languageObserver = new MutationObserver(mutations => {
+    if (localizingText || activeLanguage === "en") return;
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const parent = node.parentElement;
+          if (parent) scheduleLanguagePass(parent);
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          scheduleLanguagePass(node);
+        }
+      }
+    }
+  });
+  languageObserver.observe(document.body, { childList: true, subtree: true });
+}
+
 function setLocalizedText(element, key) {
   if (!element) return;
   element.textContent = languageText(key, element.textContent);
 }
 
 function applyLanguage(locale = activeLanguage) {
+  resetVisibleTextToEnglish(document.body);
   activeLanguage = normalizeLanguage(locale);
   const storageKey = globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage";
   localStorage.setItem(storageKey, activeLanguage);
@@ -403,6 +479,8 @@ function applyLanguage(locale = activeLanguage) {
   if (allChannels) allChannels.textContent = languageText("allChannels", "All channels");
   applyAuthMode(authMode);
   renderAccountState();
+  ensureLanguageObserver();
+  scheduleLanguagePass(document.body);
 }
 
 function initialize() {

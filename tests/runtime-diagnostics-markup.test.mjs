@@ -158,8 +158,13 @@ test("commercial website exposes language packets and persistent localization co
   for (const phrase of ["Commercial browser monitoring", "运行时智能平台", "Monitoreo comercial"]) {
     assert.match(languagePackets, new RegExp(phrase));
   }
+  for (const phrase of ["Runtime-safe", "Customer view", "Production Deployment Checklist", "Normal View Diagnostics", "Technology Profile"]) {
+    assert.match(languagePackets, new RegExp(phrase));
+  }
   assert.match(js, /function applyLanguage/);
   assert.match(js, /function languageText/);
+  assert.match(js, /function localizeVisibleText/);
+  assert.match(js, /new MutationObserver/);
   assert.match(js, /languageSelect\?\.addEventListener\("change"/);
   assert.match(js, /document\.documentElement\.lang = activeLanguage/);
   assert.match(css, /\.language-control/);
