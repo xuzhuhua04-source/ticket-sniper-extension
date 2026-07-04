@@ -582,17 +582,25 @@ async function choosePlan(plan, button = null) {
       body: JSON.stringify({ priceId: normalizedPlan, email: accountState.email })
     });
     const payload = await response.json();
-    if (!response.ok || !payload.ok) throw new Error(payload.error || "Checkout is not configured.");
+    if (!response.ok || !payload.ok) {
+      const error = new Error(payload.error || "Checkout is not configured.");
+      error.status = response.status;
+      throw error;
+    }
     if (!isAuthorizeNetHostedPaymentUrl(payload.url)) throw new Error("Checkout did not return a valid Authorize.Net hosted payment URL.");
     saveAccountState();
     renderAccountState();
     submitAuthorizeNetHostedPayment(payload);
   } catch (error) {
-    applyLocalDemoEntitlement(normalizedPlan);
-    saveAccountState();
-    renderAccountState();
-    if (normalizeModuleId(normalizedPlan)) selectModule(normalizedPlan);
-    setPlanStatus(`${readableBillingName(normalizedPlan)} added as sandbox preview access. ${error.message || String(error)} Connect Authorize.Net before production sales.`, "success");
+    if (error.status === 503 || /checkout is not configured|not configured/i.test(error.message || "")) {
+      applyLocalDemoEntitlement(normalizedPlan);
+      saveAccountState();
+      renderAccountState();
+      if (normalizeModuleId(normalizedPlan)) selectModule(normalizedPlan);
+      setPlanStatus(`${readableBillingName(normalizedPlan)} added as sandbox preview access because checkout is not configured.`, "success");
+      return;
+    }
+    setPlanStatus(`Authorize.Net checkout failed for ${readableBillingName(normalizedPlan)}: ${error.message || String(error)} Check the API Login ID, Transaction Key, and sandbox/production environment in Render.`, "error");
   }
 }
 
