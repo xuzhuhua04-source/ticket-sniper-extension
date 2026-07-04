@@ -33,9 +33,10 @@ const rankingCrawler = createRankingCrawler();
 
 export async function startStandaloneServer(options = {}) {
   const port = Math.max(1024, Number(options.port ?? process.env.PORT) || 4391);
-  const host = options.host || "127.0.0.1";
+  const host = options.host || process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+  const displayHost = host === "0.0.0.0" ? "127.0.0.1" : host;
   const localAppOrigins = [
-    `http://${host}:${port}`,
+    `http://${displayHost}:${port}`,
     `http://localhost:${port}`,
     `http://127.0.0.1:${port}`
   ];
@@ -187,8 +188,8 @@ export async function startStandaloneServer(options = {}) {
     server.once("error", reject);
     server.listen(port, host, resolveListen);
   });
-  console.log(`Organ9 Runtime Diagnostics: http://${host}:${port}`);
-  return { server, host, port, url: `http://${host}:${port}` };
+  console.log(`Organ9 Runtime Diagnostics: http://${displayHost}:${port} listening on ${host}`);
+  return { server, host, port, url: `http://${displayHost}:${port}` };
 }
 
 export function buildStandaloneExportPayload(store = standaloneDiagnosticsStore) {
