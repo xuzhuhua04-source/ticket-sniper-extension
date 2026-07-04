@@ -328,7 +328,25 @@ function phraseText(text) {
   if (!clean || activeLanguage === "en") return clean;
   const current = languagePacket(activeLanguage)?.phrases || {};
   const english = languagePacket("en")?.phrases || {};
-  return current[clean] || english[clean] || clean;
+  const exact = current[clean] || english[clean];
+  if (exact) return exact;
+  return substituteLanguageFragments(clean);
+}
+
+function substituteLanguageFragments(text) {
+  const substitutions = globalThis.ORGAN9_LANGUAGE_SUBSTITUTIONS?.[activeLanguage] || {};
+  let translated = String(text || "");
+  const entries = Object.entries(substitutions).sort((a, b) => b[0].length - a[0].length);
+  for (const [source, target] of entries) {
+    if (!source || !target) continue;
+    const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const needsBoundary = /^[A-Za-z0-9 /+-]+$/.test(source);
+    const pattern = needsBoundary
+      ? new RegExp(`(?<![A-Za-z])${escaped}(?![A-Za-z])`, "g")
+      : new RegExp(escaped, "g");
+    translated = translated.replace(pattern, target);
+  }
+  return translated;
 }
 
 function localizeVisibleText(root = document.body) {
@@ -382,6 +400,10 @@ function ensureLanguageObserver() {
   languageObserver = new MutationObserver(mutations => {
     if (localizingText || activeLanguage === "en") return;
     for (const mutation of mutations) {
+      if (mutation.type === "characterData") {
+        const parent = mutation.target.parentElement;
+        if (parent) scheduleLanguagePass(parent);
+      }
       for (const node of mutation.addedNodes) {
         if (node.nodeType === Node.TEXT_NODE) {
           const parent = node.parentElement;
@@ -392,7 +414,7 @@ function ensureLanguageObserver() {
       }
     }
   });
-  languageObserver.observe(document.body, { childList: true, subtree: true });
+  languageObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
 }
 
 function setLocalizedText(element, key) {
