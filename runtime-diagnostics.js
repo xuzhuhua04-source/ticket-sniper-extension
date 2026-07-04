@@ -159,6 +159,9 @@ let rankingCrawlerStatus = null;
 let activeLanguage = normalizeLanguage(localStorage.getItem(globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage") || navigator.language || "en");
 let languageObserver = null;
 let localizingText = false;
+let languagePassTimer = null;
+let pendingLanguageRoots = new Set();
+let substitutionEntryCache = new Map();
 const originalTextNodes = new WeakMap();
 const hasExtensionRuntime = Boolean(globalThis.chrome?.runtime?.sendMessage && chrome.storage?.local && chrome.storage?.sync);
 const standaloneState = {
@@ -336,14 +339,20 @@ function phraseText(text) {
 function substituteLanguageFragments(text) {
   const substitutions = globalThis.ORGAN9_LANGUAGE_SUBSTITUTIONS?.[activeLanguage] || {};
   let translated = String(text || "");
-  const entries = Object.entries(substitutions).sort((a, b) => b[0].length - a[0].length);
-  for (const [source, target] of entries) {
-    if (!source || !target) continue;
-    const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const needsBoundary = /^[A-Za-z0-9 /+-]+$/.test(source);
-    const pattern = needsBoundary
-      ? new RegExp(`(?<![A-Za-z])${escaped}(?![A-Za-z])`, "g")
-      : new RegExp(escaped, "g");
+  let entries = substitutionEntryCache.get(activeLanguage);
+  if (!entries) {
+    entries = Object.entries(substitutions)
+      .sort((a, b) => b[0].length - a[0].length)
+      .map(([source, target]) => {
+        const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const needsBoundary = /^[A-Za-z0-9 /+-]+$/.test(source);
+        return [source, target, needsBoundary
+          ? new RegExp(`(?<![A-Za-z])${escaped}(?![A-Za-z])`, "g")
+          : new RegExp(escaped, "g")];
+      });
+    substitutionEntryCache.set(activeLanguage, entries);
+  }
+  for (const [, target, pattern] of entries) {
     translated = translated.replace(pattern, target);
   }
   return translated;
@@ -389,32 +398,49 @@ function resetVisibleTextToEnglish(root = document.body) {
 }
 
 function scheduleLanguagePass(root = document.body) {
-  requestAnimationFrame(() => {
-    if (activeLanguage === "en") resetVisibleTextToEnglish(root);
-    else localizeVisibleText(root);
-  });
+  if (!root) return;
+  const elementRoot = root.nodeType === Node.TEXT_NODE ? root.parentElement : root;
+  if (!elementRoot) return;
+  if (elementRoot === document.body) {
+    pendingLanguageRoots = new Set([document.body]);
+  } else if (!pendingLanguageRoots.has(document.body)) {
+    pendingLanguageRoots.add(elementRoot);
+  }
+  if (languagePassTimer) return;
+  languagePassTimer = setTimeout(() => {
+    languagePassTimer = null;
+    const roots = [...pendingLanguageRoots];
+    pendingLanguageRoots.clear();
+    const finalRoots = roots.includes(document.body)
+      ? [document.body]
+      : roots.filter((rootItem, index) => !roots.some((other, otherIndex) => otherIndex !== index && other.contains?.(rootItem)));
+    requestAnimationFrame(() => {
+      for (const rootItem of finalRoots.slice(0, 24)) {
+        if (activeLanguage === "en") resetVisibleTextToEnglish(rootItem);
+        else localizeVisibleText(rootItem);
+      }
+    });
+  }, 120);
 }
 
 function ensureLanguageObserver() {
   if (languageObserver || !document.body) return;
   languageObserver = new MutationObserver(mutations => {
     if (localizingText || activeLanguage === "en") return;
+    const roots = new Set();
     for (const mutation of mutations) {
-      if (mutation.type === "characterData") {
-        const parent = mutation.target.parentElement;
-        if (parent) scheduleLanguagePass(parent);
-      }
       for (const node of mutation.addedNodes) {
         if (node.nodeType === Node.TEXT_NODE) {
           const parent = node.parentElement;
-          if (parent) scheduleLanguagePass(parent);
+          if (parent) roots.add(parent);
         } else if (node.nodeType === Node.ELEMENT_NODE) {
-          scheduleLanguagePass(node);
+          roots.add(node);
         }
       }
     }
+    for (const root of roots) scheduleLanguagePass(root);
   });
-  languageObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
+  languageObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 function setLocalizedText(element, key) {
