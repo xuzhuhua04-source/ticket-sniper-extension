@@ -1212,7 +1212,7 @@ function setHeaders(request, response, pathname = "") {
     "connect-src 'self' http://127.0.0.1:* http://localhost:*",
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self'"
+    "form-action 'self' https://accept.authorize.net https://test.authorize.net"
   ].join("; "));
 }
 
