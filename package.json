@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node standalone-server.mjs",
-    "check": "node --check standalone-server.mjs && node --check runtime-diagnostics.js",
+    "check": "node --check standalone-server.mjs && node --check runtime-language-packets.js && node --check runtime-diagnostics.js",
     "verify": "npm run check && npm test",
     "test": "node --test tests/*.test.mjs date-parser.test.cjs"
   },

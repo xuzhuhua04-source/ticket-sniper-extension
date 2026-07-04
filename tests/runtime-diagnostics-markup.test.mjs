@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 const html = await readFile(new URL("../runtime-diagnostics.html", import.meta.url), "utf8");
 const js = await readFile(new URL("../runtime-diagnostics.js", import.meta.url), "utf8");
 const css = await readFile(new URL("../runtime-diagnostics.css", import.meta.url), "utf8");
+const languagePackets = await readFile(new URL("../runtime-language-packets.js", import.meta.url), "utf8");
 
 test("runtime diagnostics controls expose production-grade button semantics", () => {
   const buttons = [...html.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
@@ -44,7 +45,7 @@ test("commercial UI has keyboard focus and mobile wrapping safeguards", () => {
   assert.match(css, /\.skip-link:focus/);
   assert.match(css, /button:focus-visible,\s*input:focus-visible,\s*select:focus-visible/);
   assert.match(css, /\.url-row input,\s*\.url-row button \{ flex: 1 1 100%; \}/);
-  assert.match(css, /\.top-actions button,\s*\.account-chip \{ flex: 1 1 auto; \}/);
+  assert.match(css, /\.top-actions button,\s*\.account-chip,\s*\.language-control \{ flex: 1 1 auto; \}/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
 
@@ -141,4 +142,25 @@ test("commercial shell exposes buyer-ready polish and grouped controls", () => {
   assert.match(css, /\.ranking-proof/);
   assert.match(js, /Structure Monitor unlocks Runtime Layer Coverage evidence/);
   assert.match(js, /footerPricing\?\.addEventListener/);
+});
+
+test("commercial website exposes language packets and persistent localization controls", () => {
+  assert.match(html, /id="language-select"/);
+  assert.match(html, /id="language-label"/);
+  assert.match(html, /runtime-language-packets\.js/);
+  assert.ok(html.indexOf("runtime-language-packets.js") < html.indexOf("runtime-diagnostics.js"), "language packets must load before runtime UI logic");
+  for (const locale of ["en", "zh", "es"]) {
+    assert.match(languagePackets, new RegExp(`${locale}: Object\\.freeze`));
+  }
+  for (const key of ["ORGAN9_LANGUAGE_STORAGE_KEY", "ORGAN9_LANGUAGE_PACKETS", "getOrgan9LanguagePacket"]) {
+    assert.match(languagePackets, new RegExp(key));
+  }
+  for (const phrase of ["Commercial browser monitoring", "运行时智能平台", "Monitoreo comercial"]) {
+    assert.match(languagePackets, new RegExp(phrase));
+  }
+  assert.match(js, /function applyLanguage/);
+  assert.match(js, /function languageText/);
+  assert.match(js, /languageSelect\?\.addEventListener\("change"/);
+  assert.match(js, /document\.documentElement\.lang = activeLanguage/);
+  assert.match(css, /\.language-control/);
 });

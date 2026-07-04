@@ -1,4 +1,8 @@
 const elements = {
+  skipLink: document.getElementById("skip-link"),
+  languageSelect: document.getElementById("language-select"),
+  languageLabel: document.getElementById("language-label"),
+  platformEyebrow: document.getElementById("platform-eyebrow"),
   toggleDiagnostics: document.getElementById("toggle-diagnostics"),
   refresh: document.getElementById("refresh"),
   exportJson: document.getElementById("export-json"),
@@ -36,6 +40,26 @@ const elements = {
   planStatus: document.getElementById("plan-status"),
   homeStart: document.getElementById("home-start"),
   homePricing: document.getElementById("home-pricing"),
+  homeEyebrow: document.getElementById("home-eyebrow"),
+  homeHeadline: document.getElementById("home-headline"),
+  homeCopy: document.getElementById("home-copy"),
+  authEyebrow: document.getElementById("auth-eyebrow"),
+  authHeadline: document.getElementById("auth-headline"),
+  authBody: document.getElementById("auth-body"),
+  plansEyebrow: document.getElementById("plans-eyebrow"),
+  plansHeadline: document.getElementById("plans-headline"),
+  plansCopy: document.getElementById("plans-copy"),
+  corePlansHeading: document.getElementById("core-plans-heading"),
+  paidModulesHeading: document.getElementById("paid-modules-heading"),
+  addonsHeading: document.getElementById("addons-heading"),
+  buyingFaqHeading: document.getElementById("buying-faq-heading"),
+  productionChecklistHeading: document.getElementById("production-checklist-heading"),
+  modulesEyebrow: document.getElementById("modules-eyebrow"),
+  modulesHeadline: document.getElementById("modules-headline"),
+  modulesCopy: document.getElementById("modules-copy"),
+  rankingsEyebrow: document.getElementById("rankings-eyebrow"),
+  rankingsHeadline: document.getElementById("rankings-headline"),
+  rankingsCopy: document.getElementById("rankings-copy"),
   footerPricing: document.getElementById("footer-pricing"),
   footerDashboard: document.getElementById("footer-dashboard"),
   footerDocs: document.getElementById("footer-docs"),
@@ -132,6 +156,7 @@ let activeModule = normalizePlanId(localStorage.getItem("runtimeDiagnosticsActiv
 let activeRankingBoard = localStorage.getItem("runtimeDiagnosticsRankingBoard") || "overall";
 let rankingLedger = [];
 let rankingCrawlerStatus = null;
+let activeLanguage = normalizeLanguage(localStorage.getItem(globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage") || navigator.language || "en");
 const hasExtensionRuntime = Boolean(globalThis.chrome?.runtime?.sendMessage && chrome.storage?.local && chrome.storage?.sync);
 const standaloneState = {
   timer: null,
@@ -276,6 +301,110 @@ else initializeStandalone();
 
 initializeCommercialShell();
 
+function normalizeLanguage(locale) {
+  const packets = globalThis.ORGAN9_LANGUAGE_PACKETS || {};
+  const requested = String(locale || "en").toLowerCase();
+  if (packets[requested]) return requested;
+  const base = requested.split("-")[0];
+  return packets[base] ? base : "en";
+}
+
+function languagePacket(locale = activeLanguage) {
+  if (typeof globalThis.getOrgan9LanguagePacket === "function") return globalThis.getOrgan9LanguagePacket(locale);
+  return (globalThis.ORGAN9_LANGUAGE_PACKETS || {}).en || { meta: { label: "English", dir: "ltr" }, labels: {} };
+}
+
+function languageText(key, fallback = "") {
+  const current = languagePacket(activeLanguage)?.labels || {};
+  const english = languagePacket("en")?.labels || {};
+  return current[key] || english[key] || fallback || key;
+}
+
+function setLocalizedText(element, key) {
+  if (!element) return;
+  element.textContent = languageText(key, element.textContent);
+}
+
+function applyLanguage(locale = activeLanguage) {
+  activeLanguage = normalizeLanguage(locale);
+  const storageKey = globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage";
+  localStorage.setItem(storageKey, activeLanguage);
+  const packet = languagePacket(activeLanguage);
+  document.documentElement.lang = activeLanguage;
+  document.documentElement.dir = packet.meta?.dir || "ltr";
+  if (elements.languageSelect) {
+    const packets = globalThis.ORGAN9_LANGUAGE_PACKETS || {};
+    for (const option of elements.languageSelect.options) {
+      option.textContent = packets[option.value]?.meta?.label || option.textContent;
+    }
+    elements.languageSelect.value = activeLanguage;
+    elements.languageSelect.setAttribute("aria-label", languageText("languageLabel", "Language"));
+  }
+  setLocalizedText(elements.skipLink, "skipLink");
+  setLocalizedText(elements.languageLabel, "languageLabel");
+  setLocalizedText(elements.platformEyebrow, "platformEyebrow");
+  setLocalizedText(elements.navHome, "navHome");
+  setLocalizedText(elements.navDashboard, "navDashboard");
+  setLocalizedText(elements.navModules, "navModules");
+  setLocalizedText(elements.navRankings, "navRankings");
+  setLocalizedText(elements.navPlans, "navPlans");
+  setLocalizedText(elements.navDocs, "navDocs");
+  setLocalizedText(elements.navSignIn, "navSignIn");
+  setLocalizedText(elements.signOutButton, "signOutButton");
+  setLocalizedText(elements.normalMode, "normalMode");
+  setLocalizedText(elements.devMode, "devMode");
+  if (diagnosticsEnabled) setLocalizedText(elements.toggleDiagnostics, "toggleDiagnostics");
+  setLocalizedText(elements.refresh, "refresh");
+  setLocalizedText(elements.exportJson, "exportJson");
+  setLocalizedText(elements.exportAllJson, "exportAllJson");
+  setLocalizedText(elements.clear, "clear");
+  setLocalizedText(elements.homeEyebrow, "homeEyebrow");
+  setLocalizedText(elements.homeHeadline, "homeHeadline");
+  setLocalizedText(elements.homeCopy, "homeCopy");
+  setLocalizedText(elements.homeStart, "homeStart");
+  setLocalizedText(elements.homePricing, "homePricing");
+  setLocalizedText(elements.authEyebrow, "authEyebrow");
+  setLocalizedText(elements.authHeadline, "authHeadline");
+  setLocalizedText(elements.authBody, "authBody");
+  setLocalizedText(elements.authSignIn, "authTabSignIn");
+  setLocalizedText(elements.authSignUp, "authTabSignUp");
+  setLocalizedText(elements.plansEyebrow, "plansEyebrow");
+  setLocalizedText(elements.plansHeadline, "plansHeadline");
+  setLocalizedText(elements.plansCopy, "plansCopy");
+  setLocalizedText(elements.corePlansHeading, "corePlans");
+  setLocalizedText(elements.paidModulesHeading, "paidModules");
+  setLocalizedText(elements.addonsHeading, "addons");
+  setLocalizedText(elements.buyingFaqHeading, "buyingFaq");
+  setLocalizedText(elements.productionChecklistHeading, "productionChecklist");
+  setLocalizedText(elements.modulesEyebrow, "modulesEyebrow");
+  setLocalizedText(elements.modulesHeadline, "modulesHeadline");
+  setLocalizedText(elements.modulesCopy, "modulesCopy");
+  setLocalizedText(elements.rankingsEyebrow, "rankingsEyebrow");
+  setLocalizedText(elements.rankingsHeadline, "rankingsHeadline");
+  setLocalizedText(elements.rankingsCopy, "rankingsCopy");
+  setLocalizedText(elements.rankingStartCrawler, "rankingStartCrawler");
+  setLocalizedText(elements.rankingRunOnce, "rankingRunOnce");
+  setLocalizedText(elements.rankingStopCrawler, "rankingStopCrawler");
+  setLocalizedText(elements.rankingAddCurrent, "rankingAddCurrent");
+  setLocalizedText(elements.rankingImportCrawler, "rankingImportCrawler");
+  setLocalizedText(elements.rankingSeed, "rankingSeed");
+  setLocalizedText(elements.rankingExport, "rankingExport");
+  setLocalizedText(elements.focusLatest, "dashboardFocus");
+  setLocalizedText(elements.footerPricing, "footerPricing");
+  setLocalizedText(elements.footerDashboard, "footerDashboard");
+  setLocalizedText(elements.footerDocs, "footerDocs");
+  elements.accountName?.setAttribute("placeholder", languageText("fullNamePlaceholder", "Full name"));
+  elements.accountName?.setAttribute("aria-label", languageText("fullNamePlaceholder", "Full name"));
+  elements.accountEmail?.setAttribute("placeholder", languageText("emailPlaceholder", "you@example.com"));
+  elements.accountEmail?.setAttribute("aria-label", languageText("emailPlaceholder", "Email address"));
+  elements.accountPassword?.setAttribute("placeholder", languageText("passwordPlaceholder", "Password"));
+  elements.accountPassword?.setAttribute("aria-label", languageText("passwordPlaceholder", "Password"));
+  const allChannels = elements.channelFilter?.querySelector('option[value=""]');
+  if (allChannels) allChannels.textContent = languageText("allChannels", "All channels");
+  applyAuthMode(authMode);
+  renderAccountState();
+}
+
 function initialize() {
   wireCommercialShell();
   elements.toggleDiagnostics.addEventListener("click", toggleDiagnostics);
@@ -332,6 +461,7 @@ function initializeStandalone() {
 }
 
 function initializeCommercialShell() {
+  applyLanguage(activeLanguage);
   applyViewMode(viewMode);
   applyAuthMode(authMode);
   renderAccountState();
@@ -342,6 +472,7 @@ function initializeCommercialShell() {
 }
 
 function wireCommercialShell() {
+  elements.languageSelect?.addEventListener("change", () => applyLanguage(elements.languageSelect.value));
   elements.navHome?.addEventListener("click", () => applyAppView("home"));
   elements.navDocs?.addEventListener("click", () => applyAppView("docs"));
   elements.navDashboard?.addEventListener("click", () => applyAppView(accountState.email ? "dashboard" : "sign-in"));
@@ -742,11 +873,13 @@ function applyAuthMode(mode) {
   elements.authSignUp?.classList.toggle("secondary", authMode !== "sign-up");
   elements.authSignIn?.setAttribute("aria-selected", String(authMode === "sign-in"));
   elements.authSignUp?.setAttribute("aria-selected", String(authMode === "sign-up"));
-  elements.authTitle.textContent = authMode === "sign-up" ? "Create your workspace" : "Sign in to your workspace";
+  elements.authTitle.textContent = authMode === "sign-up"
+    ? languageText("authTitleSignUp", "Create your workspace")
+    : languageText("authTitleSignIn", "Sign in to your workspace");
   elements.authCopy.textContent = authMode === "sign-up"
-    ? "Create a workspace session, then connect Authorize.Net hosted checkout when you deploy."
-    : "Sign in first. The live website data dashboard stays locked until a workspace session is active.";
-  elements.loginButton.textContent = authMode === "sign-up" ? "Create account" : "Sign in";
+    ? languageText("authCopySignUp", "Create a workspace session, then connect Authorize.Net hosted checkout when you deploy.")
+    : languageText("authCopySignIn", "Sign in first. The live website data dashboard stays locked until a workspace session is active.");
+  elements.loginButton.textContent = authMode === "sign-up" ? languageText("loginSignUp", "Create account") : languageText("loginSignIn", "Sign in");
   elements.accountPassword?.setAttribute("autocomplete", authMode === "sign-up" ? "new-password" : "current-password");
 }
 

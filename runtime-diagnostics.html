@@ -7,13 +7,13 @@
   <link rel="stylesheet" href="runtime-diagnostics.css">
 </head>
 <body>
-  <a class="skip-link" href="#home-view">Skip to content</a>
+  <a id="skip-link" class="skip-link" href="#home-view">Skip to content</a>
   <main>
     <header class="topbar">
       <div class="brand-lockup">
         <span class="brand-mark" aria-hidden="true">O9</span>
         <div>
-          <p class="eyebrow">Runtime Intelligence Platform</p>
+          <p id="platform-eyebrow" class="eyebrow">Runtime Intelligence Platform</p>
           <h1>Organ9</h1>
         </div>
       </div>
@@ -28,6 +28,14 @@
         </nav>
         <div class="workspace-cluster" aria-label="Workspace controls">
           <span id="account-chip" class="account-chip" role="status" aria-live="polite">Signed out</span>
+          <label class="language-control" for="language-select">
+            <span id="language-label">Language</span>
+            <select id="language-select" aria-label="Language">
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+              <option value="es">Español</option>
+            </select>
+          </label>
           <button id="nav-sign-in" class="secondary" type="button" aria-controls="sign-in-view">Sign in</button>
           <button id="sign-out-button" class="secondary" type="button">Sign out</button>
         </div>
@@ -47,9 +55,9 @@
     <section id="home-view" class="home-view app-view" aria-label="Organ9 public homepage">
       <div class="home-hero">
         <div>
-          <p class="eyebrow">Organ9 Runtime Intelligence</p>
-          <h2>Commercial browser monitoring for teams that need structure, risk, performance, and AI activity signals.</h2>
-          <p>Organ9 turns live website behavior into paid product modules: customer-readable dashboards, protected developer diagnostics, and subscription-gated structural intelligence.</p>
+          <p id="home-eyebrow" class="eyebrow">Organ9 Runtime Intelligence</p>
+          <h2 id="home-headline">Commercial browser monitoring for teams that need structure, risk, performance, and AI activity signals.</h2>
+          <p id="home-copy">Organ9 turns live website behavior into paid product modules: customer-readable dashboards, protected developer diagnostics, and subscription-gated structural intelligence.</p>
           <div class="home-actions">
             <button id="home-start" type="button">Start monitoring</button>
             <button id="home-pricing" class="secondary" type="button">View pricing</button>
@@ -123,9 +131,9 @@
     <section id="sign-in-view" class="auth-view app-view">
       <div class="auth-layout">
         <section class="auth-copy">
-          <p class="eyebrow">Website Intelligence</p>
-          <h2>Give teams a readable operating picture of any live website.</h2>
-          <p>Runtime Diagnostics turns browser behavior into plain-language health, change, risk, and performance signals, with Dev Mode Pro available for raw structural evidence.</p>
+          <p id="auth-eyebrow" class="eyebrow">Website Intelligence</p>
+          <h2 id="auth-headline">Give teams a readable operating picture of any live website.</h2>
+          <p id="auth-body">Runtime Diagnostics turns browser behavior into plain-language health, change, risk, and performance signals, with Dev Mode Pro available for raw structural evidence.</p>
           <div class="auth-proof">
             <div><strong>1s</strong><span>live refresh</span></div>
             <div><strong>9</strong><span>organ views</span></div>
@@ -165,9 +173,9 @@
 
     <section id="plans-view" class="plans-view app-view" aria-label="Subscription plans">
       <div class="plans-heading">
-        <p class="eyebrow">Organ9 Commercial Suite</p>
-        <h2>Pricing is split into plans, modules, and paid add-ons.</h2>
-        <p>Core plans define account limits. Modules unlock product surfaces. Add-ons unlock advanced capabilities like Dev Mode Pro.</p>
+          <p id="plans-eyebrow" class="eyebrow">Organ9 Commercial Suite</p>
+        <h2 id="plans-headline">Pricing is split into plans, modules, and paid add-ons.</h2>
+        <p id="plans-copy">Core plans define account limits. Modules unlock product surfaces. Add-ons unlock advanced capabilities like Dev Mode Pro.</p>
         <div class="pricing-assurance" aria-label="Billing readiness">
           <span>Authorize.Net hosted checkout</span>
           <span>Server-side entitlements</span>
@@ -177,7 +185,7 @@
       </div>
       <div class="pricing-section">
         <div class="section-title">
-          <h2>Core Plans</h2>
+          <h2 id="core-plans-heading">Core Plans</h2>
           <span>Subscription base</span>
         </div>
         <div class="plans-panel">
@@ -209,7 +217,7 @@
       </div>
       <div class="pricing-section">
         <div class="section-title">
-          <h2>Paid Modules</h2>
+          <h2 id="paid-modules-heading">Paid Modules</h2>
           <span>Product surfaces</span>
         </div>
       <div class="plans-panel package-plan-panel module-plan-panel">
@@ -257,7 +265,7 @@
       </div>
       <div class="pricing-section">
         <div class="section-title">
-          <h2>Add-ons</h2>
+          <h2 id="addons-heading">Add-ons</h2>
           <span>Paid unlocks</span>
         </div>
         <div class="plans-panel package-plan-panel addon-plan-panel">
@@ -289,7 +297,7 @@
       </div>
       <div class="pricing-section faq-section">
         <div class="section-title">
-          <h2>Buying FAQ</h2>
+          <h2 id="buying-faq-heading">Buying FAQ</h2>
           <span>Commercial readiness</span>
         </div>
         <div class="faq-grid">
@@ -309,7 +317,7 @@
       </div>
       <div class="pricing-section deployment-section">
         <div class="section-title">
-          <h2>Production Deployment Checklist</h2>
+          <h2 id="production-checklist-heading">Production Deployment Checklist</h2>
           <span>Before charging customers</span>
         </div>
         <div class="deployment-grid">
@@ -324,9 +332,9 @@
     <section id="modules-view" class="modules-view app-view" aria-label="Paid Organ9 modules">
       <div class="modules-shell">
         <aside class="module-nav-panel">
-          <p class="eyebrow">Paid Modules</p>
-          <h2>Package access</h2>
-          <p>Each Organ9 package is treated as its own paid product surface. Locked modules show what they would report, but keep their live analysis behind checkout.</p>
+          <p id="modules-eyebrow" class="eyebrow">Paid Modules</p>
+          <h2 id="modules-headline">Package access</h2>
+          <p id="modules-copy">Each Organ9 package is treated as its own paid product surface. Locked modules show what they would report, but keep their live analysis behind checkout.</p>
           <div id="module-tabs" class="module-tabs" role="tablist" aria-label="Organ9 package modules"></div>
         </aside>
         <section id="module-detail" class="module-detail" aria-live="polite">
@@ -351,9 +359,9 @@
     <section id="rankings-view" class="rankings-view app-view" aria-label="Organ9 website rankings">
       <div class="ranking-hero">
         <div>
-          <p class="eyebrow">Organ9 Website Rankings</p>
-          <h2>Market-style runtime rankings across every Organ9 package.</h2>
-          <p>Rankings combine the benchmark corpus, local live samples, and scheduled crawler samples. Click a website to see the normal diagnostic explanation first; paid modules unlock deeper package evidence.</p>
+          <p id="rankings-eyebrow" class="eyebrow">Organ9 Website Rankings</p>
+          <h2 id="rankings-headline">Market-style runtime rankings across every Organ9 package.</h2>
+          <p id="rankings-copy">Rankings combine the benchmark corpus, local live samples, and scheduled crawler samples. Click a website to see the normal diagnostic explanation first; paid modules unlock deeper package evidence.</p>
           <div class="ranking-proof" aria-label="Ranking data sources">
             <span>Expanded benchmark corpus</span>
             <span>Local live samples</span>
@@ -657,6 +665,7 @@
   </main>
   <script src="organ-frequency-engine.js"></script>
   <script src="organ-pipeline.js"></script>
+  <script src="runtime-language-packets.js"></script>
   <script src="runtime-diagnostics.js"></script>
 </body>
 </html>
