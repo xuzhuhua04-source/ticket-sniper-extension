@@ -13,7 +13,7 @@ test("operational status exposes commercial runtime health", () => {
 
   assert.equal(status.ok, true);
   assert.equal(status.service, "organ9-runtime-diagnostics");
-  assert.equal(status.billing.packageCount, 5);
+  assert.equal(status.billing.packageCount, 6);
   assert.equal(status.runtimeDiagnostics.storagePolicy.historyLimit, 12);
   assert.ok(["healthy", "degraded"].includes(status.health));
   assert.ok(status.url.endsWith(":4391"));

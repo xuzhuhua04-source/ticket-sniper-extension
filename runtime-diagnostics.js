@@ -132,6 +132,19 @@ const elements = {
   rankingExport: document.getElementById("ranking-export"),
   packageSuiteSummary: document.getElementById("package-suite-summary"),
   packageSuiteGrid: document.getElementById("package-suite-grid"),
+  webBloombergStatus: document.getElementById("web-bloomberg-status"),
+  webBloombergFrequency: document.getElementById("web-bloomberg-frequency"),
+  webBloombergFrequencyDetail: document.getElementById("web-bloomberg-frequency-detail"),
+  webBloombergStorms: document.getElementById("web-bloomberg-storms"),
+  webBloombergStormDetail: document.getElementById("web-bloomberg-storm-detail"),
+  webBloombergDeviation: document.getElementById("web-bloomberg-deviation"),
+  webBloombergDeviationDetail: document.getElementById("web-bloomberg-deviation-detail"),
+  webBloombergRisk: document.getElementById("web-bloomberg-risk"),
+  webBloombergRiskDetail: document.getElementById("web-bloomberg-risk-detail"),
+  webBloombergDependencyCount: document.getElementById("web-bloomberg-dependency-count"),
+  webBloombergDependencies: document.getElementById("web-bloomberg-dependencies"),
+  webBloombergWindowCount: document.getElementById("web-bloomberg-window-count"),
+  webBloombergWindows: document.getElementById("web-bloomberg-windows"),
   moduleTabs: document.getElementById("module-tabs"),
   moduleDetail: document.getElementById("module-detail"),
   dashboardModeLabel: document.getElementById("dashboard-mode-label"),
@@ -152,11 +165,11 @@ let entitlementState = accountState.entitlements || null;
 let viewMode = localStorage.getItem("runtimeDiagnosticsViewMode") || "normal";
 let appView = localStorage.getItem("runtimeDiagnosticsAppView") || "home";
 let authMode = localStorage.getItem("runtimeDiagnosticsAuthMode") || "sign-in";
-let activeModule = normalizePlanId(localStorage.getItem("runtimeDiagnosticsActiveModule")) || "performance-spectrum";
+let activeModule = normalizePlanId(localStorage.getItem("runtimeDiagnosticsActiveModule")) || "performance";
 let activeRankingBoard = localStorage.getItem("runtimeDiagnosticsRankingBoard") || "overall";
 let rankingLedger = [];
 let rankingCrawlerStatus = null;
-let activeLanguage = normalizeLanguage(localStorage.getItem(globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage") || navigator.language || "en");
+let activeLanguage = normalizeLanguage(localStorage.getItem(globalThis.SIG9_LANGUAGE_STORAGE_KEY || "SIG9WebsiteLanguage") || navigator.language || "en");
 let languageObserver = null;
 let localizingText = false;
 let languagePassTimer = null;
@@ -180,63 +193,74 @@ const standaloneState = {
 };
 const PACKAGE_DEFINITIONS = Object.freeze([
   {
-    id: "structure-monitor",
-    code: "A",
-    name: "Structure Monitor",
-    pricing: "Enterprise / High-tier",
-    industry: "Security, government, finance, enterprise SOC",
-    promise: "Real-time structural visibility and behavioral frequency fingerprinting.",
-    unlockCopy: "Unlock topology, dependency, iframe, worker, accessibility, and malicious-frequency evidence.",
-    metrics: ["Topology coverage", "Dependency chain depth", "Malicious fingerprint pressure"],
-    capabilities: ["Structural topology", "Behavior flow", "Dependency chains", "Shadow DOM / VDOM / accessibility topology", "Malicious frequency fingerprints"]
+    id: "devops",
+    code: "DOP",
+    name: "DevOps",
+    pricing: "$99/mo",
+    industry: "DevOps, SRE, platform teams",
+    promise: "Behavior and frequency monitoring for release health and live runtime operations.",
+    unlockCopy: "Unlock behavior frequency, runtime cadence, regression pressure, and operational rhythm evidence.",
+    metrics: ["Behavior frequency", "Runtime cadence", "Release pressure"],
+    capabilities: ["Behavior frequency graph", "Runtime rhythm", "Regression signals", "Release health view"]
   },
   {
-    id: "performance-spectrum",
-    code: "B",
-    name: "Performance Spectrum",
-    pricing: "Upper-mid tier",
+    id: "security",
+    code: "SEC",
+    name: "Security",
+    pricing: "$999/mo",
+    industry: "Security, compliance, SOC, government",
+    promise: "Behavior-risk intelligence for hostile runtime signal review.",
+    unlockCopy: "Unlock malicious/protection frequency, risk storms, and structural behavior evidence.",
+    metrics: ["Risk score", "Protection pressure", "Hostile signal cadence"],
+    capabilities: ["Behavior risk", "Malicious frequency fingerprints", "Protection signals", "Storm triage"]
+  },
+  {
+    id: "performance",
+    code: "PERF",
+    name: "Performance",
+    pricing: "$499/mo",
     industry: "E-commerce, SaaS, gaming, large websites",
-    promise: "Real-time performance frequency graph for browser rhythm and pressure.",
-    unlockCopy: "Unlock frame, layout, paint, longtask, JS, network, style storm, and risk-wave analysis.",
-    metrics: ["Runtime rhythm", "Longtask pressure", "Layout and style storms"],
-    capabilities: ["Frame frequency", "Layout frequency", "Paint frequency", "Longtask frequency", "Performance rhythm graph"]
+    promise: "Frequency and dependency analysis for performance storms and resource pressure.",
+    unlockCopy: "Unlock frame, layout, longtask, JS, network, and dependency-chain pressure.",
+    metrics: ["Runtime rhythm", "Dependency pressure", "Storm timeline"],
+    capabilities: ["Frequency graph", "Dependency chains", "Layout storms", "Network pressure"]
   },
   {
-    id: "update-radar",
-    code: "C",
-    name: "Update Radar",
-    pricing: "Mid-tier",
-    industry: "Investment, competitive intelligence, SEO, market analysis",
-    promise: "Real-time update frequency tracking for visible product and site changes.",
-    unlockCopy: "Unlock DOM, VDOM, CSSOM, resource cadence, update intensity, and structural change waveforms.",
-    metrics: ["Update cadence", "Change intensity", "Structural deltas"],
-    capabilities: ["DOM update frequency", "VDOM update frequency", "CSSOM update frequency", "Resource update frequency", "Change waveforms"]
+    id: "ai-governance",
+    code: "AIG",
+    name: "AI Governance",
+    pricing: "$999/mo",
+    industry: "Legal, compliance, media, enterprise AI governance",
+    promise: "AI-like inference, worker, WASM, GPU, and risk-frequency evidence.",
+    unlockCopy: "Unlock AI-like runtime pressure, worker/WASM/GPU signals, and governance risk evidence.",
+    metrics: ["AI signal score", "Worker frequency", "WASM / GPU pressure"],
+    capabilities: ["AI-like inference signals", "Worker frequency", "WASM pressure", "GPU jitter", "Governance evidence"]
   },
   {
-    id: "risk-score-engine",
-    code: "D",
-    name: "Risk Score Engine",
-    pricing: "Enterprise / High-tier",
-    industry: "Banking, finance, government, enterprise security",
-    promise: "Executive risk scoring based on frequency deviation.",
-    unlockCopy: "Unlock behavioral, resource, JS, network, GPU jitter, and risk-trend scoring.",
-    metrics: ["Risk score", "Frequency anomalies", "Risk trend"],
-    capabilities: ["Behavioral anomalies", "Resource anomalies", "JS execution anomalies", "Network anomalies", "Risk waveforms"]
+    id: "analytics",
+    code: "ANL",
+    name: "Analytics",
+    pricing: "$199/mo",
+    industry: "Product analytics, competitive intelligence, research",
+    promise: "Buyer-readable behavior and dependency trends for product teams.",
+    unlockCopy: "Unlock behavior/dependency trends, normal summaries, and comparison-ready evidence.",
+    metrics: ["Behavior trend", "Dependency trend", "Buyer summary"],
+    capabilities: ["Normal insights", "Behavior dependency view", "Trend comparison", "Exportable summaries"]
   },
   {
-    id: "ai-activity-detector",
-    code: "E",
-    name: "AI Activity Detector",
-    pricing: "Enterprise / High-tier",
-    industry: "Legal, media, security, enterprise compliance",
-    promise: "Browser-side AI and local inference activity detection.",
-    unlockCopy: "Unlock WASM, Worker, microtask, GPU jitter, local inference, embedding, and model-loading evidence.",
-    metrics: ["AI signal score", "Worker frequency", "WASM / model pressure"],
-    capabilities: ["WASM high-frequency detection", "Worker high-frequency detection", "Microtask storms", "GPU frame jitter", "Local model loading detection"]
+    id: "oem-platform",
+    code: "OEM",
+    name: "OEM / Platform",
+    pricing: "$50k-$150k/yr",
+    industry: "Platforms, data licensing, enterprise integrations",
+    promise: "All V1 organs for embedding SIG9 into a platform product.",
+    unlockCopy: "Unlock the complete V1 organ model, exports, raw evidence, and platform integration surfaces.",
+    metrics: ["All organs", "API/export value", "Platform coverage"],
+    capabilities: ["All V1 organs", "Terminal model", "API exports", "Enterprise embedding"]
   }
 ]);
 const RANKING_BOARDS = Object.freeze([
-  { id: "overall", name: "Overall", subtitle: "Weighted score across all five Organ9 packages." },
+  { id: "overall", name: "Overall", subtitle: "Weighted score across all five SIG9 packages." },
   ...PACKAGE_DEFINITIONS.map(definition => ({ id: definition.id, name: definition.name, subtitle: definition.promise }))
 ]);
 const RANKING_SEED_VERSION = "2026-07-04-expanded-01";
@@ -308,7 +332,7 @@ else initializeStandalone();
 initializeCommercialShell();
 
 function normalizeLanguage(locale) {
-  const packets = globalThis.ORGAN9_LANGUAGE_PACKETS || {};
+  const packets = globalThis.SIG9_LANGUAGE_PACKETS || {};
   const requested = String(locale || "en").toLowerCase();
   if (packets[requested]) return requested;
   const base = requested.split("-")[0];
@@ -317,7 +341,7 @@ function normalizeLanguage(locale) {
 
 function languagePacket(locale = activeLanguage) {
   if (typeof globalThis.getOrgan9LanguagePacket === "function") return globalThis.getOrgan9LanguagePacket(locale);
-  return (globalThis.ORGAN9_LANGUAGE_PACKETS || {}).en || { meta: { label: "English", dir: "ltr" }, labels: {} };
+  return (globalThis.SIG9_LANGUAGE_PACKETS || {}).en || { meta: { label: "English", dir: "ltr" }, labels: {} };
 }
 
 function languageText(key, fallback = "") {
@@ -337,7 +361,7 @@ function phraseText(text) {
 }
 
 function substituteLanguageFragments(text) {
-  const substitutions = globalThis.ORGAN9_LANGUAGE_SUBSTITUTIONS?.[activeLanguage] || {};
+  const substitutions = globalThis.SIG9_LANGUAGE_SUBSTITUTIONS?.[activeLanguage] || {};
   let translated = String(text || "");
   let entries = substitutionEntryCache.get(activeLanguage);
   if (!entries) {
@@ -451,15 +475,16 @@ function setLocalizedText(element, key) {
 function applyLanguage(locale = activeLanguage) {
   resetVisibleTextToEnglish(document.body);
   activeLanguage = normalizeLanguage(locale);
-  const storageKey = globalThis.ORGAN9_LANGUAGE_STORAGE_KEY || "organ9WebsiteLanguage";
+  const storageKey = globalThis.SIG9_LANGUAGE_STORAGE_KEY || "SIG9WebsiteLanguage";
   localStorage.setItem(storageKey, activeLanguage);
   const packet = languagePacket(activeLanguage);
   document.documentElement.lang = activeLanguage;
   document.documentElement.dir = packet.meta?.dir || "ltr";
   if (elements.languageSelect) {
-    const packets = globalThis.ORGAN9_LANGUAGE_PACKETS || {};
+    const packets = globalThis.SIG9_LANGUAGE_PACKETS || {};
+    const safeLabels = { en: "English", zh: "Chinese", es: "Spanish" };
     for (const option of elements.languageSelect.options) {
-      option.textContent = packets[option.value]?.meta?.label || option.textContent;
+      option.textContent = safeLabels[option.value] || packets[option.value]?.meta?.label || option.textContent;
     }
     elements.languageSelect.value = activeLanguage;
     elements.languageSelect.setAttribute("aria-label", languageText("languageLabel", "Language"));
@@ -813,12 +838,12 @@ function setPackageButtonsForLocalSelection() {
 async function choosePlan(plan, button = null) {
   const normalizedPlan = normalizeBillingItemId(plan);
   if (!normalizedPlan) {
-    setPlanStatus("Unknown Organ9 plan, module, or add-on. Refresh the page and try again.", "error");
+    setPlanStatus("Unknown SIG9 plan, module, or add-on. Refresh the page and try again.", "error");
     return;
   }
   if (!accountState.email) {
-    setPlanStatus("Sign in before choosing an Organ9 package.", "error");
-    setAccountStatus("Sign in before choosing an Organ9 package.", "error");
+    setPlanStatus("Sign in before choosing an SIG9 package.", "error");
+    setAccountStatus("Sign in before choosing an SIG9 package.", "error");
     applyAppView("sign-in");
     elements.accountEmail?.focus();
     return;
@@ -889,17 +914,22 @@ function submitAuthorizeNetHostedPayment(payload) {
 function normalizePlanId(plan) {
   const id = String(plan || "").trim().toLowerCase();
   const aliases = {
-    starter: "update-radar",
-    pro: "performance-spectrum",
-    team: "structure-monitor"
+    pro: "performance",
+    team: "security",
+    "structure-monitor": "security",
+    "performance-spectrum": "performance",
+    "update-radar": "analytics",
+    "risk-score-engine": "security",
+    "ai-activity-detector": "ai-governance"
   };
   const normalized = aliases[id] || id;
   return [
-    "structure-monitor",
-    "performance-spectrum",
-    "update-radar",
-    "risk-score-engine",
-    "ai-activity-detector"
+    "devops",
+    "security",
+    "performance",
+    "ai-governance",
+    "analytics",
+    "oem-platform"
   ].includes(normalized) ? normalized : "";
 }
 
@@ -923,11 +953,12 @@ function normalizeBillingItemId(plan) {
 
 function readablePlanName(plan) {
   return ({
-    "structure-monitor": "Structure Monitor",
-    "performance-spectrum": "Performance Spectrum",
-    "update-radar": "Update Radar",
-    "risk-score-engine": "Risk Score Engine",
-    "ai-activity-detector": "AI Activity Detector"
+    devops: "DevOps",
+    security: "Security",
+    performance: "Performance",
+    "ai-governance": "AI Governance",
+    analytics: "Analytics",
+    "oem-platform": "OEM / Platform"
   })[normalizePlanId(plan)] || "No package selected";
 }
 
@@ -954,10 +985,10 @@ function applyLocalDemoEntitlement(itemId) {
     entitlements.addons = [...new Set([...(entitlements.addons || []), "dev-mode-pro", "extended-retention", "team-seats", "exports-api"])];
   }
   if (item === "professional") {
-    entitlements.modules = [...new Set([...(entitlements.modules || []), "performance-spectrum", "update-radar"])];
+    entitlements.modules = [...new Set([...(entitlements.modules || []), "devops", "performance", "analytics"])];
     entitlements.addons = [...new Set([...(entitlements.addons || []), "exports-api"])];
   }
-  if (item === "starter") entitlements.modules = [...new Set([...(entitlements.modules || []), "update-radar"])];
+  if (item === "starter") entitlements.modules = [...new Set([...(entitlements.modules || []), "devops", "analytics"])];
   entitlements.status = "demo";
   entitlements.source = "local_demo";
   entitlementState = entitlements;
@@ -969,7 +1000,7 @@ function applyViewMode(mode) {
   if (mode === "dev" && !hasDevModeAccess()) {
     viewMode = "normal";
     localStorage.setItem("runtimeDiagnosticsViewMode", viewMode);
-    setPlanStatus("Dev Mode Pro is a paid add-on. Unlock it to access raw ledgers, Organ9 internals, signatures, and developer exports.", "error");
+    setPlanStatus("Dev Mode Pro is a paid add-on. Unlock it to access raw ledgers, SIG9 internals, signatures, and developer exports.", "error");
     applyAppView(accountState.email ? "plans" : "sign-in");
   } else {
     viewMode = mode === "dev" ? "dev" : "normal";
@@ -1130,6 +1161,7 @@ async function refreshStandalone() {
 
 async function analyzeStandaloneUrl(options = {}) {
   if (!canRunStandaloneDiagnostics() && !options.ignoreAuth) {
+    if (!options.quiet) applyAppView("sign-in");
     return setStandaloneTargetStatus("Workspace locked", "Sign in to start live website analysis.", "warning");
   }
   if (!standaloneState.enabled && !options.force) return;
@@ -1166,6 +1198,12 @@ async function analyzeStandaloneUrl(options = {}) {
       elements.latestTime.textContent = closedBrowser
         ? "The target browser window was closed. The next sample will reopen it automatically."
         : "No runtime facts received from the target.";
+      if (closedBrowser && canRunStandaloneDiagnostics()) {
+        clearTimeout(standaloneState.reconnectTimer);
+        standaloneState.reconnectTimer = setTimeout(() => {
+          if (canRunStandaloneDiagnostics() && isValidStandaloneTarget(elements.portalUrl.value.trim())) analyzeStandaloneUrl({ quiet: true, force: true });
+        }, 1200);
+      }
     }
   } finally {
     if (requestId === standaloneState.requestId) {
@@ -1234,6 +1272,7 @@ function handleStandaloneTargetInput() {
   renderOrganPresentation(snapshot);
   renderFrequencySpectrum(snapshot);
   renderCommercialPackageSuite(snapshot);
+  renderWebBloombergTerminal(result.webBloomberg?.terminal || result.diagnostics?.webBloombergTerminal || null);
   renderStructureEngine(snapshot);
   renderFacts();
   elements.latestHost.textContent = value ? "Switching target" : "No portal observed";
@@ -1301,6 +1340,7 @@ function renderStandaloneResult(result) {
   renderOrganPresentation(snapshot);
   renderFrequencySpectrum(snapshot);
   renderCommercialPackageSuite(snapshot);
+  renderWebBloombergTerminal(null);
   renderStructureEngine(snapshot);
   renderFacts();
   renderRankings();
@@ -1384,8 +1424,13 @@ function connectStandaloneDiagnosticsStream() {
       renderOrganPresentation(snapshot);
       renderFrequencySpectrum(snapshot);
       renderCommercialPackageSuite(snapshot);
+      renderWebBloombergTerminal(null);
       renderStructureEngine(snapshot);
       renderFacts();
+      return;
+    }
+    if (payload.kind === "web-bloomberg-update") {
+      renderWebBloombergTerminal(payload.terminal || null);
       return;
     }
     if (canRenderStandaloneStreamResult(payload.result)) {
@@ -1662,14 +1707,14 @@ function renderLayerCoverageMatrix(model) {
         <strong>Runtime Layer Coverage is locked</strong>
         <p>This detailed collector matrix belongs under Structure Monitor or Dev Mode Pro. Normal Diagnostics still shows a readable coverage summary.</p>
         <small>${entries.length} collector layers available after upgrade</small>
-        <button class="secondary" type="button" data-layer-upgrade="structure-monitor">Unlock Structure Monitor</button>
+        <button class="secondary" type="button" data-layer-upgrade="security">Unlock Security</button>
       </article>
     `;
     elements.coverageGrid.querySelector("[data-layer-upgrade]")?.addEventListener("click", () => {
-      activeModule = "structure-monitor";
+      activeModule = "security";
       localStorage.setItem("runtimeDiagnosticsActiveModule", activeModule);
       applyAppView("plans");
-      setPlanStatus("Structure Monitor unlocks Runtime Layer Coverage evidence.", "");
+      setPlanStatus("Security unlocks Runtime Layer Coverage evidence.", "");
     });
     return;
   }
@@ -1688,7 +1733,7 @@ function renderLayerCoverageMatrix(model) {
 }
 
 function canViewLayerEvidence() {
-  return hasPackageAccess("structure-monitor") || hasDevModeAccess();
+  return hasPackageAccess("security") || hasDevModeAccess();
 }
 
 function renderNormalInsights(model, context = {}) {
@@ -1742,7 +1787,7 @@ function renderNormalInsights(model, context = {}) {
       active: Boolean(pipelineLatest.classification || pipeline.normalizedFacts?.length || pipeline.events?.length)
     },
     {
-      label: "Organ9 Graph",
+      label: "SIG9 Graph",
       title: `${organSummary.nodeCount || 0} organ facts`,
       detail: `${organSummary.edgeCount || 0} structural edges, ${organSummary.errorCount || 0} dispatch errors, ${organSummary.organCount || 9} fixed organ lanes represented.`,
       active: Boolean(organSummary.nodeCount)
@@ -1755,7 +1800,7 @@ function renderNormalInsights(model, context = {}) {
     },
     {
       label: "Commercial Package Suite",
-      title: `${activePackages.length} Organ9 packages active`,
+      title: `${activePackages.length} SIG9 packages active`,
       detail: activePackages.length
         ? activePackages.map(item => `${item.name}: ${formatScore(item.score)}`).join(" ")
         : "Structure Monitor, Performance Spectrum, Update Radar, Risk Score Engine, and AI Activity Detector will score as evidence appears.",
@@ -2007,7 +2052,7 @@ function renderCommercialPackageSuite(model) {
   elements.packageSuiteGrid.innerHTML = packages.map(item => `
     <article class="package-card ${escapeHtml(item.status || "quiet")} ${hasPackageAccess(item.id) ? "unlocked" : "locked"}">
       <span>Package ${escapeHtml(item.code || "")} - ${hasPackageAccess(item.id) ? "unlocked" : "locked"}</span>
-      <strong>${escapeHtml(item.name || "Organ9 Package")}</strong>
+      <strong>${escapeHtml(item.name || "SIG9 Package")}</strong>
       <p>${escapeHtml(item.promise || item.coreValue || item.explanation || "")}</p>
       <div class="package-score">
         <meter min="0" max="1" value="${hasPackageAccess(item.id) ? Number(item.score) || 0 : 0}"></meter>
@@ -2047,6 +2092,73 @@ function renderCommercialPackageSuite(model) {
     });
   });
   renderModulePages(model);
+}
+
+function renderWebBloombergTerminal(terminal) {
+  if (!elements.webBloombergStatus) return;
+  const model = terminal && terminal.ok !== false ? terminal : null;
+  if (!model) {
+    elements.webBloombergStatus.textContent = "No windows";
+    elements.webBloombergFrequency.textContent = "0 events/s";
+    elements.webBloombergFrequencyDetail.textContent = "Waiting for compact behavior windows.";
+    elements.webBloombergStorms.textContent = "0 storms";
+    elements.webBloombergStormDetail.textContent = "No storm pressure yet.";
+    elements.webBloombergDeviation.textContent = "0%";
+    elements.webBloombergDeviationDetail.textContent = "No deviation baseline yet.";
+    elements.webBloombergRisk.textContent = "Calm";
+    elements.webBloombergRiskDetail.textContent = "Risk will update as windows arrive.";
+    elements.webBloombergDependencyCount.textContent = "0 edges";
+    elements.webBloombergDependencies.textContent = "No dependency chains yet.";
+    elements.webBloombergWindowCount.textContent = "0 windows";
+    elements.webBloombergWindows.textContent = "No compact windows have been ingested.";
+    return;
+  }
+  const frequency = model.frequency || {};
+  const storms = model.storms || [];
+  const deviations = model.deviations || [];
+  const risk = model.risk || {};
+  const dependencies = model.dependencies || {};
+  const windows = model.windows || [];
+  const latestDeviation = deviations.at(-1);
+  elements.webBloombergStatus.textContent = `${model.summary?.windowCount || windows.length || 0} windows`;
+  elements.webBloombergFrequency.textContent = `${Math.round(Number(frequency.latestTotal) || 0)} events/s`;
+  elements.webBloombergFrequencyDetail.textContent = readableMetricSummary(frequency.latestMetrics || {});
+  elements.webBloombergStorms.textContent = `${storms.length} ${storms.length === 1 ? "storm" : "storms"}`;
+  elements.webBloombergStormDetail.textContent = storms.at(-1)?.summary || "No storm pressure in the current window.";
+  elements.webBloombergDeviation.textContent = `${Math.round((latestDeviation?.score || 0) * 100)}%`;
+  elements.webBloombergDeviationDetail.textContent = latestDeviation?.summary || "Deviation baseline is still forming.";
+  elements.webBloombergRisk.textContent = `${risk.label || "Calm"} ${Math.round((risk.score || 0) * 100)}%`;
+  elements.webBloombergRiskDetail.textContent = (risk.drivers || []).map(item => `${item.label}: ${Math.round((item.value || 0) * 100)}%`).join(" | ") || "No risk drivers yet.";
+  elements.webBloombergDependencyCount.textContent = `${dependencies.edgeCount || 0} edges`;
+  elements.webBloombergDependencies.innerHTML = (dependencies.chains || []).length
+    ? `<ul>${dependencies.chains.slice(0, 8).map(chain => `<li>${escapeHtml(chain)}</li>`).join("")}</ul>`
+    : "No dependency chains yet.";
+  elements.webBloombergWindowCount.textContent = `${windows.length} windows`;
+  elements.webBloombergWindows.innerHTML = hasDevModeAccess()
+    ? renderTerminalWindowRows(windows)
+    : `<div class="locked-evidence"><strong>Dev Mode Pro locked</strong><p>Upgrade to inspect raw compact windows, aggregation inputs, and dependency edges. Normal mode still shows storm, deviation, and risk summaries.</p></div>`;
+}
+
+function readableMetricSummary(metrics = {}) {
+  const entries = Object.entries(metrics)
+    .filter(([key]) => key !== "behavior" || Object.keys(metrics).length === 1)
+    .sort((left, right) => Number(right[1]) - Number(left[1]))
+    .slice(0, 4);
+  if (!entries.length) return "No frequency metrics in the latest window.";
+  return entries.map(([key, value]) => `${key.replace(/_/g, " ")} ${Math.round(Number(value) || 0)}`).join(" | ");
+}
+
+function renderTerminalWindowRows(windows = []) {
+  if (!windows.length) return "No compact windows have been ingested.";
+  return `<table><thead><tr><th>Time</th><th>Bucket</th><th>Metrics</th></tr></thead><tbody>${
+    windows.slice(-12).reverse().map(window => `
+      <tr>
+        <td>${escapeHtml(new Date(window.end_ts || Date.now()).toLocaleTimeString())}</td>
+        <td>${escapeHtml(`${window.bucket_ms || 0}ms`)}</td>
+        <td>${escapeHtml(readableMetricSummary(window.metrics || {}))}</td>
+      </tr>
+    `).join("")
+  }</tbody></table>`;
 }
 
 function renderRankings() {
@@ -2201,7 +2313,7 @@ function rankingCrawlerUrls() {
 function renderRankingRow(row, index, boardId) {
   const score = rankingScoreForBoard(row, boardId);
   return `
-    <button class="ranking-row" type="button" data-ranking-site="${escapeHtml(row.id)}" aria-label="Open Organ9 ranking analysis for ${escapeHtml(row.host)}">
+    <button class="ranking-row" type="button" data-ranking-site="${escapeHtml(row.id)}" aria-label="Open SIG9 ranking analysis for ${escapeHtml(row.host)}">
       <span class="ranking-position">${index + 1}</span>
       <span class="ranking-site">
         <strong>${escapeHtml(row.host)}</strong>
@@ -2288,21 +2400,21 @@ function seedRankingLedger() {
 }
 
 function ensureBenchmarkSeedCoverage() {
-  const storedVersion = localStorage.getItem("organ9RankingSeedVersion") || "";
+  const storedVersion = localStorage.getItem("SIG9RankingSeedVersion") || "";
   const missingSeeds = BENCHMARK_SEED_RANKINGS.filter(seed => !rankingLedger.some(item => item.id === seed.id));
   if (storedVersion === RANKING_SEED_VERSION && !missingSeeds.length) return;
   for (const sample of missingSeeds) mergeRankingSample(sample);
-  localStorage.setItem("organ9RankingSeedVersion", RANKING_SEED_VERSION);
+  localStorage.setItem("SIG9RankingSeedVersion", RANKING_SEED_VERSION);
   saveRankingLedger();
 }
 
 function exportRankingLedger() {
   downloadJson({
     exportedAt: new Date().toISOString(),
-    note: "Organ9 ranking ledger contains benchmark seed samples and locally collected website analyses. It is not global internet telemetry unless connected to a crawler fleet.",
+    note: "SIG9 ranking ledger contains benchmark seed samples and locally collected website analyses. It is not global internet telemetry unless connected to a crawler fleet.",
     boards: RANKING_BOARDS,
     samples: rankWebsiteSamples(rankingLedger, activeRankingBoard)
-  }, "organ9-website-rankings");
+  }, "SIG9-website-rankings");
   setRankingStatus("Ranking JSON exported.", "success");
 }
 
@@ -2373,11 +2485,12 @@ function inferredPackageScore(model = {}, packageId) {
   const channels = Object.keys(model.channels || {});
   const channelText = channels.join(" ").toLowerCase();
   const base = Math.min(.9, facts.length / 140);
-  if (packageId === "structure-monitor") return base + (/dom|shadow|iframe|worker|accessibility/.test(channelText) ? .18 : .04);
-  if (packageId === "performance-spectrum") return base + (/performance|long-task|layout|resource|network/.test(channelText) ? .2 : .05);
-  if (packageId === "update-radar") return base + (/mutation|dom|cssom|resource|vdom/.test(channelText) ? .22 : .04);
-  if (packageId === "risk-score-engine") return base + ((model.facts || []).filter(item => item.severity === "high" || item.severity === "medium").length / Math.max(20, facts.length || 1));
-  if (packageId === "ai-activity-detector") return base + (/wasm|worker|microtask|gpu|ai|model/.test(channelText) ? .24 : .02);
+  if (packageId === "devops") return base + (/runtime|behavior|frequency|diagnostics|timer|heartbeat/.test(channelText) ? .18 : .04);
+  if (packageId === "security") return base + (/risk|protect|auth|captcha|challenge|malicious|fingerprint|webdriver/.test(channelText) ? .24 : .04);
+  if (packageId === "performance") return base + (/performance|long-task|layout|resource|network|dependency|frame/.test(channelText) ? .22 : .05);
+  if (packageId === "ai-governance") return base + (/wasm|worker|microtask|gpu|ai|model|inference/.test(channelText) ? .24 : .02);
+  if (packageId === "analytics") return base + (/dom|mutation|resource|vdom|dependency|structure/.test(channelText) ? .18 : .05);
+  if (packageId === "oem-platform") return base + Math.min(.28, Object.keys(model.channels || {}).length / 100);
   return base;
 }
 
@@ -2420,24 +2533,26 @@ function rankingScoreForBoard(sample, boardId = "overall") {
 
 function computeOverallRankingScore(scores = {}) {
   const weights = {
-    "structure-monitor": .22,
-    "performance-spectrum": .2,
-    "update-radar": .2,
-    "risk-score-engine": .22,
-    "ai-activity-detector": .16
+    devops: .16,
+    security: .18,
+    performance: .18,
+    "ai-governance": .16,
+    analytics: .16,
+    "oem-platform": .16
   };
   return clamp01(Object.entries(weights).reduce((sum, [id, weight]) => sum + (Number(scores[id]) || 0) * weight, 0));
 }
 
 function packageInsight(sample, packageId) {
   const score = rankingScoreForBoard(sample, packageId);
-  if (score >= .75) return "Strong package signal. This website ranks highly for this Organ9 module.";
+  if (score >= .75) return "Strong package signal. This website ranks highly for this SIG9 module.";
   if (score >= .5) return "Moderate package signal. There is enough evidence for comparison, but not enough for a top-tier score.";
   if (score > 0) return "Low package signal. The site is relatively quiet or the current sample lacks this evidence.";
   return "No package signal in this ranking sample.";
 }
 
 function rankingSeedSample(host, category, packageScores, evidence = []) {
+  const normalizedScores = normalizeCommercialScoreMap(packageScores);
   return {
     id: normalizeRankingId(host),
     host,
@@ -2447,8 +2562,8 @@ function rankingSeedSample(host, category, packageScores, evidence = []) {
     sourceKind: "seed-benchmark",
     sampleCount: 1,
     confidence: .42,
-    packageScores,
-    overallScore: computeOverallRankingScore(packageScores),
+    packageScores: normalizedScores,
+    overallScore: computeOverallRankingScore(normalizedScores),
     evidence: Object.fromEntries(PACKAGE_DEFINITIONS.map(definition => [definition.id, evidence])),
     normal: {
       health: "Benchmark baseline",
@@ -2464,9 +2579,23 @@ function rankingSeedSample(host, category, packageScores, evidence = []) {
   };
 }
 
+function normalizeCommercialScoreMap(scores = {}) {
+  const next = {};
+  for (const definition of PACKAGE_DEFINITIONS) next[definition.id] = clamp01(scores[definition.id] || 0);
+  if (!Object.values(next).some(Boolean)) {
+    next.devops = clamp01(((scores["update-radar"] || 0) + (scores["performance-spectrum"] || 0)) / 2);
+    next.security = clamp01(((scores["structure-monitor"] || 0) + (scores["risk-score-engine"] || 0)) / 2);
+    next.performance = clamp01(scores["performance-spectrum"] || 0);
+    next["ai-governance"] = clamp01(((scores["ai-activity-detector"] || 0) + (scores["risk-score-engine"] || 0)) / 2);
+    next.analytics = clamp01(((scores["update-radar"] || 0) + (scores["structure-monitor"] || 0)) / 2);
+    next["oem-platform"] = computeOverallRankingScore(next);
+  }
+  return next;
+}
+
 function loadRankingLedger() {
   try {
-    const parsed = JSON.parse(localStorage.getItem("organ9RankingLedger") || "[]");
+    const parsed = JSON.parse(localStorage.getItem("SIG9RankingLedger") || "[]");
     return Array.isArray(parsed) && parsed.length ? parsed.slice(0, 500) : BENCHMARK_SEED_RANKINGS.map(sample => ({ ...sample }));
   } catch {
     return BENCHMARK_SEED_RANKINGS.map(sample => ({ ...sample }));
@@ -2474,7 +2603,7 @@ function loadRankingLedger() {
 }
 
 function saveRankingLedger() {
-  localStorage.setItem("organ9RankingLedger", JSON.stringify(rankingLedger.slice(0, 500)));
+  localStorage.setItem("SIG9RankingLedger", JSON.stringify(rankingLedger.slice(0, 500)));
 }
 
 function normalizeRankingId(value) {
@@ -2487,10 +2616,32 @@ function clamp01(value) {
 
 function packageDefinitionsWithRuntimeData(suite = {}) {
   const runtimePackages = new Map((suite?.packages || []).map(item => [normalizePlanId(item.id || item.slug || item.name), item]));
+  const legacyPackages = new Map((suite?.packages || []).map(item => [String(item.id || item.slug || item.name || "").toLowerCase(), item]));
   return PACKAGE_DEFINITIONS.map(definition => {
-    const runtime = runtimePackages.get(definition.id) || {};
+    const runtime = runtimePackages.get(definition.id) || legacyRuntimePackageFor(definition.id, legacyPackages);
     return { ...definition, ...runtime, id: definition.id, name: definition.name, code: definition.code };
   });
+}
+
+function legacyRuntimePackageFor(packageId, legacyPackages) {
+  const groups = {
+    devops: ["update-radar", "performance-spectrum"],
+    security: ["structure-monitor", "risk-score-engine"],
+    performance: ["performance-spectrum"],
+    "ai-governance": ["ai-activity-detector", "risk-score-engine"],
+    analytics: ["update-radar", "structure-monitor"],
+    "oem-platform": ["structure-monitor", "performance-spectrum", "update-radar", "risk-score-engine", "ai-activity-detector"]
+  };
+  const matches = (groups[packageId] || []).map(id => legacyPackages.get(id)).filter(Boolean);
+  if (!matches.length) return {};
+  const score = matches.reduce((sum, item) => sum + (Number(item.score) || 0), 0) / matches.length;
+  return {
+    score,
+    status: matches.some(item => item.status === "high" || item.status === "active") ? "active" : matches[0].status,
+    evidenceCount: matches.reduce((sum, item) => sum + (Number(item.evidenceCount) || item.evidence?.length || 0), 0),
+    evidence: matches.flatMap(item => item.evidence || []).slice(0, 12),
+    explanation: matches.map(item => item.explanation || item.coreValue || "").filter(Boolean).slice(0, 2).join(" ")
+  };
 }
 
 function hasPackageAccess(packageId) {
@@ -2512,7 +2663,7 @@ function renderModulePages(model) {
   const state = model?.organFrequencySpectrum?.state || model?.generatedFrequencySpectrum || buildFrequencySpectrumFromFacts(model?.facts || []);
   const suite = state?.commercialPackages || state?.products?.commercialPackages || buildCommercialPackageSuiteFromState(state);
   const packages = packageDefinitionsWithRuntimeData(suite);
-  if (!normalizePlanId(activeModule)) activeModule = packages[0]?.id || "performance-spectrum";
+  if (!normalizePlanId(activeModule)) activeModule = packages[0]?.id || "performance";
   const selected = packages.find(item => item.id === activeModule) || packages[0];
   elements.moduleTabs.innerHTML = packages.map(item => {
     const unlocked = hasPackageAccess(item.id);
@@ -2609,7 +2760,7 @@ function renderStructureEngine(model) {
   const engine = state?.structureEngine;
   if (!engine) {
     elements.structureSignature.textContent = "No signature";
-    elements.structureEngine.innerHTML = `<div class="empty">Collect runtime facts to build Organ9, Frequency4, Closure, Hexagram, Signature, reconstruction, and prediction.</div>`;
+    elements.structureEngine.innerHTML = `<div class="empty">Collect runtime facts to build SIG9, Frequency4, Closure, Hexagram, Signature, reconstruction, and prediction.</div>`;
     return;
   }
   const signature = engine.signature || {};
@@ -2618,9 +2769,9 @@ function renderStructureEngine(model) {
   const closure = engine.closure || {};
   const cards = [
     {
-      name: "Organ9",
+      name: "SIG9",
       category: "runtime",
-      detail: Object.entries(engine.organ9 || {}).map(([organ, value]) => `${organ}:${formatScore(value.level)}/${formatScore(value.stability)}`).join("  ")
+      detail: Object.entries(engine.SIG9 || {}).map(([organ, value]) => `${organ}:${formatScore(value.level)}/${formatScore(value.stability)}`).join("  ")
     },
     {
       name: "Frequency4",

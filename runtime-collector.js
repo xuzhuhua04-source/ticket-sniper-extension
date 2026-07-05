@@ -93,6 +93,7 @@ class RuntimeCollector {
     this.lastRelaySeenWriteAt = 0;
     this.lastRelaySeenKey = "";
     this.lastUrl = location.href;
+    this.webBloomberg = createRuntimeBloombergState(this.sessionId);
   }
 
   start() {
@@ -123,6 +124,7 @@ class RuntimeCollector {
     this.addTimer(() => this.scanProtectionSurface(), 4000);
     this.addTimer(() => this.emitLayerCoverage("periodic_coverage"), 5000);
     this.addTimer(() => this.emitHeartbeat(), this.options.heartbeatMs);
+    this.addTimer(() => this.flushWebBloombergWindow("periodic_upload"), 1000);
   }
 
   stop() {
@@ -170,6 +172,7 @@ class RuntimeCollector {
     const previous = this.lastReports.get(key) || 0;
     if (fact.timestamp - previous < this.options.reportCooldownMs) return;
     this.lastReports.set(key, fact.timestamp);
+    this.recordWebBloombergFact(fact);
     chrome.runtime.sendMessage({
       type: "RUNTIME_FACT_DETECTED",
       payload: {
@@ -202,7 +205,66 @@ class RuntimeCollector {
     this.runSampleScan("protection", 15000, dirty, () => this.scanProtectionSurface());
     this.emitLayerCoverage(reason);
     this.emitHeartbeat();
+    this.flushWebBloombergWindow(reason);
     this.dirtySinceSample = false;
+  }
+
+  recordWebBloombergFact(fact) {
+    const now = performance.now();
+    const wallNow = Date.now();
+    for (const bucketMs of [10, 50, 100, 1000]) {
+      const bucketStart = Math.floor(now / bucketMs) * bucketMs;
+      const key = `${bucketMs}:${bucketStart}`;
+      if (!this.webBloomberg.buckets.has(key)) {
+        this.webBloomberg.buckets.set(key, {
+          startPerf: bucketStart,
+          endPerf: bucketStart + bucketMs,
+          startWall: wallNow - Math.max(0, now - bucketStart),
+          endWall: wallNow - Math.max(0, now - (bucketStart + bucketMs)),
+          bucket_ms: bucketMs,
+          metrics: {},
+          dependency_edges: [],
+          risk_hints: []
+        });
+      }
+      const window = this.webBloomberg.buckets.get(key);
+      const metric = webBloombergMetricForFact(fact);
+      window.metrics[metric] = (window.metrics[metric] || 0) + 1;
+      window.metrics.behavior = (window.metrics.behavior || 0) + 1;
+      const edge = webBloombergEdgeForFact(fact, metric);
+      if (edge && window.dependency_edges.length < 80) window.dependency_edges.push(edge);
+      const hint = webBloombergRiskHintForFact(fact, metric);
+      if (hint && window.risk_hints.length < 40) window.risk_hints.push(hint);
+    }
+    this.trimWebBloombergBuckets(now);
+  }
+
+  trimWebBloombergBuckets(now = performance.now()) {
+    for (const [key, value] of this.webBloomberg.buckets.entries()) {
+      if (now - value.endPerf > 6000) this.webBloomberg.buckets.delete(key);
+    }
+  }
+
+  flushWebBloombergWindow(reason = "periodic_upload") {
+    const now = performance.now();
+    const uploadWindows = [...this.webBloomberg.buckets.values()]
+      .filter(window => window.bucket_ms === 1000 && window.endPerf <= now && window.endPerf > this.webBloomberg.lastUploadedPerf)
+      .slice(-5)
+      .map(window => normalizeRuntimeBloombergWindow(window, this.webBloomberg, reason));
+    if (!uploadWindows.length) return;
+    this.webBloomberg.lastUploadedPerf = Math.max(...uploadWindows.map(window => window.end_perf || 0), this.webBloomberg.lastUploadedPerf);
+    for (const uploadWindow of uploadWindows) {
+      const { end_perf, ...window } = uploadWindow;
+      this.emit("web_bloomberg", "behavior-window", {
+        severity: webBloombergWindowSeverity(window),
+        window,
+        uploadPolicy: "compact_window_records_only",
+        rawEventsUploaded: false
+      }, {
+        captureMode: "browser_local_millisecond_aggregation",
+        reason
+      });
+    }
   }
 
   runSampleScan(name, cadenceMs, dirty, callback) {
@@ -1379,6 +1441,97 @@ function countReactRoots() {
 
 function stableRuntimeKey(value, metadata) {
   return hashRuntimeString(JSON.stringify({ value, metadata }));
+}
+
+function createRuntimeBloombergState(sessionId) {
+  return {
+    sessionId,
+    buckets: new Map(),
+    sequence: 0,
+    lastUploadedPerf: 0
+  };
+}
+
+function normalizeRuntimeBloombergWindow(window, state, reason) {
+  state.sequence += 1;
+  const siteId = location.hostname.replace(/^www\./, "").toLowerCase() || "unknown-site";
+  const pageId = location.pathname || "/";
+  return {
+    window_id: `${state.sessionId}-${state.sequence}`,
+    site_id: siteId,
+    page_id: pageId,
+    client_segment: "runtime-collector",
+    start_ts: Math.floor(window.startWall),
+    end_ts: Math.floor(window.endWall),
+    end_perf: window.endPerf,
+    bucket_ms: window.bucket_ms,
+    metrics: sanitizeRuntimeValue(window.metrics),
+    dependency_edges: compactRuntimeBloombergEdges(window.dependency_edges),
+    risk_hints: compactRuntimeBloombergHints(window.risk_hints),
+    capture_mode: "browser_local_millisecond_aggregation",
+    reason
+  };
+}
+
+function compactRuntimeBloombergEdges(edges = []) {
+  const map = new Map();
+  for (const edge of edges) {
+    const key = `${edge.from}->${edge.to}:${edge.type}`;
+    const current = map.get(key) || { ...edge, weight: 0 };
+    current.weight += Number(edge.weight) || 1;
+    map.set(key, current);
+  }
+  return [...map.values()].slice(0, 40);
+}
+
+function compactRuntimeBloombergHints(hints = []) {
+  return hints.slice(0, 20).map(hint => ({
+    type: String(hint.type || "runtime").slice(0, 40),
+    severity: normalizeRuntimeSeverity(hint.severity || "low"),
+    summary: String(hint.summary || "").slice(0, 180)
+  }));
+}
+
+function webBloombergMetricForFact(fact = {}) {
+  const text = `${fact.source || ""}/${fact.type || ""}`.toLowerCase();
+  if (/ai|inference|model|embedding/.test(text)) return "ai";
+  if (/wasm|webassembly/.test(text)) return "wasm";
+  if (/webgpu|gpu/.test(text)) return "webgpu";
+  if (/worker|service-worker|message_channel|post_message/.test(text)) return "worker";
+  if (/promise|microtask/.test(text)) return "microtask";
+  if (/long-task|longtask/.test(text)) return "longtask";
+  if (/animation-frame|raf|frame/.test(text)) return "raf";
+  if (/fetch|xhr|network|websocket|resource/.test(text)) return "network";
+  if (/layout|paint|style|css|reflow|shift/.test(text)) return "layout";
+  if (/malicious|fingerprint|webdriver|headless|crawler|captcha/.test(text)) return "malicious";
+  if (/protect|challenge|auth|login|paywall/.test(text)) return "protection";
+  if (/runtime|script|timer|error|console|javascript/.test(text)) return "js";
+  if (/dom|mutation|shadow|vdom/.test(text)) return "dom";
+  return "behavior";
+}
+
+function webBloombergEdgeForFact(fact = {}, metric = "behavior") {
+  if (metric === "behavior") return null;
+  const source = metric === "network" ? "browser" : "event-loop";
+  return { from: source, to: metric, type: "runtime-frequency", weight: 1 };
+}
+
+function webBloombergRiskHintForFact(fact = {}, metric = "behavior") {
+  const severity = normalizeRuntimeSeverity(fact.severity || fact.value?.severity || "low");
+  if (severity !== "high" && metric !== "malicious" && metric !== "protection" && metric !== "ai") return null;
+  return {
+    type: metric,
+    severity,
+    summary: `${fact.source || "runtime"}/${fact.type || "fact"}`
+  };
+}
+
+function webBloombergWindowSeverity(window = {}) {
+  const metrics = window.metrics || {};
+  const total = Object.values(metrics).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  if ((metrics.malicious || 0) > 0 || total > 120) return "high";
+  if ((metrics.protection || 0) > 0 || (metrics.ai || 0) > 4 || total > 40) return "medium";
+  return "low";
 }
 
 function hashRuntimeString(value) {

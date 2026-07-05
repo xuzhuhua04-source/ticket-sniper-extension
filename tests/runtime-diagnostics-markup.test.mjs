@@ -78,7 +78,7 @@ test("standalone analysis failures update the visible target status panel", () =
 });
 
 test("pricing cards expose package price state and guard checkout redirects", () => {
-  for (const plan of ["starter", "professional", "enterprise", "structure-monitor", "performance-spectrum", "update-radar", "risk-score-engine", "ai-activity-detector", "dev-mode-pro"]) {
+  for (const plan of ["starter", "professional", "enterprise", "devops", "security", "performance", "ai-governance", "analytics", "oem-platform", "dev-mode-pro"]) {
     assert.match(html, new RegExp(`data-(?:billing|plan)-price="${plan}"`));
   }
   assert.match(css, /\.plan-price\.available/);
@@ -88,6 +88,22 @@ test("pricing cards expose package price state and guard checkout redirects", ()
   assert.match(html, /Core Plans/);
   assert.match(html, /Paid Modules/);
   assert.match(html, /Add-ons/);
+});
+
+test("Web Bloomberg terminal panels are present in the dashboard", () => {
+  for (const id of [
+    "web-bloomberg-status",
+    "web-bloomberg-frequency",
+    "web-bloomberg-storms",
+    "web-bloomberg-deviation",
+    "web-bloomberg-risk",
+    "web-bloomberg-dependencies",
+    "web-bloomberg-windows"
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(js, /function renderWebBloombergTerminal/);
+  assert.match(css, /\.web-bloomberg-terminal/);
 });
 
 test("paid Organ9 packages have separate module pages and locked states", () => {
@@ -140,7 +156,7 @@ test("commercial shell exposes buyer-ready polish and grouped controls", () => {
   assert.ok((js.match(/rankingSeedSample\(/g) || []).length >= 40, "expected a broad benchmark seed corpus for rankings");
   assert.match(html, /Expanded benchmark corpus/);
   assert.match(css, /\.ranking-proof/);
-  assert.match(js, /Structure Monitor unlocks Runtime Layer Coverage evidence/);
+  assert.match(js, /Security unlocks Runtime Layer Coverage evidence/);
   assert.match(js, /footerPricing\?\.addEventListener/);
 });
 

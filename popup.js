@@ -102,10 +102,6 @@ elements.gmailSetup.addEventListener("click", async () => {
 });
 
 document.getElementById("options").addEventListener("click", () => chrome.runtime.openOptionsPage());
-document.getElementById("companion-app").addEventListener("click", async () => {
-  const { companionSettings } = await chrome.storage.local.get("companionSettings");
-  await chrome.tabs.create({ url: companionSettings?.url || "http://127.0.0.1:4390" });
-});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes.visaMonitorStatus) renderStatus(changes.visaMonitorStatus.newValue);

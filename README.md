@@ -12,9 +12,9 @@ Open **Runtime diagnostics** from the popup to inspect those channels in a full 
 
 Runtime diagnostics also includes a deterministic Fact -> Organ -> Organ Graph -> Presentation Layer. Incoming runtime and crawler facts are normalized into the fixed nine-organ model from the UI specification: Energy, Flow, Supply, Value, Behavior, Lifecycle, Topology, Dependency, and Rhythm. The system creates structural-only graph edges and renders allowed presentation components such as waveforms, graphs, maps, overlays, indicators, density plots, and hotspot maps. It deliberately avoids scores, ratings, recommendations, causal claims, and fallback organ assignments.
 
-## Standalone Runtime Diagnostics / Organ9 UI
+## Standalone Runtime Diagnostics / SIG9 UI
 
-Runtime Diagnostics can run as a normal local web app without loading the Chrome extension. This is the commercial Organ9 dashboard surface: sign in locally, choose a package, analyze any HTTP/HTTPS website, and switch between a plain-English Normal view and the raw Dev ledger.
+Runtime Diagnostics can run as a normal local web app without loading the Chrome extension. This is the commercial SIG9 dashboard surface: sign in locally, choose a package, analyze any HTTP/HTTPS website, and switch between a plain-English Normal view and the raw Dev ledger.
 
 ```bash
 npm start
@@ -23,16 +23,16 @@ npm start
 Open `http://127.0.0.1:4391`. The first page is `runtime-diagnostics.html`, a standalone Runtime Diagnostics UI with:
 
 - local sign-in/sign-up gating for the live dashboard;
-- separate Plans navigation for the five Organ9 commercial packages;
+- separate Plans navigation for the five SIG9 commercial packages;
 - one-second rendered-page monitoring for the typed website target;
 - Normal view for customer-readable health, risk, frequency, package, and recent-fact summaries;
-- Dev mode for raw channels, technology profile, structural pipeline, Organ9 graph, frequency spectrum, Structure Engine, and recent facts;
+- Dev mode for raw channels, technology profile, structural pipeline, SIG9 graph, frequency spectrum, Structure Engine, and recent facts;
 - `/api/health` and `/api/runtime-diagnostics/status` for operational readiness checks;
 - compact, redacted JSON export for latest diagnostics and bounded history.
 
 Standalone Runtime Diagnostics does not use `chrome.storage` and does not require the extension. It uses a local Node server plus a persistent Playwright-controlled Chromium profile for rendered-page monitoring. The diagnostics page itself is never analyzed as the target; only the URL typed into the Analyze website field is sampled.
 
-The normal path uses `/api/runtime-browser/analyze?url=...`, which opens or reuses the local rendered browser, injects the runtime collector, samples rendered DOM, network/resource behavior, console/page errors, structural signatures, and Organ9 frequency evidence, then streams compact updates back to the UI. If rendered inspection fails, the server falls back to structural URL analysis and records a visible `runtime/structural-fallback` fact instead of silently failing.
+The normal path uses `/api/runtime-browser/analyze?url=...`, which opens or reuses the local rendered browser, injects the runtime collector, samples rendered DOM, network/resource behavior, console/page errors, structural signatures, and SIG9 frequency evidence, then streams compact updates back to the UI. If rendered inspection fails, the server falls back to structural URL analysis and records a visible `runtime/structural-fallback` fact instead of silently failing.
 
 For authenticated or JavaScript-rendered pages:
 
@@ -59,11 +59,16 @@ Set these environment variables before `npm start` when deploying a real checkou
 
 Optional display labels:
 
-- `AUTHORIZE_NET_STRUCTURE_MONITOR_PRICE_LABEL`
-- `AUTHORIZE_NET_PERFORMANCE_SPECTRUM_PRICE_LABEL`
-- `AUTHORIZE_NET_UPDATE_RADAR_PRICE_LABEL`
-- `AUTHORIZE_NET_RISK_SCORE_ENGINE_PRICE_LABEL`
-- `AUTHORIZE_NET_AI_ACTIVITY_DETECTOR_PRICE_LABEL`
+- `AUTHORIZE_NET_DEVOPS_PRICE_LABEL`
+- `AUTHORIZE_NET_SECURITY_PRICE_LABEL`
+- `AUTHORIZE_NET_PERFORMANCE_PRICE_LABEL`
+- `AUTHORIZE_NET_AI_GOVERNANCE_PRICE_LABEL`
+- `AUTHORIZE_NET_ANALYTICS_PRICE_LABEL`
+- `AUTHORIZE_NET_OEM_PLATFORM_PRICE_LABEL`
+
+Optional production behavior-stream protection:
+
+- `WEB_BLOOMBERG_INGEST_KEY`
 
 Use `.env.example` as the deployment checklist. This project does not load `.env` automatically; either export variables in your shell, set them in your process manager, or configure them in your hosting provider.
 

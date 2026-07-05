@@ -1,21 +1,22 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 export const MODULE_DEFINITIONS = Object.freeze([
-  { id: "structure-monitor", envKey: "STRUCTURE_MONITOR", code: "A", name: "Structure Monitor", tier: "enterprise", description: "Structural topology and behavioral frequency fingerprints for security, government, finance, and enterprise SOC teams." },
-  { id: "performance-spectrum", envKey: "PERFORMANCE_SPECTRUM", code: "B", name: "Performance Spectrum", tier: "professional", description: "Real-time performance frequency graphs for SaaS, e-commerce, gaming, and large websites." },
-  { id: "update-radar", envKey: "UPDATE_RADAR", code: "C", name: "Update Radar", tier: "starter", description: "DOM, VDOM, CSSOM, resource, cadence, intensity, and structural change tracking for competitive intelligence." },
-  { id: "risk-score-engine", envKey: "RISK_SCORE_ENGINE", code: "D", name: "Risk Score Engine", tier: "enterprise", description: "Frequency-deviation risk scoring for banking, finance, government, and enterprise security." },
-  { id: "ai-activity-detector", envKey: "AI_ACTIVITY_DETECTOR", code: "E", name: "AI Activity Detector", tier: "enterprise", description: "Browser-side AI inference, worker, WASM, microtask, GPU jitter, and model-loading detection." }
+  { id: "devops", envKey: "DEVOPS", code: "DOP", name: "DevOps", tier: "starter", description: "Behavior and frequency monitoring for release health, regressions, and live runtime operations." },
+  { id: "security", envKey: "SECURITY", code: "SEC", name: "Security", tier: "enterprise", description: "Behavior-risk intelligence for SOC, compliance, and hostile runtime signal review." },
+  { id: "performance", envKey: "PERFORMANCE", code: "PERF", name: "Performance", tier: "professional", description: "Frequency and dependency analysis for performance storms, resource pressure, and regressions." },
+  { id: "ai-governance", envKey: "AI_GOVERNANCE", code: "AIG", name: "AI Governance", tier: "enterprise", description: "AI-like inference, worker, WASM, GPU, and risk-frequency evidence for governance teams." },
+  { id: "analytics", envKey: "ANALYTICS", code: "ANL", name: "Analytics", tier: "starter", description: "Buyer-readable behavior and dependency trends for product analytics and competitive monitoring." },
+  { id: "oem-platform", envKey: "OEM_PLATFORM", code: "OEM", name: "OEM / Platform", tier: "enterprise", description: "All V1 organs packaged for platform embedding, data licensing, and enterprise integration." }
 ]);
 
 export const PLAN_DEFINITIONS = Object.freeze([
-  { id: "starter", envKey: "STARTER", name: "Starter", description: "Customer-readable monitoring for one live website target.", includedModules: ["update-radar"], includedAddons: [], limits: { retentionDays: 7, maxTargets: 1, exportAccess: false, apiAccess: false, seats: 1 } },
-  { id: "professional", envKey: "PROFESSIONAL", name: "Professional", description: "Commercial monitoring for teams that need performance and update intelligence.", includedModules: ["performance-spectrum", "update-radar"], includedAddons: ["exports-api"], limits: { retentionDays: 30, maxTargets: 5, exportAccess: true, apiAccess: true, seats: 3 } },
-  { id: "enterprise", envKey: "ENTERPRISE", name: "Enterprise", description: "Full Organ9 suite with security, risk, AI activity, and developer diagnostics.", includedModules: MODULE_DEFINITIONS.map(item => item.id), includedAddons: ["dev-mode-pro", "extended-retention", "team-seats", "exports-api"], limits: { retentionDays: 365, maxTargets: 50, exportAccess: true, apiAccess: true, seats: 25 } }
+  { id: "starter", envKey: "STARTER", name: "Starter", description: "Customer-readable monitoring for one live website target.", includedModules: ["devops", "analytics"], includedAddons: [], limits: { retentionDays: 7, maxTargets: 1, exportAccess: false, apiAccess: false, seats: 1 } },
+  { id: "professional", envKey: "PROFESSIONAL", name: "Professional", description: "Commercial monitoring for teams that need performance, analytics, and DevOps visibility.", includedModules: ["devops", "performance", "analytics"], includedAddons: ["exports-api"], limits: { retentionDays: 30, maxTargets: 5, exportAccess: true, apiAccess: true, seats: 3 } },
+  { id: "enterprise", envKey: "ENTERPRISE", name: "Enterprise", description: "Full SIG9 suite with security, risk, AI activity, and developer diagnostics.", includedModules: MODULE_DEFINITIONS.map(item => item.id), includedAddons: ["dev-mode-pro", "extended-retention", "team-seats", "exports-api"], limits: { retentionDays: 365, maxTargets: 50, exportAccess: true, apiAccess: true, seats: 25 } }
 ]);
 
 export const ADDON_DEFINITIONS = Object.freeze([
-  { id: "dev-mode-pro", envKey: "DEV_MODE_PRO", name: "Dev Mode Pro", description: "Raw runtime ledger, Organ9 internals, signatures, developer graphs, and advanced exports." },
+  { id: "dev-mode-pro", envKey: "DEV_MODE_PRO", name: "Dev Mode Pro", description: "Raw runtime ledger, SIG9 internals, signatures, developer graphs, and advanced exports." },
   { id: "extended-retention", envKey: "EXTENDED_RETENTION", name: "Extended Retention", description: "Longer diagnostic history for audits and customer reports." },
   { id: "team-seats", envKey: "TEAM_SEATS", name: "Team Seats", description: "Additional workspace users for commercial teams." },
   { id: "exports-api", envKey: "EXPORTS_API", name: "Exports + API Access", description: "Commercial exports and API-ready diagnostic data." }
@@ -94,7 +95,7 @@ export async function createCheckoutSession(selection, account = {}, env = proce
         amount,
         order: {
           invoiceNumber: referenceId.slice(0, 20),
-          description: cleanDescription(`Organ9 ${item.name}`)
+          description: cleanDescription(`SIG9 ${item.name}`)
         },
         customer: account.email ? { email: account.email } : undefined,
         userFields: {
@@ -112,7 +113,7 @@ export async function createCheckoutSession(selection, account = {}, env = proce
             settingValue: JSON.stringify({
               showReceipt: true,
               url: cleanUrl(env.AUTHORIZE_NET_SUCCESS_URL) || "http://127.0.0.1:4391/runtime-diagnostics.html?checkout=success",
-              urlText: "Return to Organ9",
+              urlText: "Return to SIG9",
               cancelUrl: cleanUrl(env.AUTHORIZE_NET_CANCEL_URL) || "http://127.0.0.1:4391/runtime-diagnostics.html?checkout=cancel",
               cancelUrlText: "Cancel"
             })
@@ -123,7 +124,7 @@ export async function createCheckoutSession(selection, account = {}, env = proce
           },
           {
             settingName: "hostedPaymentOrderOptions",
-            settingValue: JSON.stringify({ show: true, merchantName: cleanLabel(env.AUTHORIZE_NET_MERCHANT_NAME) || "Organ9" })
+            settingValue: JSON.stringify({ show: true, merchantName: cleanLabel(env.AUTHORIZE_NET_MERCHANT_NAME) || "SIG9" })
           },
           {
             settingName: "hostedPaymentSecurityOptions",
@@ -214,7 +215,7 @@ function resolveBillingItem(selection, options = {}) {
   const id = normalizeBillingId(typeof selection === "string" ? selection : selection?.priceId || selection?.planId || selection?.moduleId || selection?.addonId || selection?.id);
   const item = ALL_ITEMS.find(candidate => candidate.id === id);
   if (!item && options.optional) return null;
-  if (!item) throw httpError(400, "Unknown Organ9 package, plan, module, or add-on.");
+  if (!item) throw httpError(400, "Unknown SIG9 package, plan, module, or add-on.");
   return {
     ...item,
     kind: PLAN_DEFINITIONS.some(candidate => candidate.id === item.id) ? "plan" :
@@ -334,11 +335,12 @@ function defaultPriceLabel(id) {
     starter: "$499/mo",
     professional: "$1,999/mo",
     enterprise: "From $12,000/mo",
-    "structure-monitor": "From $4,000/mo",
-    "performance-spectrum": "$2,500/mo",
-    "update-radar": "$1,500/mo",
-    "risk-score-engine": "From $5,000/mo",
-    "ai-activity-detector": "From $6,000/mo",
+    devops: "$99/mo",
+    security: "$999/mo",
+    performance: "$499/mo",
+    "ai-governance": "$999/mo",
+    analytics: "$199/mo",
+    "oem-platform": "$50k-$150k/yr",
     "dev-mode-pro": "$799/mo add-on",
     "extended-retention": "$499/mo add-on",
     "team-seats": "$199/seat/mo",

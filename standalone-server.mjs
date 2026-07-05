@@ -4,6 +4,7 @@ import { extname, resolve, sep } from "node:path";
 import { analyzeUrl } from "./standalone-analyzer.mjs";
 import { SecureBrowserRuntime } from "./secure-browser-runtime.mjs";
 import { accountEntitlements, billingStatus, createCheckoutSession, entitlementsFromAuthorizeNetEvent, portalUrl, verifyAuthorizeNetWebhook } from "./companion-app/src/billing.mjs";
+import { createWebBloombergStore, deriveBehaviorWindowsFromFacts } from "./web-bloomberg-engine.mjs";
 import "./organ-frequency-engine.js";
 
 const MAX_STANDALONE_HISTORY = 12;
@@ -27,6 +28,7 @@ const standaloneDiagnosticsStore = {
   latest: null,
   history: []
 };
+const webBloombergStore = createWebBloombergStore();
 const accountEntitlementStore = new Map();
 const diagnosticsStreamClients = new Set();
 const rankingCrawler = createRankingCrawler();
@@ -93,8 +95,34 @@ export async function startStandaloneServer(options = {}) {
       }
       if (url.pathname === "/api/runtime-browser/analyze" && request.method === "GET") {
         const result = await analyzeRuntimeTarget(runtimeDiagnosticsBrowser, url.searchParams.get("url") || "", { localAppOrigins });
+        attachWebBloombergModel(result);
         rememberStandaloneDiagnostics(result);
         return json(response, 200, result);
+      }
+      if (url.pathname === "/api/behavior-stream" && request.method === "POST") {
+        verifyBehaviorStreamKey(request);
+        const body = await readJsonBody(request);
+        const result = webBloombergStore.ingest(body, {
+          url: body.url || body.targetUrl || "",
+          site_id: body.site_id || "",
+          page_id: body.page_id || "",
+          client_segment: body.client_segment || "direct-api"
+        });
+        broadcastDiagnostics({ ok: true, kind: "web-bloomberg-update", terminal: result.terminal, status: result.status });
+        return json(response, result.rejected ? 207 : 200, result);
+      }
+      if (url.pathname === "/api/behavior-stream/status" && request.method === "GET") {
+        return json(response, 200, webBloombergStore.status());
+      }
+      if (url.pathname === "/api/web-bloomberg/terminal" && request.method === "GET") {
+        return json(response, 200, webBloombergStore.terminal({
+          site_id: url.searchParams.get("site_id") || "",
+          page_id: url.searchParams.get("page_id") || "",
+          window: url.searchParams.get("window") || ""
+        }));
+      }
+      if (url.pathname === "/api/web-bloomberg/export" && request.method === "GET") {
+        return json(response, 200, webBloombergStore.export());
       }
       if (url.pathname === "/api/runtime-diagnostics/export" && request.method === "GET") {
         return json(response, 200, buildStandaloneExportPayload());
@@ -105,6 +133,7 @@ export async function startStandaloneServer(options = {}) {
       if (url.pathname === "/api/runtime-diagnostics/ingest" && request.method === "POST") {
         const body = await readJsonBody(request);
         const result = ingestBatchedDiagnostics(body);
+        attachWebBloombergModel(result);
         rememberStandaloneDiagnostics(result);
         return json(response, 200, { ok: true, acceptedAt: result.analyzedAt, factCount: result.diagnostics.runtimeFactHistory.length });
       }
@@ -115,6 +144,7 @@ export async function startStandaloneServer(options = {}) {
         };
         standaloneDiagnosticsStore.latest = null;
         standaloneDiagnosticsStore.history = [];
+        webBloombergStore.clear();
         broadcastDiagnostics({ ok: true, kind: "runtime-diagnostics-cleared", clearedAt: new Date().toISOString() });
         return json(response, 200, { ok: true, clearedAt: new Date().toISOString(), cleared });
       }
@@ -212,7 +242,8 @@ export function buildStandaloneExportPayload(store = standaloneDiagnosticsStore)
       historyCount: history.length,
       packageCount: packageSuite.packages?.length || 0,
       activePackages: packageSuite.summary?.activePackages || 0,
-      fallbackUsed: Boolean(latest?.fallback?.used)
+      fallbackUsed: Boolean(latest?.fallback?.used),
+      webBloomberg: webBloombergStore.status()
     },
     exportPolicy: {
       latestFactLimit: MAX_LATEST_FACTS,
@@ -221,7 +252,8 @@ export function buildStandaloneExportPayload(store = standaloneDiagnosticsStore)
       channelFactLimit: MAX_CHANNEL_FACTS
     },
     latest,
-    history
+    history,
+    webBloomberg: webBloombergStore.export()
   };
 }
 
@@ -246,6 +278,7 @@ export function buildOperationalStatus({ runtimeDiagnosticsBrowser, visaSecureBr
     health: warnings.length ? "degraded" : "healthy",
     warnings,
     runtimeDiagnostics: runtime,
+    webBloomberg: webBloombergStore.status(),
     billing: {
       provider: billing.provider,
       configured: billing.configured,
@@ -406,6 +439,35 @@ function markStructuralFallback(result, renderedError) {
       runtimeFactHistory: [fallbackFact, ...(diagnostics.runtimeFactHistory || [])].slice(0, 160)
     }
   };
+}
+
+function attachWebBloombergModel(result = {}) {
+  const diagnostics = result.diagnostics || {};
+  const facts = diagnostics.runtimeFactHistory || [];
+  const directWindows = facts
+    .filter(fact => fact.source === "web_bloomberg" && fact.type === "behavior-window")
+    .map(fact => fact.value?.window || fact.value || fact.payload?.value?.window)
+    .filter(Boolean);
+  const derivedWindows = directWindows.length ? [] : deriveBehaviorWindowsFromFacts(facts, {
+    url: result.finalUrl || result.requestedUrl || ""
+  });
+  const ingestResult = webBloombergStore.ingest({
+    url: result.finalUrl || result.requestedUrl || "",
+    windows: [...directWindows, ...derivedWindows]
+  }, { url: result.finalUrl || result.requestedUrl || "", client_segment: "runtime-diagnostics" });
+  result.webBloomberg = {
+    status: ingestResult.status,
+    terminal: ingestResult.terminal,
+    accepted: ingestResult.accepted,
+    rejected: ingestResult.rejected,
+    errors: ingestResult.errors
+  };
+  result.diagnostics = {
+    ...diagnostics,
+    webBloombergTerminal: ingestResult.terminal,
+    webBloombergStatus: ingestResult.status
+  };
+  return result;
 }
 
 export function validateRuntimeTargetUrl(rawUrl, options = {}) {
@@ -1179,7 +1241,7 @@ async function serveStatic(pathname, response) {
 export function buildCorsOrigin(request = {}, pathname = "") {
   const origin = request.headers?.origin || "";
   if (!origin) return "";
-  if (pathname === "/api/runtime-diagnostics/ingest") return origin;
+  if (pathname === "/api/runtime-diagnostics/ingest" || pathname === "/api/behavior-stream") return origin;
   try {
     const originUrl = new URL(origin);
     const hostUrl = new URL(`http://${request.headers?.host || ""}`);
@@ -1198,7 +1260,7 @@ function setHeaders(request, response, pathname = "") {
   if (allowedOrigin) response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   response.setHeader("Vary", "Origin");
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Web-Bloomberg-Ingest-Key");
   if (allowedOrigin) response.setHeader("Access-Control-Allow-Private-Network", "true");
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("X-Frame-Options", "DENY");
@@ -1214,6 +1276,14 @@ function setHeaders(request, response, pathname = "") {
     "base-uri 'self'",
     "form-action 'self' https://accept.authorize.net https://test.authorize.net"
   ].join("; "));
+}
+
+function verifyBehaviorStreamKey(request = {}) {
+  const configured = String(process.env.WEB_BLOOMBERG_INGEST_KEY || "").trim();
+  if (!configured) return true;
+  const provided = String(request.headers?.["x-web-bloomberg-ingest-key"] || "").trim();
+  if (provided && provided === configured) return true;
+  throw httpError(401, "Behavior stream ingest key is invalid.", "WEB_BLOOMBERG_INGEST_KEY_INVALID");
 }
 
 function json(response, status, value) {

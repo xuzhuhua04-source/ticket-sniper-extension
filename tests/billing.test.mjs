@@ -9,7 +9,7 @@ test("billing status exposes core plans, paid modules, add-ons, and entitlements
   const status = billingStatus({});
   assert.equal(status.provider, "Authorize.Net Accept Hosted");
   assert.equal(status.plans.length, 3);
-  assert.equal(status.modules.length, 5);
+  assert.equal(status.modules.length, 6);
   assert.equal(status.addons.some(addon => addon.id === "dev-mode-pro"), true);
   assert.deepEqual(status.plans.map(plan => plan.id), [
     "starter",
@@ -24,13 +24,13 @@ test("checkout URL requires Authorize.Net credentials and item amounts", () => {
   const env = {
     AUTHORIZE_NET_API_LOGIN_ID: "login",
     AUTHORIZE_NET_TRANSACTION_KEY: "transaction",
-    AUTHORIZE_NET_PERFORMANCE_SPECTRUM_AMOUNT: "2500.00",
-    AUTHORIZE_NET_PERFORMANCE_SPECTRUM_PRICE_LABEL: "$2,500/mo"
+    AUTHORIZE_NET_PERFORMANCE_AMOUNT: "499.00",
+    AUTHORIZE_NET_PERFORMANCE_PRICE_LABEL: "$499/mo"
   };
-  assert.equal(checkoutUrl("performance-spectrum", env), "https://test.authorize.net/payment/payment");
-  assert.throws(() => checkoutUrl("update-radar", env), /checkout is not configured/);
+  assert.equal(checkoutUrl("performance", env), "https://test.authorize.net/payment/payment");
+  assert.throws(() => checkoutUrl("analytics", env), /checkout is not configured/);
   assert.throws(() => checkoutUrl("starter", env), /checkout is not configured/);
-  assert.throws(() => checkoutUrl("unknown", env), /Unknown Organ9/);
+  assert.throws(() => checkoutUrl("unknown", env), /Unknown SIG9/);
 });
 
 test("Authorize.Net Accept Hosted token creation validates provider response", async () => {
@@ -65,7 +65,7 @@ test("entitlements unlock Dev Mode Pro only through addon or enterprise", () => 
   assert.equal(starter.addons.includes("dev-mode-pro"), false);
   assert.equal(proAddon.addons.includes("dev-mode-pro"), true);
   assert.equal(enterprise.addons.includes("dev-mode-pro"), true);
-  assert.equal(enterprise.modules.length, 5);
+  assert.equal(enterprise.modules.length, 6);
 });
 
 test("merchant portal accepts only Authorize.Net merchant portal hosts", () => {
@@ -87,7 +87,7 @@ test("billing checkout API reports unconfigured packages as service unavailable"
     const response = await fetch(`${app.url}/api/billing/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ moduleId: "performance-spectrum" })
+      body: JSON.stringify({ moduleId: "performance" })
     });
     const payload = await response.json();
     assert.equal(response.status, 503);
