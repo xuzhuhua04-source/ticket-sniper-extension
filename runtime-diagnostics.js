@@ -471,12 +471,17 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("multicontext", ["iframe_loaded", "post_message", "worker_message", "worker_post", "message_channel_message"], ["Communication", "Resources"], "Frames/workers", "Cross-context messages and loaded frames move data/resources across boundaries.", 0.91),
   rawFactEntry("multicontext", ["sw_register", "sw_activated", "sw_fetch", "sw_fetch_capability"], ["Resources", "Synchronization"], "Service Worker", "Service worker facts describe resource lifecycle and timing boundaries.", 0.88),
   rawFactEntry("network", ["document-fetch", "resource-map", "request", "response", "error", "request-failed", "response-status", "resource-observed"], ["Communication", "Resources"], "Network", "Network/resource facts describe request flow and asset supply.", 0.94),
-  rawFactEntry("storage", ["storage-change", "storage-snapshot", "indexeddb-open"], ["Persistence"], "Storage", "Storage facts describe client-held state without exposing values.", 0.95),
+  rawFactEntry("storage", ["storage-change", "storage-mutation", "storage-snapshot", "indexeddb-open"], ["Persistence"], "Storage", "Storage facts describe client-held state without exposing values.", 0.95),
   rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
   rawFactEntry("crawler", ["crawler-pattern", "crawler-behavior"], ["Security", "Synchronization"], "Crawler cadence", "Crawler-like timing and behavior facts describe suspicious cadence.", 0.88),
   rawFactEntry("browser", ["rendered-dom-snapshot"], ["Presentation"], "Rendered browser", "Rendered browser snapshots describe what the secure runtime saw on the page.", 0.86),
   rawFactEntry("web_bloomberg", ["behavior-window"], ["Synchronization", "Execution", "Communication"], "SIG9 Signal Console", "Behavior windows aggregate timing, execution, and communication pressure.", 0.88),
-  rawFactEntry("dom", ["mutation-burst", "element-change", "attribute-change", "text-change", "structure-snapshot", "calendar-structure", "iframe-observed", "shadow-root"], ["Presentation", "Interaction"], "DOM", "DOM facts describe visible structure and user-facing page changes.", 0.93),
+  rawFactEntry("dom", ["mutation-burst", "element-change", "attribute-change", "text-change", "structure-snapshot", "calendar-structure", "element", "attribute", "text"], ["Presentation", "Interaction"], "DOM", "DOM facts describe visible structure and user-facing page changes.", 0.93),
+  rawFactEntry("dom", ["css-rule"], ["Presentation", "Interaction"], "CSSOM", "RuntimeCollector V2 DOM CSS rule facts describe stylesheet structure changes.", 0.91),
+  rawFactEntry("dom", ["shadow-root"], ["Presentation", "Communication"], "Shadow DOM", "RuntimeCollector V2 shadow-root facts describe component boundary structure.", 0.91),
+  rawFactEntry("dom", ["iframe-dom", "iframe-observed"], ["Presentation", "Communication", "Resources"], "Iframe DOM", "RuntimeCollector V2 iframe facts describe embedded document structure.", 0.91),
+  rawFactEntry("runtime", ["timing", "performance"], ["Execution", "Synchronization"], "Runtime timing", "RuntimeCollector V2 timing/performance facts describe runtime cadence.", 0.9),
+  rawFactEntry("runtime", ["console", "error", "promise-rejection"], ["Execution", "Security"], "Runtime errors", "RuntimeCollector V2 console/error/rejection facts describe execution integrity.", 0.9),
   rawFactEntry("performance", ["long-task"], ["Execution", "Synchronization"], "Performance", "Long task facts describe main-thread execution pressure.", 0.92)
 ]);
 const RAW_FACT_MAPPING_BY_KEY = Object.freeze(buildRawFactMappingIndex(RAW_FACT_REGISTRY_ENTRIES));
@@ -2018,7 +2023,7 @@ function summarizeRuntimeEvents(items = []) {
 }
 
 function runtimeFactSubcategory(mapping = {}) {
-  if (mapping.status !== "mapped") return "Other facts";
+  if (mapping.status !== "mapped") return inferRuntimeFactSubcategory(mapping);
   if (mapping.sourceModule) return mapping.sourceModule;
   const source = String(mapping.source || "").toLowerCase();
   if (source === "dom") return "DOM";
@@ -2035,6 +2040,29 @@ function runtimeFactSubcategory(mapping = {}) {
   if (source === "browser") return "Rendered Browser";
   if (source === "web_bloomberg") return "Signal Windows";
   return source ? readableChannel(source) : "Unknown";
+}
+
+function inferRuntimeFactSubcategory(mapping = {}) {
+  const source = String(mapping.source || "").toLowerCase();
+  const type = String(mapping.type || "").toLowerCase();
+  const channel = String(mapping.channel || "").toLowerCase();
+  const text = `${source} ${type} ${channel}`;
+  if (/css|style|stylesheet|selector/.test(text)) return "CSSOM";
+  if (/shadow|slot/.test(text)) return "Shadow DOM";
+  if (/iframe|frame/.test(text)) return "Iframe DOM";
+  if (/dom|element|attribute|text|mutation|calendar|structure/.test(text)) return "DOM";
+  if (/layout|paint|reflow|shift|stacking/.test(text)) return "Layout";
+  if (/vdom|react|vue|svelte|component|props/.test(text)) return "Virtual DOM";
+  if (/a11y|accessibility|aria|role/.test(text)) return "Accessibility";
+  if (/request|response|network|fetch|xhr|websocket|beacon/.test(text)) return "Network";
+  if (/storage|cookie|indexeddb|localstorage|session/.test(text)) return "Storage";
+  if (/worker|message|channel|service-worker|sw_/.test(text)) return "Frames/workers";
+  if (/console|error|rejection/.test(text)) return "Runtime errors";
+  if (/timing|performance|scheduling|timer|microtask|promise|navigation|lifecycle|heartbeat|runtime|script/.test(text)) return "Runtime timing";
+  if (/captcha|challenge|crawler|bot|fingerprint|security|auth|risk|protection/.test(text)) return "Protection";
+  if (/resource|asset|image|font|cdn|stylesheet/.test(text)) return "Resources";
+  if (/compute|wasm|webgpu|gpu|ai|model|inference/.test(text)) return "Compute";
+  return "Unclassified facts";
 }
 
 function runtimeEventCategoriesForFact(item = {}) {
@@ -2494,12 +2522,18 @@ function runtimeSubcategoryDisplayName(name) {
     "accessibility": "Accessibility facts",
     "js runtime": "JS runtime",
     "shadow dom": "Shadow DOM facts",
+    "iframe dom": "Iframe DOM facts",
     "frames / workers": "Worker facts",
+    "frames/workers": "Worker facts",
     "network": "Network facts",
     "storage": "Storage facts",
     "security / crawler": "Security facts",
+    "protection": "Protection facts",
     "rendered browser": "Rendered facts",
-    "signal windows": "Signal windows"
+    "runtime timing": "Runtime timing facts",
+    "runtime errors": "Runtime error facts",
+    "signal windows": "Signal windows",
+    "unclassified facts": "Unclassified facts"
   };
   return labels[normalized] || name || "Other facts";
 }

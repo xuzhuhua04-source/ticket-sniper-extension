@@ -129,6 +129,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
     "function buildStandaloneAggregateDiagnostics",
     "function summarizeRuntimeEvents",
     "function runtimeFactSubcategory",
+    "function inferRuntimeFactSubcategory",
     "function renderRuntimeFactSubcategory",
     "function runtimeSubcategoryDisplayName",
     "function renderWebV2Taxonomy"
@@ -155,6 +156,9 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /Layout facts/);
   assert.match(js, /CSSOM changes/);
   assert.match(js, /VDOM changes/);
+  assert.match(js, /Iframe DOM facts/);
+  assert.match(js, /Runtime timing facts/);
+  assert.match(js, /Runtime error facts/);
   assert.match(js, /No facts yet/);
   assert.doesNotMatch(js, /Raw evidence:/);
   assert.doesNotMatch(js, /observations/);
@@ -197,11 +201,16 @@ test("Atrinit raw Recent Facts registry drives the profile categories", () => {
     "js_promise_chain",
     "js_fetch_start",
     "shadow_root_created",
+    "shadow-root",
     "slot_change",
     "iframe_created",
+    "iframe-dom",
     "worker_message",
     "sw_fetch",
-    "message_channel_message"
+    "message_channel_message",
+    "storage-mutation",
+    "promise-rejection",
+    "timing"
   ]) {
     assert.match(js, new RegExp(rawFact));
   }
