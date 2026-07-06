@@ -440,9 +440,55 @@ const RAW_FACT_TO_SIG9_ORGAN = Object.freeze({
   sw_activated: ["Flow"],
   sw_fetch: ["Flow", "Dependency"],
   message_channel_created: ["Dependency"],
-  message_channel_message: ["Flow"]
+  message_channel_message: ["Flow"],
+  click: ["Behavior"],
+  input: ["Behavior"],
+  pointer: ["Behavior"],
+  keyboard: ["Behavior"],
+  focus: ["Behavior"],
+  blur: ["Behavior"],
+  submit: ["Behavior"],
+  event_dispatch: ["Behavior"],
+  timer: ["Rhythm"],
+  interval: ["Rhythm"],
+  timeout: ["Rhythm"],
+  raf_tick: ["Rhythm"],
+  animation_frame: ["Rhythm"],
+  storage_change: ["State"],
+  storage_mutation: ["State"],
+  storage_snapshot: ["State"],
+  cookie_change: ["State"],
+  cache_access: ["State"],
+  request: ["Flow"],
+  response: ["Flow"],
+  resource_observed: ["Dependency"],
+  resource_timing: ["Rhythm", "Dependency"],
+  captcha: ["Risk"],
+  challenge: ["Risk"],
+  auth_challenge: ["Risk"],
+  fingerprint: ["Risk"],
+  protection: ["Risk"],
+  wasm: ["Influence", "Compression"],
+  webassembly: ["Influence", "Compression"],
+  webgpu: ["Influence", "Compression"],
+  gpu_jitter: ["Influence"],
+  ai_inference: ["Influence", "Compression"],
+  model_load: ["Influence", "Compression"]
 });
 const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
+  rawFactEntry("network", ["timing"], ["Communication", "Resources"], "Network", "Network timing facts describe request/resource timing.", 0.92),
+  rawFactEntry("runtime", ["timing", "performance"], ["Execution", "Synchronization"], "Runtime timing", "RuntimeCollector V2 timing/performance facts describe runtime cadence.", 0.9),
+  rawFactEntry("performance", ["timing", "performance", "long-task"], ["Execution", "Synchronization"], "Performance", "Performance facts describe main-thread and browser timing pressure.", 0.92),
+  rawFactEntry("interaction", ["click", "input", "pointer", "mouse", "keyboard", "focus", "blur", "submit", "touch", "gesture", "event", "event_dispatch", "event-listener"], ["Interaction"], "Interaction", "User and browser interaction facts describe direct behavior on the page.", 0.94),
+  rawFactEntry("events", ["click", "input", "pointer", "keyboard", "focus", "blur", "submit", "event_dispatch"], ["Interaction"], "Interaction", "Event collector facts describe user/page interaction arrival.", 0.9),
+  rawFactEntry("presentation", ["dom", "render", "paint", "layout", "style", "accessibility", "shadow", "vdom"], ["Presentation"], "Rendered surface", "Presentation collector facts describe visible and accessibility surface changes.", 0.86),
+  rawFactEntry("communication", ["fetch", "xhr", "websocket", "ws", "sendbeacon", "beacon", "post_message", "request", "response", "channel", "message"], ["Communication"], "Communication", "Communication collector facts describe network or cross-context movement.", 0.9),
+  rawFactEntry("synchronization", ["timer", "interval", "timeout", "raf", "raf_tick", "animation_frame", "microtask", "promise", "scheduler", "schedule", "visibility", "lifecycle", "heartbeat", "clock-drift"], ["Synchronization"], "Synchronization", "Synchronization collector facts describe timing and runtime coordination.", 0.9),
+  rawFactEntry("persistence", ["storage", "storage-change", "storage-mutation", "storage-snapshot", "cookie", "cookie-change", "indexeddb", "indexeddb-open", "cache", "cache-access", "history-state", "session"], ["Persistence"], "Storage", "Persistence collector facts describe client-held browser state.", 0.93),
+  rawFactEntry("execution", ["script", "javascript", "runtime", "long-task", "task", "console", "error", "promise-rejection", "worker", "framework", "react", "vue", "svelte"], ["Execution"], "JS Runtime", "Execution collector facts describe JavaScript and framework runtime activity.", 0.9),
+  rawFactEntry("security", ["captcha", "challenge", "auth", "auth-challenge", "login-challenge", "fingerprint", "protection", "anti-bot", "bot-defense", "crawler-block", "policy", "risk", "cloudflare", "akamai", "datadome", "perimeterx", "imperva", "recaptcha", "hcaptcha"], ["Security"], "Protection", "Security collector facts describe protection, auth, challenge, and risk surface signals.", 0.94),
+  rawFactEntry("resources", ["resource", "resource-observed", "resource-timing", "asset", "script", "image", "stylesheet", "font", "cdn", "preload", "service-worker", "sw_fetch", "supply"], ["Resources"], "Resources", "Resource collector facts describe asset supply and browser resource timing.", 0.92),
+  rawFactEntry("compute", ["compute", "wasm", "webassembly", "webgpu", "gpu", "gpu-jitter", "ai", "ai-inference", "inference", "embedding", "model", "model-load", "model-loading", "tensor", "ml"], ["Compute"], "Compute", "Compute collector facts describe heavy local processing, GPU/WASM, and AI-like runtime pressure.", 0.94),
   rawFactEntry("layout", ["layout_shift"], ["Presentation"], "Layout", "Layout instability changes visible presentation.", 0.96),
   rawFactEntry("layout", ["forced_reflow", "layout_rhythm"], ["Presentation", "Synchronization"], "Layout", "Layout timing and reflow facts describe rendered timing pressure.", 0.95),
   rawFactEntry("layout", ["layout_dependency", "stacking_context_change"], ["Presentation", "Communication"], "Layout", "Layout dependency facts describe structural relationships between rendered elements.", 0.93),
@@ -461,18 +507,21 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("a11y", ["a11y_role_change", "a11y_state_change"], ["Presentation", "Interaction"], "Accessibility", "ARIA role/state changes alter user interaction semantics.", 0.9),
   rawFactEntry("a11y", ["a11y_topology", "cdp_ax_tree"], ["Presentation", "Communication"], "Accessibility", "Accessibility topology describes relationships in the rendered accessibility tree.", 0.9),
   rawFactEntry("runtime", ["js_event_loop_render", "js_event_loop_idle", "js_microtask", "js_block", "scheduling"], ["Execution", "Synchronization"], "JS Runtime", "Event loop, scheduler, and microtask facts describe execution timing.", 0.94),
+  rawFactEntry("runtime", ["timer", "interval", "timeout", "raf", "raf_tick", "animation_frame", "microtask", "scheduler"], ["Synchronization", "Execution"], "Synchronization", "Runtime timer, animation-frame, and scheduler facts describe coordination pressure.", 0.9),
   rawFactEntry("runtime", ["js_promise_chain"], ["Execution", "Communication"], "JS Runtime", "Promise chains connect asynchronous execution paths.", 0.9),
   rawFactEntry("runtime", ["js_fetch_start", "js_fetch_end", "js_ws_send", "js_ws_message", "js_worker_message"], ["Communication", "Execution"], "JS Runtime", "Runtime network and worker message facts connect execution to communication.", 0.94),
   rawFactEntry("runtime", ["script-error", "unhandled-rejection", "js_error", "console"], ["Execution", "Security"], "JS Runtime", "Runtime errors and suspicious console states are execution integrity facts.", 0.9),
+  rawFactEntry("runtime", ["longtask", "long-task", "task-block", "script", "script-execution", "framework-hook", "framework-runtime"], ["Execution"], "JS Runtime", "Script, framework, and long-task facts describe runtime execution pressure.", 0.9),
+  rawFactEntry("runtime", ["wasm", "webassembly", "webgpu", "gpu", "gpu-jitter", "ai", "ai-inference", "embedding", "model", "model-load", "model-loading", "wasm_worker_model_loading"], ["Compute", "Execution"], "Compute", "WASM/GPU/model facts describe heavy local compute inside the page runtime.", 0.93),
   rawFactEntry("runtime", ["navigation", "page-lifecycle", "diagnostics_tick", "collector-state", "health-heartbeat", "layer_coverage"], ["Synchronization", "Execution"], "JS Runtime", "Lifecycle, diagnostic tick, and collector health facts describe runtime state coordination.", 0.86),
   rawFactEntry("shadow", ["shadow_root_created", "shadow_node", "shadow_mapping", "shadow_topology", "shadow-root"], ["Presentation", "Communication"], "Shadow DOM", "Shadow DOM structure maps rendered components to hidden host relationships.", 0.9),
   rawFactEntry("shadow", ["slot_change"], ["Presentation", "Interaction"], "Shadow DOM", "Slot changes alter projected component behavior.", 0.9),
   rawFactEntry("multicontext", ["iframe_created", "worker_created", "message_channel_created"], ["Communication", "Execution"], "Frames/workers", "Frame, worker, and channel creation adds cross-context execution paths.", 0.91),
   rawFactEntry("multicontext", ["iframe_loaded", "post_message", "worker_message", "worker_post", "message_channel_message"], ["Communication", "Resources"], "Frames/workers", "Cross-context messages and loaded frames move data/resources across boundaries.", 0.91),
   rawFactEntry("multicontext", ["sw_register", "sw_activated", "sw_fetch", "sw_fetch_capability"], ["Resources", "Synchronization"], "Service Worker", "Service worker facts describe resource lifecycle and timing boundaries.", 0.88),
-  rawFactEntry("network", ["document-fetch", "resource-map", "request", "response", "error", "request-failed", "response-status", "resource-observed"], ["Communication", "Resources"], "Network", "Network/resource facts describe request flow and asset supply.", 0.94),
-  rawFactEntry("storage", ["storage-change", "storage-mutation", "storage-snapshot", "indexeddb-open"], ["Persistence"], "Storage", "Storage facts describe client-held state without exposing values.", 0.95),
-  rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
+  rawFactEntry("network", ["document-fetch", "resource-map", "request", "response", "error", "request-failed", "response-status", "resource-observed", "resource-timing", "fetch", "xhr", "websocket", "sendbeacon"], ["Communication", "Resources"], "Network", "Network/resource facts describe request flow and asset supply.", 0.94),
+  rawFactEntry("storage", ["storage-change", "storage-mutation", "storage-snapshot", "indexeddb-open", "cookie-change", "localstorage", "sessionstorage", "cache-access", "history-state"], ["Persistence"], "Storage", "Storage facts describe client-held state without exposing values.", 0.95),
+  rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker", "captcha", "auth-challenge", "bot-defense", "crawler-block", "policy", "protection"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
   rawFactEntry("crawler", ["crawler-pattern", "crawler-behavior"], ["Security", "Synchronization"], "Crawler cadence", "Crawler-like timing and behavior facts describe suspicious cadence.", 0.88),
   rawFactEntry("browser", ["rendered-dom-snapshot"], ["Presentation"], "Rendered browser", "Rendered browser snapshots describe what the secure runtime saw on the page.", 0.86),
   rawFactEntry("web_bloomberg", ["behavior-window"], ["Synchronization", "Execution", "Communication"], "SIG9 Signal Console", "Behavior windows aggregate timing, execution, and communication pressure.", 0.88),
@@ -480,9 +529,7 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("dom", ["css-rule"], ["Presentation", "Interaction"], "CSSOM", "RuntimeCollector V2 DOM CSS rule facts describe stylesheet structure changes.", 0.91),
   rawFactEntry("dom", ["shadow-root"], ["Presentation", "Communication"], "Shadow DOM", "RuntimeCollector V2 shadow-root facts describe component boundary structure.", 0.91),
   rawFactEntry("dom", ["iframe-dom", "iframe-observed"], ["Presentation", "Communication", "Resources"], "Iframe DOM", "RuntimeCollector V2 iframe facts describe embedded document structure.", 0.91),
-  rawFactEntry("runtime", ["timing", "performance"], ["Execution", "Synchronization"], "Runtime timing", "RuntimeCollector V2 timing/performance facts describe runtime cadence.", 0.9),
   rawFactEntry("runtime", ["console", "error", "promise-rejection"], ["Execution", "Security"], "Runtime errors", "RuntimeCollector V2 console/error/rejection facts describe execution integrity.", 0.9),
-  rawFactEntry("performance", ["long-task"], ["Execution", "Synchronization"], "Performance", "Long task facts describe main-thread execution pressure.", 0.92)
 ]);
 const RAW_FACT_MAPPING_BY_KEY = Object.freeze(buildRawFactMappingIndex(RAW_FACT_REGISTRY_ENTRIES));
 const RANKING_BOARDS = Object.freeze([
@@ -2077,7 +2124,7 @@ function mapRawRuntimeFact(item = {}) {
   const channel = String(item.channel || fact.channel || `${source}/${type}`).toLowerCase();
   const normalizedType = normalizeRawFactType(type);
   const key = `${source}/${normalizedType}`;
-  const registryEntry = RAW_FACT_MAPPING_BY_KEY[key] || RAW_FACT_MAPPING_BY_KEY[normalizedType] || RAW_FACT_MAPPING_BY_KEY[channel];
+  const registryEntry = RAW_FACT_MAPPING_BY_KEY[key] || RAW_FACT_MAPPING_BY_KEY[normalizeRawFactKey(channel)];
   if (registryEntry) {
     return {
       registryVersion: RAW_FACT_MAPPING_REGISTRY_VERSION,
@@ -2116,7 +2163,7 @@ function fallbackRuntimeFactCategories(item = {}) {
   const source = String(fact.source || "").toLowerCase();
   const type = String(fact.type || "").toLowerCase();
   const channel = String(item.channel || fact.channel || `${source}/${type}`).toLowerCase();
-  const payloadText = `${source} ${type} ${channel} ${JSON.stringify(fact.value || {})} ${JSON.stringify(fact.metadata || {})}`.toLowerCase();
+  const payloadText = `${source} ${type} ${channel}`.toLowerCase();
   const categories = new Set();
   if (/interaction|click|input|pointer|mouse|keyboard|focus|blur|submit|touch|gesture|event-listener/.test(payloadText)) categories.add("Interaction");
   if (/dom|layout|cssom|style|paint|render|shadow|vdom|accessibility|a11y|aria|slot|component|presentation/.test(payloadText)) categories.add("Presentation");
@@ -2147,7 +2194,7 @@ function rawFactEntry(source, types, categories, sourceModule, reason, confidenc
       key: `${sourceKey}/${type}`,
       source: sourceKey,
       type,
-      aliases: [type, `${sourceKey}/${type}`],
+      aliases: [`${sourceKey}/${type}`],
       categories: cleanCategories,
       organs,
       sourceModule,
@@ -2163,9 +2210,13 @@ function buildRawFactMappingIndex(groups) {
   const index = {};
   for (const group of groups.flat()) {
     index[group.key] = group;
-    for (const alias of group.aliases || []) index[String(alias).toLowerCase()] = group;
+    for (const alias of group.aliases || []) index[normalizeRawFactKey(alias)] = group;
   }
   return index;
+}
+
+function normalizeRawFactKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/-/g, "_");
 }
 
 function normalizeRawFactType(value) {
@@ -2527,6 +2578,13 @@ function runtimeSubcategoryDisplayName(name) {
     "frames/workers": "Worker facts",
     "network": "Network facts",
     "storage": "Storage facts",
+    "interaction": "Interaction facts",
+    "rendered surface": "Rendered surface facts",
+    "communication": "Communication facts",
+    "synchronization": "Synchronization facts",
+    "performance": "Performance facts",
+    "resources": "Resource facts",
+    "compute": "Compute facts",
     "security / crawler": "Security facts",
     "protection": "Protection facts",
     "rendered browser": "Rendered facts",

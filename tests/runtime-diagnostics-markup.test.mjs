@@ -224,6 +224,45 @@ test("Atrinit raw Recent Facts registry drives the profile categories", () => {
   assert.match(css, /\.runtime-raw-card\.unmapped/);
 });
 
+test("RuntimeCollector V2 timing facts do not spray into unrelated profiles", () => {
+  assert.doesNotMatch(js, /RAW_FACT_MAPPING_BY_KEY\[normalizedType\]/);
+  assert.match(js, /RAW_FACT_MAPPING_BY_KEY\[normalizeRawFactKey\(channel\)\]/);
+  assert.match(js, /const payloadText = `\$\{source\} \$\{type\} \$\{channel\}`/);
+  assert.match(js, /rawFactEntry\("network", \["timing"\], \["Communication", "Resources"\]/);
+  assert.match(js, /rawFactEntry\("runtime", \["timing", "performance"\], \["Execution", "Synchronization"\]/);
+});
+
+test("Atrinit profile registry has concrete old-runtime fact families for all nine profiles", () => {
+  const expectedFamilies = [
+    ["interaction", "Interaction"],
+    ["presentation", "Presentation"],
+    ["communication", "Communication"],
+    ["synchronization", "Synchronization"],
+    ["persistence", "Persistence"],
+    ["execution", "Execution"],
+    ["security", "Security"],
+    ["resources", "Resources"],
+    ["compute", "Compute"]
+  ];
+  for (const [source, category] of expectedFamilies) {
+    assert.match(js, new RegExp(`rawFactEntry\\("${source}", \\[[^\\]]+\\], \\["${category}"`));
+  }
+  for (const rawFact of [
+    "captcha",
+    "auth-challenge",
+    "fingerprint",
+    "webgpu",
+    "gpu-jitter",
+    "ai-inference",
+    "model-load",
+    "storage-snapshot",
+    "resource-timing",
+    "event_dispatch"
+  ]) {
+    assert.match(js, new RegExp(rawFact));
+  }
+});
+
 test("paid Organ9 packages have separate module pages and locked states", () => {
   assert.match(html, /id="nav-modules"/);
   assert.match(html, /id="modules-view"/);
