@@ -90,7 +90,7 @@ test("pricing cards expose package price state and guard checkout redirects", ()
   assert.match(html, /Add-ons/);
 });
 
-test("Web Bloomberg terminal panels are present in the dashboard", () => {
+test("Live Signal Console panels are present in the dashboard", () => {
   for (const id of [
     "web-bloomberg-status",
     "web-bloomberg-frequency",
@@ -102,8 +102,9 @@ test("Web Bloomberg terminal panels are present in the dashboard", () => {
   ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  assert.match(js, /function renderWebBloombergTerminal/);
-  assert.match(css, /\.web-bloomberg-terminal/);
+  assert.match(html, /Live Signal Console/);
+  assert.match(js, /function renderLiveSignalConsole/);
+  assert.match(css, /\.signal-console/);
 });
 
 test("Web Version 2 taxonomy maps market modules to runtime events", () => {
@@ -141,8 +142,10 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /function screenshotModulesForRuntimeEvent/);
   assert.match(js, /function screenshotModuleSystemsForRuntimeEvent/);
   assert.match(js, /function renderRuntimeMappedRawData/);
-  assert.match(js, /Profile sources/);
+  assert.match(js, /Raw evidence/);
   assert.match(js, /No Recent Facts have mapped into this profile category yet/);
+  assert.match(js, /observations/);
+  assert.doesNotMatch(js, /No organ/);
   assert.match(js, /function buildWebV2AnalysisFromModel/);
   assert.match(js, /function synthesizeWebV2ScoresFromPackages/);
   assert.match(js, /function webV2Insight/);
@@ -225,10 +228,11 @@ test("commercial website shell exposes public pages and protected app navigation
 });
 
 test("commercial shell exposes buyer-ready polish and grouped controls", () => {
-  for (const className of ["nav-cluster", "workspace-cluster", "runtime-cluster", "trust-ribbon", "pricing-assurance", "product-flow", "home-use-cases", "readiness-strip", "faq-grid", "deployment-grid", "docs-boundary", "ranking-hero", "ranking-command-card", "ranking-ops-grid", "ranking-toolbar", "ranking-shell", "ranking-list", "ranking-detail", "layer-coverage-page", "site-footer", "module-plan-panel", "addon-plan-panel"]) {
+  for (const className of ["nav-cluster", "product-nav", "nav-menu", "nav-menu-panel", "workspace-cluster", "runtime-cluster", "trust-ribbon", "pricing-assurance", "product-flow", "home-use-cases", "readiness-strip", "faq-grid", "deployment-grid", "docs-boundary", "ranking-hero", "ranking-command-card", "ranking-ops-grid", "ranking-toolbar", "ranking-shell", "ranking-list", "ranking-detail", "layer-coverage-page", "site-footer", "module-plan-panel", "addon-plan-panel"]) {
     assert.match(html, new RegExp(`class="[^"]*\\b${className}\\b`));
     assert.match(css, new RegExp(`\\.${className}`));
   }
+  assert.match(js, /function closeNavigationMenus/);
   assert.match(html, /Authorize\.Net hosted checkout/);
   assert.match(html, /Production Deployment Checklist/);
   assert.match(html, /Runtime Diagnostics monitors the selected URL/);

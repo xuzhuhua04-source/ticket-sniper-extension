@@ -9,6 +9,9 @@ const elements = {
   exportAllJson: document.getElementById("export-all-json"),
   clear: document.getElementById("clear"),
   navHome: document.getElementById("nav-home"),
+  navPlatform: document.getElementById("nav-platform"),
+  navProducts: document.getElementById("nav-products"),
+  navResources: document.getElementById("nav-resources"),
   navDocs: document.getElementById("nav-docs"),
   navDashboard: document.getElementById("nav-dashboard"),
   navModules: document.getElementById("nav-modules"),
@@ -472,7 +475,7 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
   rawFactEntry("crawler", ["crawler-pattern", "crawler-behavior"], ["Security", "Synchronization"], "Crawler cadence", "Crawler-like timing and behavior facts describe suspicious cadence.", 0.88),
   rawFactEntry("browser", ["rendered-dom-snapshot"], ["Presentation"], "Rendered browser", "Rendered browser snapshots describe what the secure runtime saw on the page.", 0.86),
-  rawFactEntry("web_bloomberg", ["behavior-window"], ["Synchronization", "Execution", "Communication"], "Web Bloomberg", "Behavior windows aggregate timing, execution, and communication pressure.", 0.88),
+  rawFactEntry("web_bloomberg", ["behavior-window"], ["Synchronization", "Execution", "Communication"], "SIG9 Signal Console", "Behavior windows aggregate timing, execution, and communication pressure.", 0.88),
   rawFactEntry("dom", ["mutation-burst", "element-change", "attribute-change", "text-change", "structure-snapshot", "calendar-structure", "iframe-observed", "shadow-root"], ["Presentation", "Interaction"], "DOM", "DOM facts describe visible structure and user-facing page changes.", 0.93),
   rawFactEntry("performance", ["long-task"], ["Execution", "Synchronization"], "Performance", "Long task facts describe main-thread execution pressure.", 0.92)
 ]);
@@ -712,6 +715,9 @@ function applyLanguage(locale = activeLanguage) {
   setLocalizedText(elements.languageLabel, "languageLabel");
   setLocalizedText(elements.platformEyebrow, "platformEyebrow");
   setLocalizedText(elements.navHome, "navHome");
+  setLocalizedText(elements.navPlatform, "navPlatform");
+  setLocalizedText(elements.navProducts, "navProducts");
+  setLocalizedText(elements.navResources, "navResources");
   setLocalizedText(elements.navDashboard, "navDashboard");
   setLocalizedText(elements.navModules, "navModules");
   setLocalizedText(elements.navRankings, "navRankings");
@@ -850,6 +856,27 @@ function wireCommercialShell() {
   elements.navRankings?.addEventListener("click", () => applyAppView("rankings"));
   elements.navPlans?.addEventListener("click", () => applyAppView("plans"));
   elements.navSignIn?.addEventListener("click", () => applyAppView(accountState.email ? "dashboard" : "sign-in"));
+  document.querySelectorAll(".nav-menu-trigger").forEach(trigger => {
+    trigger.addEventListener("click", event => {
+      event.stopPropagation();
+      const menu = trigger.closest(".nav-menu");
+      const willOpen = !menu?.classList.contains("open");
+      closeNavigationMenus();
+      if (menu && willOpen) {
+        menu.classList.add("open");
+        trigger.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+  document.querySelectorAll(".nav-menu-panel button").forEach(button => {
+    button.addEventListener("click", closeNavigationMenus);
+  });
+  document.addEventListener("click", event => {
+    if (!event.target.closest?.(".nav-menu")) closeNavigationMenus();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeNavigationMenus();
+  });
   elements.homeStart?.addEventListener("click", () => applyAppView(accountState.email ? "dashboard" : "sign-in"));
   elements.homePricing?.addEventListener("click", () => applyAppView("plans"));
   elements.footerPricing?.addEventListener("click", () => applyAppView("plans"));
@@ -895,6 +922,13 @@ function wireCommercialShell() {
       return;
     }
     selectModule(plan);
+  });
+}
+
+function closeNavigationMenus() {
+  document.querySelectorAll(".nav-menu.open").forEach(menu => {
+    menu.classList.remove("open");
+    menu.querySelector(".nav-menu-trigger")?.setAttribute("aria-expanded", "false");
   });
 }
 
@@ -1491,7 +1525,7 @@ function handleStandaloneTargetInput() {
   renderOrganPresentation(snapshot);
   renderFrequencySpectrum(snapshot);
   renderCommercialPackageSuite(snapshot);
-  renderWebBloombergTerminal(result.webBloomberg?.terminal || result.diagnostics?.webBloombergTerminal || null);
+  renderLiveSignalConsole(result.webBloomberg?.terminal || result.diagnostics?.webBloombergTerminal || null);
   renderStructureEngine(snapshot);
   renderFacts();
   elements.latestHost.textContent = value ? "Switching target" : "No portal observed";
@@ -1559,7 +1593,7 @@ function renderStandaloneResult(result) {
   renderOrganPresentation(snapshot);
   renderFrequencySpectrum(snapshot);
   renderCommercialPackageSuite(snapshot);
-  renderWebBloombergTerminal(null);
+  renderLiveSignalConsole(null);
   renderStructureEngine(snapshot);
   renderFacts();
   renderRankings();
@@ -1644,13 +1678,13 @@ function connectStandaloneDiagnosticsStream() {
       renderOrganPresentation(snapshot);
       renderFrequencySpectrum(snapshot);
       renderCommercialPackageSuite(snapshot);
-      renderWebBloombergTerminal(null);
+      renderLiveSignalConsole(null);
       renderStructureEngine(snapshot);
       renderFacts();
       return;
     }
     if (payload.kind === "web-bloomberg-update") {
-      renderWebBloombergTerminal(payload.terminal || null);
+      renderLiveSignalConsole(payload.terminal || null);
       return;
     }
     if (canRenderStandaloneStreamResult(payload.result)) {
@@ -2315,7 +2349,7 @@ function renderWebV2Taxonomy(model) {
         <strong>${escapeHtml(category.name)}</strong>
         <p>${escapeHtml(category.detail)}</p>
         <small>${category.count} ${category.count === 1 ? "fact" : "facts"}${category.latest ? ` - latest ${escapeHtml(new Date(category.latest).toLocaleTimeString())}` : ""}</small>
-        <div class="mapped-module-list"><b>Profile sources:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>Waiting</code>"}</div>
+        <div class="mapped-module-list"><b>Raw evidence:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>Waiting</code>"}</div>
         <div class="runtime-raw-stack">
           ${rawFacts.map(renderRuntimeMappedRawFact).join("") || `<div class="runtime-raw-card empty-raw">No Recent Facts have mapped into this profile category yet.</div>`}
         </div>
@@ -2337,12 +2371,13 @@ function renderRuntimeMappedRawData(system) {
 }
 
 function renderRuntimeMappedRawFact(rawFact) {
+  const latest = rawFact.latest ? new Date(rawFact.latest).toLocaleTimeString() : "not seen yet";
   return `
     <div class="runtime-raw-card ${rawFact.status === "mapped" ? "active" : "unmapped"}">
-      <span>${escapeHtml(rawFact.sourceModule || rawFact.source || "Recent Fact")}</span>
+      <span>${escapeHtml(rawFact.source || "recent-fact")}</span>
       <strong>${escapeHtml(rawFact.channel || rawFact.key)}</strong>
-      <p>${escapeHtml(rawFact.reason || "Mapped through the raw fact registry.")}</p>
-      <small>${rawFact.count} ${rawFact.count === 1 ? "fact" : "facts"} - ${escapeHtml((rawFact.organs || []).join(" / ") || "No organ")} - ${Math.round((rawFact.confidence || 0) * 100)}%</small>
+      <p>${rawFact.count} ${rawFact.count === 1 ? "observation" : "observations"} - latest ${escapeHtml(latest)}</p>
+      <small>${escapeHtml(rawFact.type || rawFact.key || "raw fact")}</small>
     </div>
   `;
 }
@@ -2655,7 +2690,7 @@ function renderCommercialPackageSuite(model) {
   renderModulePages(model);
 }
 
-function renderWebBloombergTerminal(terminal) {
+function renderLiveSignalConsole(terminal) {
   if (!elements.webBloombergStatus) return;
   const model = terminal && terminal.ok !== false ? terminal : null;
   if (!model) {

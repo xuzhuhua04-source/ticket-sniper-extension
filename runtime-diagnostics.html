@@ -18,13 +18,28 @@
         </div>
       </div>
       <div class="top-actions" aria-label="Primary navigation and workspace controls">
-        <nav class="nav-cluster" aria-label="SIG9 website">
-          <button id="nav-home" class="secondary" type="button" aria-controls="home-view">Home</button>
-          <button id="nav-dashboard" class="secondary" type="button" aria-controls="dashboard-view">Dashboard</button>
-          <button id="nav-modules" class="secondary" type="button" aria-controls="modules-view">Modules</button>
-          <button id="nav-rankings" class="secondary" type="button" aria-controls="rankings-view">Rankings</button>
-          <button id="nav-plans" class="secondary" type="button" aria-controls="plans-view">Pricing</button>
-          <button id="nav-docs" class="secondary" type="button" aria-controls="docs-view">Docs</button>
+        <nav class="nav-cluster product-nav" aria-label="SIG9 website">
+          <button id="nav-home" class="secondary nav-direct" type="button" aria-controls="home-view">Home</button>
+          <div class="nav-menu">
+            <button id="nav-platform" class="secondary nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Platform</button>
+            <div class="nav-menu-panel" role="menu" aria-label="Platform">
+              <button id="nav-dashboard" type="button" role="menuitem" aria-controls="dashboard-view">Dashboard <span>Live runtime overview</span></button>
+              <button id="nav-rankings" type="button" role="menuitem" aria-controls="rankings-view">Rankings <span>Website intelligence boards</span></button>
+            </div>
+          </div>
+          <div class="nav-menu">
+            <button id="nav-products" class="secondary nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Products</button>
+            <div class="nav-menu-panel" role="menu" aria-label="Products">
+              <button id="nav-modules" type="button" role="menuitem" aria-controls="modules-view">Modules <span>Paid package pages</span></button>
+              <button id="nav-plans" type="button" role="menuitem" aria-controls="plans-view">Pricing <span>Plans and add-ons</span></button>
+            </div>
+          </div>
+          <div class="nav-menu">
+            <button id="nav-resources" class="secondary nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Resources</button>
+            <div class="nav-menu-panel" role="menu" aria-label="Resources">
+              <button id="nav-docs" type="button" role="menuitem" aria-controls="docs-view">Docs <span>FAQ and implementation notes</span></button>
+            </div>
+          </div>
         </nav>
         <div class="workspace-cluster" aria-label="Workspace controls">
           <span id="account-chip" class="account-chip" role="status" aria-live="polite">Signed out</span>
@@ -563,10 +578,10 @@
       </div>
     </section>
 
-    <section class="web-bloomberg-terminal" aria-label="Web Bloomberg terminal">
+    <section class="signal-console" aria-label="SIG9 live signal console">
       <div class="section-title">
         <div>
-          <h2>Web Bloomberg Terminal</h2>
+          <h2>Live Signal Console</h2>
           <p>Millisecond-local capture is compacted into server-side frequency, storm, deviation, dependency, and risk intelligence.</p>
         </div>
         <span id="web-bloomberg-status">No windows</span>
