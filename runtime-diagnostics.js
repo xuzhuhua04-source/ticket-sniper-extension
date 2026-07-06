@@ -1877,7 +1877,7 @@ function buildSnapshot(data) {
 }
 
 function summarizeRuntimeEvents(items = []) {
-  const byCategory = Object.fromEntries(RUNTIME_EVENT_CATEGORIES.map(category => [category.name, { ...category, count: 0, latest: 0, channels: new Set(), rawFacts: new Map() }]));
+  const byCategory = Object.fromEntries(RUNTIME_EVENT_CATEGORIES.map(category => [category.name, { ...category, count: 0, latest: 0, channels: new Set(), rawFacts: new Map(), subcategories: new Map() }]));
   const mappedFacts = [];
   const unmappedFacts = [];
   for (const item of items) {
@@ -1905,11 +1905,43 @@ function summarizeRuntimeEvents(items = []) {
       existing.count += 1;
       existing.latest = Math.max(existing.latest, Number(item.time || item.fact?.timestamp) || 0);
       byCategory[category].rawFacts.set(mapping.key, existing);
+      const subcategoryName = runtimeFactSubcategory(mapping);
+      const subcategory = byCategory[category].subcategories.get(subcategoryName) || {
+        name: subcategoryName,
+        count: 0,
+        latest: 0,
+        channels: new Set(),
+        rawFacts: new Map()
+      };
+      subcategory.count += 1;
+      subcategory.latest = Math.max(subcategory.latest, Number(item.time || item.fact?.timestamp) || 0);
+      if (item.channel) subcategory.channels.add(item.channel);
+      const subFact = subcategory.rawFacts.get(mapping.key) || {
+        key: mapping.key,
+        channel: mapping.channel,
+        source: mapping.source,
+        type: mapping.type,
+        status: mapping.status,
+        count: 0,
+        latest: 0
+      };
+      subFact.count += 1;
+      subFact.latest = Math.max(subFact.latest, Number(item.time || item.fact?.timestamp) || 0);
+      subcategory.rawFacts.set(mapping.key, subFact);
+      byCategory[category].subcategories.set(subcategoryName, subcategory);
     }
   }
   const categories = Object.values(byCategory).map(category => ({
     ...category,
     channels: [...category.channels].slice(0, 8),
+    subcategories: [...category.subcategories.values()]
+      .map(subcategory => ({
+        name: subcategory.name,
+        count: subcategory.count,
+        latest: subcategory.latest,
+        channels: [...subcategory.channels].slice(0, 6)
+      }))
+      .sort((left, right) => right.count - left.count || right.latest - left.latest),
     rawFacts: [...category.rawFacts.values()]
       .sort((left, right) => right.count - left.count || right.latest - left.latest)
       .slice(0, 8)
@@ -1923,6 +1955,25 @@ function summarizeRuntimeEvents(items = []) {
     unmappedFacts,
     sourceTypeCoverage: summarizeRawFactCoverage(mappedFacts)
   };
+}
+
+function runtimeFactSubcategory(mapping = {}) {
+  if (mapping.sourceModule) return mapping.sourceModule;
+  const source = String(mapping.source || "").toLowerCase();
+  if (source === "dom") return "DOM";
+  if (source === "layout") return "Layout";
+  if (source === "cssom") return "CSSOM";
+  if (source === "vdom") return "Virtual DOM";
+  if (source === "a11y" || source === "accessibility") return "Accessibility";
+  if (source === "runtime" || source === "performance") return "JS Runtime";
+  if (source === "shadow") return "Shadow DOM";
+  if (source === "multicontext") return "Frames / Workers";
+  if (source === "network") return "Network";
+  if (source === "storage") return "Storage";
+  if (source === "anti_crawler" || source === "crawler") return "Security / Crawler";
+  if (source === "browser") return "Rendered Browser";
+  if (source === "web_bloomberg") return "Signal Windows";
+  return source ? readableChannel(source) : "Unknown";
 }
 
 function runtimeEventCategoriesForFact(item = {}) {
@@ -2339,7 +2390,7 @@ function renderWebV2Taxonomy(model) {
   }).join("");
   elements.runtimeEventGrid.innerHTML = summary.categories.map(category => {
     const organs = RUNTIME_EVENT_TO_SIG9_ORGANS[category.name] || [];
-    const rawFacts = category.rawFacts || [];
+    const subcategories = category.subcategories || [];
     const mappedSystems = screenshotModuleSystemsForRuntimeEvent(category.name, model);
     const mappedModules = mappedSystems.map(system => system.label);
     const active = category.count > 0;
@@ -2347,11 +2398,10 @@ function renderWebV2Taxonomy(model) {
       <article class="runtime-event-card ${active ? "active" : ""}">
         <span>${escapeHtml(organs.join(" / ") || "Runtime")}</span>
         <strong>${escapeHtml(category.name)}</strong>
-        <p>${escapeHtml(category.detail)}</p>
-        <small>${category.count} ${category.count === 1 ? "fact" : "facts"}${category.latest ? ` - latest ${escapeHtml(new Date(category.latest).toLocaleTimeString())}` : ""}</small>
+        <p class="runtime-profile-total"><b>${category.count}</b> total ${category.count === 1 ? "fact" : "facts"}${category.latest ? ` - latest ${escapeHtml(new Date(category.latest).toLocaleTimeString())}` : ""}</p>
         <div class="mapped-module-list"><b>Raw evidence:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>Waiting</code>"}</div>
-        <div class="runtime-raw-stack">
-          ${rawFacts.map(renderRuntimeMappedRawFact).join("") || `<div class="runtime-raw-card empty-raw">No Recent Facts have mapped into this profile category yet.</div>`}
+        <div class="runtime-subcategory-stack">
+          ${subcategories.map(renderRuntimeFactSubcategory).join("") || `<div class="runtime-raw-card empty-raw">No Recent Facts have mapped into this profile category yet.</div>`}
         </div>
         <div class="event-tags">${(category.channels || []).slice(0, 4).map(channel => `<code>${escapeHtml(readableChannel(channel))}</code>`).join("") || "<code>Waiting</code>"}</div>
       </article>
@@ -2370,14 +2420,15 @@ function renderRuntimeMappedRawData(system) {
   `;
 }
 
-function renderRuntimeMappedRawFact(rawFact) {
-  const latest = rawFact.latest ? new Date(rawFact.latest).toLocaleTimeString() : "not seen yet";
+function renderRuntimeFactSubcategory(subcategory) {
+  const latest = subcategory.latest ? new Date(subcategory.latest).toLocaleTimeString() : "not seen yet";
   return `
-    <div class="runtime-raw-card ${rawFact.status === "mapped" ? "active" : "unmapped"}">
-      <span>${escapeHtml(rawFact.source || "recent-fact")}</span>
-      <strong>${escapeHtml(rawFact.channel || rawFact.key)}</strong>
-      <p>${rawFact.count} ${rawFact.count === 1 ? "observation" : "observations"} - latest ${escapeHtml(latest)}</p>
-      <small>${escapeHtml(rawFact.type || rawFact.key || "raw fact")}</small>
+    <div class="runtime-subcategory-card">
+      <div class="runtime-subcategory-head">
+        <strong>${escapeHtml(subcategory.name)}</strong>
+        <span>${subcategory.count} ${subcategory.count === 1 ? "fact" : "facts"}</span>
+      </div>
+      <small>latest ${escapeHtml(latest)}</small>
     </div>
   `;
 }
