@@ -351,10 +351,17 @@ label { display: block; margin-bottom: 7px; color: #40515b; font-size: 12px; fon
 .runtime-raw-stack { display: grid; gap: 7px; margin-top: 10px; }
 .runtime-raw-card { padding: 9px; border: 1px solid #d9e4e8; border-radius: 8px; background: #fff; }
 .runtime-raw-card.active { border-color: #9bd8cf; background: #f4fbfa; }
+.runtime-raw-card.unmapped { border-color: #e8c3c3; background: #fff8f8; }
 .runtime-raw-card.empty-raw { color: var(--muted); font-size: 12px; }
 .runtime-raw-card span { margin-bottom: 4px; color: #476a79; font-size: 10px; }
 .runtime-raw-card strong { margin-bottom: 4px; font-size: 12px; }
 .runtime-raw-card p { margin: 0; font-size: 11px; line-height: 1.38; }
+.mapping-debug-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mapping-debug-card { padding: 13px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 9px; background: var(--surface-soft); }
+.mapping-debug-card span { display: block; margin-bottom: 6px; color: var(--accent); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+.mapping-debug-card strong { display: block; margin-bottom: 8px; font-size: 13px; line-height: 1.35; }
+.mapping-debug-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.mapping-debug-table { grid-column: 1 / -1; }
 .event-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 .event-tags code { padding: 3px 6px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: #33444d; font-size: 10px; }
 .web-bloomberg-terminal { margin-bottom: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(180deg, #f9fcfd, #eef5f6); box-shadow: none; }

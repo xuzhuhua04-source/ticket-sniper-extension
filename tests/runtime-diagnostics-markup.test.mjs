@@ -141,7 +141,8 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /function screenshotModulesForRuntimeEvent/);
   assert.match(js, /function screenshotModuleSystemsForRuntimeEvent/);
   assert.match(js, /function renderRuntimeMappedRawData/);
-  assert.match(js, /Translated raw modules/);
+  assert.match(js, /Profile sources/);
+  assert.match(js, /No Recent Facts have mapped into this profile category yet/);
   assert.match(js, /function buildWebV2AnalysisFromModel/);
   assert.match(js, /function synthesizeWebV2ScoresFromPackages/);
   assert.match(js, /function webV2Insight/);
@@ -152,6 +153,49 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(css, /\.runtime-raw-stack/);
   assert.match(css, /\.runtime-raw-card/);
   assert.match(css, /\.runtime-event-card\.active/);
+});
+
+test("Atrinit raw Recent Facts registry drives the profile categories", () => {
+  for (const symbol of [
+    "const RAW_FACT_MAPPING_REGISTRY_VERSION =",
+    "const RAW_FACT_TO_SIG9_ORGAN = Object.freeze",
+    "const RAW_FACT_REGISTRY_ENTRIES = Object.freeze",
+    "const RAW_FACT_MAPPING_BY_KEY = Object.freeze",
+    "function mapRawRuntimeFact",
+    "function fallbackRuntimeFactCategories",
+    "function buildFactMappingDebugReport",
+    "function renderFactMappingDebug"
+  ]) {
+    assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  for (const rawFact of [
+    "layout_shift",
+    "forced_reflow",
+    "vdom_commit",
+    "vdom_diff",
+    "css_rule_insert",
+    "forced_style_recalc",
+    "a11y_break",
+    "js_event_loop_render",
+    "js_promise_chain",
+    "js_fetch_start",
+    "shadow_root_created",
+    "slot_change",
+    "iframe_created",
+    "worker_message",
+    "sw_fetch",
+    "message_channel_message"
+  ]) {
+    assert.match(js, new RegExp(rawFact));
+  }
+  for (const id of ["fact-mapping-debug", "runtime-event-grid"]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /Fact Mapping Debug/);
+  assert.match(js, /rawFactMapping/);
+  assert.match(js, /No canonical registry entry matched this source\/type/);
+  assert.match(css, /\.mapping-debug-grid/);
+  assert.match(css, /\.runtime-raw-card\.unmapped/);
 });
 
 test("paid Organ9 packages have separate module pages and locked states", () => {

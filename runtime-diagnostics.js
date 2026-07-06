@@ -148,6 +148,7 @@ const elements = {
   webV2ModuleGrid: document.getElementById("web-v2-module-grid"),
   runtimeEventGrid: document.getElementById("runtime-event-grid"),
   runtimeEventSummary: document.getElementById("runtime-event-summary"),
+  factMappingDebug: document.getElementById("fact-mapping-debug"),
   moduleTabs: document.getElementById("module-tabs"),
   moduleDetail: document.getElementById("module-detail"),
   dashboardModeLabel: document.getElementById("dashboard-mode-label"),
@@ -379,6 +380,103 @@ const PACKAGE_RUNTIME_EVENT_MAP = Object.freeze({
   Analytics: ["Interaction", "Communication", "Persistence"],
   "OEM / Platform": RUNTIME_EVENT_CATEGORIES.map(category => category.name)
 });
+const RAW_FACT_MAPPING_REGISTRY_VERSION = "atrinit-raw-fact-registry-v1";
+const RAW_FACT_TO_SIG9_ORGAN = Object.freeze({
+  layout_shift: ["Value"],
+  forced_reflow: ["Rhythm"],
+  layout_rhythm: ["Rhythm"],
+  layout_dependency: ["Topology"],
+  layout_type_change: ["Behavior"],
+  paint_order_change: ["Behavior"],
+  stacking_context_change: ["Topology"],
+  vdom_commit: ["Rhythm"],
+  vdom_update: ["Rhythm"],
+  vdom_diff: ["Behavior"],
+  vdom_break: ["Value"],
+  vdom_topology: ["Topology"],
+  vdom_state_change: ["Behavior"],
+  vdom_props_change: ["Behavior"],
+  css_rule_insert: ["Behavior"],
+  css_rule_delete: ["Behavior"],
+  css_animation: ["Rhythm"],
+  css_transition: ["Rhythm"],
+  style_recalc: ["Rhythm"],
+  forced_style_recalc: ["Value"],
+  cascade_conflict: ["Value"],
+  selector_conflict: ["Value"],
+  specificity_conflict: ["Value"],
+  selector_topology: ["Topology"],
+  a11y_break: ["Value"],
+  a11y_conflict: ["Value"],
+  a11y_role_change: ["Behavior"],
+  a11y_state_change: ["Behavior"],
+  a11y_topology: ["Topology"],
+  js_event_loop_render: ["Rhythm"],
+  js_event_loop_idle: ["Rhythm"],
+  js_microtask: ["Rhythm"],
+  js_promise_chain: ["Dependency"],
+  js_fetch_start: ["Flow"],
+  js_fetch_end: ["Flow"],
+  js_ws_send: ["Flow"],
+  js_ws_message: ["Flow"],
+  js_worker_message: ["Flow", "Dependency"],
+  js_block: ["Rhythm"],
+  js_error: ["Lifecycle"],
+  shadow_root_created: ["Topology"],
+  shadow_node: ["Topology"],
+  shadow_mapping: ["Topology"],
+  shadow_topology: ["Topology"],
+  slot_change: ["Behavior"],
+  iframe_created: ["Dependency"],
+  iframe_loaded: ["Flow"],
+  post_message: ["Flow", "Dependency"],
+  worker_created: ["Dependency"],
+  worker_message: ["Flow"],
+  worker_post: ["Flow"],
+  sw_register: ["Dependency"],
+  sw_activated: ["Flow"],
+  sw_fetch: ["Flow", "Dependency"],
+  message_channel_created: ["Dependency"],
+  message_channel_message: ["Flow"]
+});
+const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
+  rawFactEntry("layout", ["layout_shift"], ["Presentation"], "Layout", "Layout instability changes visible presentation.", 0.96),
+  rawFactEntry("layout", ["forced_reflow", "layout_rhythm"], ["Presentation", "Synchronization"], "Layout", "Layout timing and reflow facts describe rendered timing pressure.", 0.95),
+  rawFactEntry("layout", ["layout_dependency", "stacking_context_change"], ["Presentation", "Communication"], "Layout", "Layout dependency facts describe structural relationships between rendered elements.", 0.93),
+  rawFactEntry("layout", ["layout_type_change", "paint_order_change"], ["Presentation", "Interaction"], "Layout", "Layout/paint ordering changes affect observable page behavior.", 0.9),
+  rawFactEntry("layout", ["layout_tree"], ["Presentation", "Communication"], "Layout", "Layout tree facts describe rendered topology.", 0.9),
+  rawFactEntry("vdom", ["vdom_commit", "vdom_update"], ["Presentation", "Synchronization"], "Virtual DOM", "Framework commits and updates are rendered timing events.", 0.92),
+  rawFactEntry("vdom", ["vdom_diff", "vdom_state_change", "vdom_props_change"], ["Presentation", "Interaction"], "Virtual DOM", "Framework diff, state, and prop changes alter visible behavior.", 0.92),
+  rawFactEntry("vdom", ["vdom_break"], ["Presentation", "Security"], "Virtual DOM", "VDOM breakage is a rendered integrity/value issue.", 0.88),
+  rawFactEntry("vdom", ["vdom_topology", "vdom_capability"], ["Presentation", "Communication"], "Virtual DOM", "Framework topology/capability facts describe component structure.", 0.86),
+  rawFactEntry("cssom", ["css_rule_insert", "css-rule"], ["Presentation", "Interaction"], "CSSOM", "CSS rule insertions change the visible behavior of the page.", 0.94),
+  rawFactEntry("cssom", ["css_rule_delete"], ["Presentation", "Interaction"], "CSSOM", "CSS rule deletions change the visible behavior of the page.", 0.94),
+  rawFactEntry("cssom", ["css_animation", "css_transition", "style_recalc", "stylesheet-change"], ["Presentation", "Synchronization"], "CSSOM", "Animation, transition, and style recalculation facts describe visual timing.", 0.93),
+  rawFactEntry("cssom", ["forced_style_recalc", "cascade_conflict", "selector_conflict", "specificity_conflict"], ["Presentation", "Security"], "CSSOM", "Style recalculation and cascade conflicts are presentation integrity issues.", 0.9),
+  rawFactEntry("cssom", ["selector_topology"], ["Presentation", "Communication"], "CSSOM", "Selector topology connects rendered rules to page structure.", 0.88),
+  rawFactEntry("a11y", ["a11y_break", "a11y_conflict"], ["Presentation", "Security"], "Accessibility", "Accessibility break/conflict facts describe user-facing integrity risk.", 0.92),
+  rawFactEntry("a11y", ["a11y_role_change", "a11y_state_change"], ["Presentation", "Interaction"], "Accessibility", "ARIA role/state changes alter user interaction semantics.", 0.9),
+  rawFactEntry("a11y", ["a11y_topology", "cdp_ax_tree"], ["Presentation", "Communication"], "Accessibility", "Accessibility topology describes relationships in the rendered accessibility tree.", 0.9),
+  rawFactEntry("runtime", ["js_event_loop_render", "js_event_loop_idle", "js_microtask", "js_block", "scheduling"], ["Execution", "Synchronization"], "JS Runtime", "Event loop, scheduler, and microtask facts describe execution timing.", 0.94),
+  rawFactEntry("runtime", ["js_promise_chain"], ["Execution", "Communication"], "JS Runtime", "Promise chains connect asynchronous execution paths.", 0.9),
+  rawFactEntry("runtime", ["js_fetch_start", "js_fetch_end", "js_ws_send", "js_ws_message", "js_worker_message"], ["Communication", "Execution"], "JS Runtime", "Runtime network and worker message facts connect execution to communication.", 0.94),
+  rawFactEntry("runtime", ["script-error", "unhandled-rejection", "js_error", "console"], ["Execution", "Security"], "JS Runtime", "Runtime errors and suspicious console states are execution integrity facts.", 0.9),
+  rawFactEntry("runtime", ["navigation", "page-lifecycle", "diagnostics_tick", "collector-state", "health-heartbeat", "layer_coverage"], ["Synchronization", "Execution"], "JS Runtime", "Lifecycle, diagnostic tick, and collector health facts describe runtime state coordination.", 0.86),
+  rawFactEntry("shadow", ["shadow_root_created", "shadow_node", "shadow_mapping", "shadow_topology", "shadow-root"], ["Presentation", "Communication"], "Shadow DOM", "Shadow DOM structure maps rendered components to hidden host relationships.", 0.9),
+  rawFactEntry("shadow", ["slot_change"], ["Presentation", "Interaction"], "Shadow DOM", "Slot changes alter projected component behavior.", 0.9),
+  rawFactEntry("multicontext", ["iframe_created", "worker_created", "message_channel_created"], ["Communication", "Execution"], "Frames/workers", "Frame, worker, and channel creation adds cross-context execution paths.", 0.91),
+  rawFactEntry("multicontext", ["iframe_loaded", "post_message", "worker_message", "worker_post", "message_channel_message"], ["Communication", "Resources"], "Frames/workers", "Cross-context messages and loaded frames move data/resources across boundaries.", 0.91),
+  rawFactEntry("multicontext", ["sw_register", "sw_activated", "sw_fetch", "sw_fetch_capability"], ["Resources", "Synchronization"], "Service Worker", "Service worker facts describe resource lifecycle and timing boundaries.", 0.88),
+  rawFactEntry("network", ["document-fetch", "resource-map", "request", "response", "error", "request-failed", "response-status", "resource-observed"], ["Communication", "Resources"], "Network", "Network/resource facts describe request flow and asset supply.", 0.94),
+  rawFactEntry("storage", ["storage-change", "storage-snapshot", "indexeddb-open"], ["Persistence"], "Storage", "Storage facts describe client-held state without exposing values.", 0.95),
+  rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
+  rawFactEntry("crawler", ["crawler-pattern", "crawler-behavior"], ["Security", "Synchronization"], "Crawler cadence", "Crawler-like timing and behavior facts describe suspicious cadence.", 0.88),
+  rawFactEntry("browser", ["rendered-dom-snapshot"], ["Presentation"], "Rendered browser", "Rendered browser snapshots describe what the secure runtime saw on the page.", 0.86),
+  rawFactEntry("web_bloomberg", ["behavior-window"], ["Synchronization", "Execution", "Communication"], "Web Bloomberg", "Behavior windows aggregate timing, execution, and communication pressure.", 0.88),
+  rawFactEntry("dom", ["mutation-burst", "element-change", "attribute-change", "text-change", "structure-snapshot", "calendar-structure", "iframe-observed", "shadow-root"], ["Presentation", "Interaction"], "DOM", "DOM facts describe visible structure and user-facing page changes.", 0.93),
+  rawFactEntry("performance", ["long-task"], ["Execution", "Synchronization"], "Performance", "Long task facts describe main-thread execution pressure.", 0.92)
+]);
+const RAW_FACT_MAPPING_BY_KEY = Object.freeze(buildRawFactMappingIndex(RAW_FACT_REGISTRY_ENTRIES));
 const RANKING_BOARDS = Object.freeze([
   { id: "overall", name: "Overall", subtitle: "Weighted score across SIG9 commercial packages and Web Version 2 modules." },
   ...PACKAGE_DEFINITIONS.map(definition => ({ id: definition.id, name: definition.name, subtitle: definition.promise, boardKind: "package" })),
@@ -1482,6 +1580,7 @@ async function exportStandaloneJson() {
     const response = await fetch("/api/runtime-diagnostics/export");
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error || `Export failed with HTTP ${response.status}`);
+    payload.rawFactMapping = snapshot ? buildFactMappingDebugReport(snapshot) : null;
     downloadJson(payload, "standalone-runtime-diagnostics");
     setExportStatus("Standalone diagnostics JSON exported from backend memory.", "success");
   } catch (error) {
@@ -1744,27 +1843,101 @@ function buildSnapshot(data) {
 }
 
 function summarizeRuntimeEvents(items = []) {
-  const byCategory = Object.fromEntries(RUNTIME_EVENT_CATEGORIES.map(category => [category.name, { ...category, count: 0, latest: 0, channels: new Set() }]));
+  const byCategory = Object.fromEntries(RUNTIME_EVENT_CATEGORIES.map(category => [category.name, { ...category, count: 0, latest: 0, channels: new Set(), rawFacts: new Map() }]));
+  const mappedFacts = [];
+  const unmappedFacts = [];
   for (const item of items) {
-    for (const category of runtimeEventCategoriesForFact(item)) {
+    const mapping = mapRawRuntimeFact(item);
+    mappedFacts.push(mapping);
+    if (mapping.status !== "mapped") unmappedFacts.push(mapping);
+    for (const category of mapping.categories) {
       if (!byCategory[category]) continue;
       byCategory[category].count += 1;
       byCategory[category].latest = Math.max(byCategory[category].latest, Number(item.time || item.fact?.timestamp) || 0);
       if (item.channel) byCategory[category].channels.add(item.channel);
+      const existing = byCategory[category].rawFacts.get(mapping.key) || {
+        key: mapping.key,
+        channel: mapping.channel,
+        source: mapping.source,
+        type: mapping.type,
+        sourceModule: mapping.sourceModule,
+        organs: mapping.organs,
+        status: mapping.status,
+        reason: mapping.reason,
+        confidence: mapping.confidence,
+        count: 0,
+        latest: 0
+      };
+      existing.count += 1;
+      existing.latest = Math.max(existing.latest, Number(item.time || item.fact?.timestamp) || 0);
+      byCategory[category].rawFacts.set(mapping.key, existing);
     }
   }
   const categories = Object.values(byCategory).map(category => ({
     ...category,
-    channels: [...category.channels].slice(0, 8)
+    channels: [...category.channels].slice(0, 8),
+    rawFacts: [...category.rawFacts.values()]
+      .sort((left, right) => right.count - left.count || right.latest - left.latest)
+      .slice(0, 8)
   }));
   return {
+    registryVersion: RAW_FACT_MAPPING_REGISTRY_VERSION,
     categories,
     activeCount: categories.filter(category => category.count > 0).length,
-    totalFacts: items.length
+    totalFacts: items.length,
+    mappedFacts,
+    unmappedFacts,
+    sourceTypeCoverage: summarizeRawFactCoverage(mappedFacts)
   };
 }
 
 function runtimeEventCategoriesForFact(item = {}) {
+  const mapping = mapRawRuntimeFact(item);
+  return mapping.categories;
+}
+
+function mapRawRuntimeFact(item = {}) {
+  const fact = item.fact || item;
+  const source = String(fact.source || "").toLowerCase();
+  const type = String(fact.type || "").toLowerCase();
+  const channel = String(item.channel || fact.channel || `${source}/${type}`).toLowerCase();
+  const normalizedType = normalizeRawFactType(type);
+  const key = `${source}/${normalizedType}`;
+  const registryEntry = RAW_FACT_MAPPING_BY_KEY[key] || RAW_FACT_MAPPING_BY_KEY[normalizedType] || RAW_FACT_MAPPING_BY_KEY[channel];
+  if (registryEntry) {
+    return {
+      registryVersion: RAW_FACT_MAPPING_REGISTRY_VERSION,
+      status: "mapped",
+      key,
+      channel,
+      source,
+      type: normalizedType,
+      categories: registryEntry.categories,
+      organs: registryEntry.organs,
+      sourceModule: registryEntry.sourceModule,
+      screenshotModuleLayer: registryEntry.screenshotModuleLayer,
+      confidence: registryEntry.confidence,
+      reason: registryEntry.reason
+    };
+  }
+  const fallback = fallbackRuntimeFactCategories(item);
+  return {
+    registryVersion: RAW_FACT_MAPPING_REGISTRY_VERSION,
+    status: "unmapped",
+    key,
+    channel,
+    source,
+    type: normalizedType,
+    categories: fallback.categories,
+    organs: fallback.organs,
+    sourceModule: source || "unknown",
+    screenshotModuleLayer: "Unmapped Recent Facts fallback",
+    confidence: fallback.confidence,
+    reason: fallback.reason
+  };
+}
+
+function fallbackRuntimeFactCategories(item = {}) {
   const fact = item.fact || item;
   const source = String(fact.source || "").toLowerCase();
   const type = String(fact.type || "").toLowerCase();
@@ -1781,7 +1954,77 @@ function runtimeEventCategoriesForFact(item = {}) {
   if (/resource|asset|image|stylesheet|font|cdn|service-worker|sw_fetch|supply|script-src|preload/.test(payloadText)) categories.add("Resources");
   if (/compute|wasm|webassembly|webgpu|gpu|ai|inference|embedding|model|tensor|ml/.test(payloadText)) categories.add("Compute");
   if (!categories.size) categories.add("Execution");
-  return [...categories];
+  return {
+    categories: [...categories],
+    organs: [inferFallbackOrgan(source, type)],
+    confidence: 0.42,
+    reason: "No canonical registry entry matched this source/type; regex fallback kept it visible for debugging."
+  };
+}
+
+function rawFactEntry(source, types, categories, sourceModule, reason, confidence = 0.85) {
+  const sourceKey = String(source || "").toLowerCase();
+  const cleanCategories = uniqueRuntimeNames(categories, RUNTIME_EVENT_CATEGORIES.map(category => category.name));
+  const entries = [];
+  for (const rawType of types) {
+    const type = normalizeRawFactType(rawType);
+    const organs = RAW_FACT_TO_SIG9_ORGAN[type] || [inferFallbackOrgan(sourceKey, type)];
+    entries.push({
+      key: `${sourceKey}/${type}`,
+      source: sourceKey,
+      type,
+      aliases: [type, `${sourceKey}/${type}`],
+      categories: cleanCategories,
+      organs,
+      sourceModule,
+      screenshotModuleLayer: `${sourceModule} raw fact layer`,
+      confidence,
+      reason
+    });
+  }
+  return entries;
+}
+
+function buildRawFactMappingIndex(groups) {
+  const index = {};
+  for (const group of groups.flat()) {
+    index[group.key] = group;
+    for (const alias of group.aliases || []) index[String(alias).toLowerCase()] = group;
+  }
+  return index;
+}
+
+function normalizeRawFactType(value) {
+  return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
+}
+
+function uniqueRuntimeNames(values, allowed) {
+  const allowedSet = new Set(allowed);
+  return [...new Set(values)].filter(value => allowedSet.has(value));
+}
+
+function inferFallbackOrgan(source, type) {
+  const text = `${source}/${type}`;
+  if (/network|fetch|xhr|websocket|request|response|flow/.test(text)) return "Flow";
+  if (/resource|supply|cdn|script|image|stylesheet/.test(text)) return "Supply";
+  if (/a11y|cascade|specificity|selector|layout_shift|break|conflict/.test(text)) return "Value";
+  if (/behavior|event|click|pointer|input|post_message|change/.test(text)) return "Behavior";
+  if (/navigation|lifecycle|storage|worker|service|sw_|reload|error|rejection/.test(text)) return "Lifecycle";
+  if (/dom|shadow|topology|layout_tree|layout_dependency|structure|iframe/.test(text)) return "Topology";
+  if (/dependency|message_channel|promise|vdom/.test(text)) return "Dependency";
+  if (/rhythm|microtask|animation|transition|reflow|recalc|frame|tick/.test(text)) return "Rhythm";
+  return "Energy";
+}
+
+function summarizeRawFactCoverage(mappings = []) {
+  const byKey = new Map();
+  for (const mapping of mappings) {
+    const current = byKey.get(mapping.key) || { key: mapping.key, channel: mapping.channel, status: mapping.status, categories: mapping.categories, organs: mapping.organs, count: 0 };
+    current.count += 1;
+    current.status = current.status === "mapped" ? mapping.status : current.status;
+    byKey.set(mapping.key, current);
+  }
+  return [...byKey.values()].sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
 }
 
 function runtimeEventCount(model, names = []) {
@@ -2062,6 +2305,7 @@ function renderWebV2Taxonomy(model) {
   }).join("");
   elements.runtimeEventGrid.innerHTML = summary.categories.map(category => {
     const organs = RUNTIME_EVENT_TO_SIG9_ORGANS[category.name] || [];
+    const rawFacts = category.rawFacts || [];
     const mappedSystems = screenshotModuleSystemsForRuntimeEvent(category.name, model);
     const mappedModules = mappedSystems.map(system => system.label);
     const active = category.count > 0;
@@ -2071,14 +2315,15 @@ function renderWebV2Taxonomy(model) {
         <strong>${escapeHtml(category.name)}</strong>
         <p>${escapeHtml(category.detail)}</p>
         <small>${category.count} ${category.count === 1 ? "fact" : "facts"}${category.latest ? ` - latest ${escapeHtml(new Date(category.latest).toLocaleTimeString())}` : ""}</small>
-        <div class="mapped-module-list"><b>Translated raw modules:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>None</code>"}</div>
+        <div class="mapped-module-list"><b>Profile sources:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>Waiting</code>"}</div>
         <div class="runtime-raw-stack">
-          ${mappedSystems.map(system => renderRuntimeMappedRawData(system)).join("") || `<div class="runtime-raw-card empty-raw">No screenshot-module data maps here yet.</div>`}
+          ${rawFacts.map(renderRuntimeMappedRawFact).join("") || `<div class="runtime-raw-card empty-raw">No Recent Facts have mapped into this profile category yet.</div>`}
         </div>
         <div class="event-tags">${(category.channels || []).slice(0, 4).map(channel => `<code>${escapeHtml(readableChannel(channel))}</code>`).join("") || "<code>Waiting</code>"}</div>
       </article>
     `;
   }).join("");
+  renderFactMappingDebug(model, summary);
 }
 
 function renderRuntimeMappedRawData(system) {
@@ -2089,6 +2334,61 @@ function renderRuntimeMappedRawData(system) {
       <p>${escapeHtml(system.detail)}</p>
     </div>
   `;
+}
+
+function renderRuntimeMappedRawFact(rawFact) {
+  return `
+    <div class="runtime-raw-card ${rawFact.status === "mapped" ? "active" : "unmapped"}">
+      <span>${escapeHtml(rawFact.sourceModule || rawFact.source || "Recent Fact")}</span>
+      <strong>${escapeHtml(rawFact.channel || rawFact.key)}</strong>
+      <p>${escapeHtml(rawFact.reason || "Mapped through the raw fact registry.")}</p>
+      <small>${rawFact.count} ${rawFact.count === 1 ? "fact" : "facts"} - ${escapeHtml((rawFact.organs || []).join(" / ") || "No organ")} - ${Math.round((rawFact.confidence || 0) * 100)}%</small>
+    </div>
+  `;
+}
+
+function renderFactMappingDebug(model, summary = null) {
+  if (!elements.factMappingDebug) return;
+  const report = buildFactMappingDebugReport(model, summary);
+  const coverageRows = report.sourceTypeCoverage.slice(0, 36).map(item => `
+    <tr>
+      <td><code>${escapeHtml(item.key)}</code></td>
+      <td>${escapeHtml(item.status)}</td>
+      <td>${escapeHtml((item.categories || []).join(" / "))}</td>
+      <td>${escapeHtml((item.organs || []).join(" / "))}</td>
+      <td>${item.count}</td>
+    </tr>
+  `).join("");
+  elements.factMappingDebug.innerHTML = `
+    <article class="mapping-debug-card">
+      <span>Registry</span>
+      <strong>${escapeHtml(report.registryVersion)}</strong>
+      <p>${report.totalFacts} facts checked, ${report.unmappedFacts.length} unmapped fallback facts, ${report.mappedFacts.length} total mapping decisions.</p>
+    </article>
+    <article class="mapping-debug-card">
+      <span>Category totals</span>
+      <strong>${report.categoryTotals.map(item => `${item.name}:${item.count}`).join("  ")}</strong>
+      <p>Counts can exceed total facts because multi-category facts are intentionally preserved.</p>
+    </article>
+    <div class="table-wrap mapping-debug-table">
+      <table>
+        <thead><tr><th>Raw fact</th><th>Status</th><th>Atrinit categories</th><th>SIG9 organ</th><th>Count</th></tr></thead>
+        <tbody>${coverageRows || `<tr><td colspan="5" class="empty">No raw facts have arrived yet.</td></tr>`}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function buildFactMappingDebugReport(model, summary = null) {
+  const runtimeSummary = summary || model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []);
+  return {
+    registryVersion: RAW_FACT_MAPPING_REGISTRY_VERSION,
+    totalFacts: model.facts?.length || 0,
+    categoryTotals: (runtimeSummary.categories || []).map(category => ({ name: category.name, count: category.count })),
+    mappedFacts: runtimeSummary.mappedFacts || [],
+    unmappedFacts: runtimeSummary.unmappedFacts || [],
+    sourceTypeCoverage: runtimeSummary.sourceTypeCoverage || []
+  };
 }
 
 function normalizeLayerCoverage(rawCoverage, facts = []) {
@@ -3405,9 +3705,12 @@ async function exportJson() {
       "organFrequencySpectrumState",
       "organFrequencySpectrumLatest"
     ]);
+    const exportSnapshot = snapshot || buildSnapshot(data);
+    const mappingReport = buildFactMappingDebugReport(exportSnapshot);
     downloadJson(scrubExportValue({
       exportedAt: new Date().toISOString(),
       kind: "runtime-diagnostics",
+      rawFactMapping: mappingReport,
       webVersion2: {
         modules: WEB_V2_MODULES,
         runtimeEventCategories: RUNTIME_EVENT_CATEGORIES,
@@ -3494,6 +3797,7 @@ function summarizeSnapshotForExport(model) {
     channels,
     severities,
     latest: model.latest ? scrubExportValue(model.latest) : null,
+    rawFactMapping: scrubExportValue(buildFactMappingDebugReport(model)),
     structuralPipeline: scrubExportValue(model.pipeline || {}),
     organPipeline: scrubExportValue(model.organPipeline || {}),
     organFrequencySpectrum: scrubExportValue(model.organFrequencySpectrum || {}),
