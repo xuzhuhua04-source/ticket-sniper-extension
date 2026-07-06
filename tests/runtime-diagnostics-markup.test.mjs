@@ -126,6 +126,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
     "const PACKAGE_RUNTIME_EVENT_MAP = Object.freeze",
     "function runtimeEventCategoriesForFact",
     "function buildRuntimeFactLedger",
+    "function buildStandaloneAggregateDiagnostics",
     "function summarizeRuntimeEvents",
     "function runtimeFactSubcategory",
     "function renderRuntimeFactSubcategory",
@@ -148,6 +149,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /function renderRuntimeMappedRawData/);
   assert.match(js, /Total facts:/);
   assert.match(js, /runtimeFactHistory/);
+  assert.match(js, /\/api\/runtime-diagnostics\/export/);
   assert.match(js, /Other facts/);
   assert.match(js, /DOM changes/);
   assert.match(js, /Layout facts/);

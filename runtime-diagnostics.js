@@ -1582,8 +1582,9 @@ function isOwnStandaloneAppUrl(value) {
   }
 }
 
-function renderStandaloneResult(result) {
-  snapshot = buildSnapshot(result.diagnostics || {});
+async function renderStandaloneResult(result) {
+  const diagnosticsData = await loadStandaloneDashboardDiagnostics(result);
+  snapshot = buildSnapshot(diagnosticsData);
   upsertRankingSampleFromResult(result, snapshot, "live-analysis");
   renderSummary(snapshot);
   renderPlainEnglishSummary(snapshot);
@@ -1600,6 +1601,41 @@ function renderStandaloneResult(result) {
   elements.latestHost.textContent = result.diagnostics?.runtimeFactStatus?.host || result.finalUrl || "Standalone target";
   elements.latestTime.textContent = `Analyzed ${new Date(result.analyzedAt || Date.now()).toLocaleString()}`;
   setPortalHelp(`Analyzing ${result.finalUrl || result.requestedUrl || "target"} every second through the runtime collector bridge.`);
+}
+
+async function loadStandaloneDashboardDiagnostics(result) {
+  try {
+    const response = await fetch("/api/runtime-diagnostics/export", { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    return buildStandaloneAggregateDiagnostics(payload, result);
+  } catch {
+    return result?.diagnostics || {};
+  }
+}
+
+function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null) {
+  const records = [
+    payload.latest,
+    ...(Array.isArray(payload.history) ? payload.history : [])
+  ].filter(Boolean);
+  if (!records.length && fallbackResult) records.push(fallbackResult);
+  const latest = records[0] || fallbackResult || {};
+  const runtimeFactHistory = [];
+  const runtimeFactChannels = {};
+  for (const record of records) {
+    const diagnostics = record.diagnostics || {};
+    for (const fact of diagnostics.runtimeFactHistory || []) runtimeFactHistory.push(fact);
+    for (const [channel, facts] of Object.entries(diagnostics.runtimeFactChannels || {})) {
+      runtimeFactChannels[channel] = [...(runtimeFactChannels[channel] || []), ...(facts || [])];
+    }
+  }
+  return {
+    ...(latest.diagnostics || {}),
+    runtimeFactHistory,
+    runtimeFactChannels,
+    runtimeFactStatus: latest.diagnostics?.runtimeFactStatus || latest.status || fallbackResult?.status || null
+  };
 }
 
 function setStandaloneTargetStatus(title, detail, state = "") {
