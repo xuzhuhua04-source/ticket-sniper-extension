@@ -128,6 +128,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
     "function summarizeRuntimeEvents",
     "function runtimeFactSubcategory",
     "function renderRuntimeFactSubcategory",
+    "function runtimeSubcategoryDisplayName",
     "function renderWebV2Taxonomy"
   ]) {
     assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -144,9 +145,13 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /function screenshotModulesForRuntimeEvent/);
   assert.match(js, /function screenshotModuleSystemsForRuntimeEvent/);
   assert.match(js, /function renderRuntimeMappedRawData/);
-  assert.match(js, /Raw evidence/);
-  assert.match(js, /total \$\{category\.count === 1 \? "fact" : "facts"\}/);
-  assert.match(js, /No Recent Facts have mapped into this profile category yet/);
+  assert.match(js, /Total facts:/);
+  assert.match(js, /DOM changes/);
+  assert.match(js, /Layout facts/);
+  assert.match(js, /CSSOM changes/);
+  assert.match(js, /VDOM changes/);
+  assert.match(js, /No facts yet/);
+  assert.doesNotMatch(js, /Raw evidence:/);
   assert.doesNotMatch(js, /observations/);
   assert.doesNotMatch(js, /No organ/);
   assert.match(js, /function buildWebV2AnalysisFromModel/);
@@ -155,10 +160,9 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /Web Version 2 Scores/);
   assert.match(js, /Commercial Package Scores/);
   assert.match(css, /\.web-v2-taxonomy/);
-  assert.match(css, /\.mapped-module-list/);
   assert.match(css, /\.runtime-profile-total/);
   assert.match(css, /\.runtime-subcategory-stack/);
-  assert.match(css, /\.runtime-subcategory-card/);
+  assert.match(css, /\.runtime-subcategory-line/);
   assert.match(css, /\.runtime-raw-card/);
   assert.match(css, /\.runtime-event-card\.active/);
 });

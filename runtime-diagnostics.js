@@ -2389,21 +2389,15 @@ function renderWebV2Taxonomy(model) {
     `;
   }).join("");
   elements.runtimeEventGrid.innerHTML = summary.categories.map(category => {
-    const organs = RUNTIME_EVENT_TO_SIG9_ORGANS[category.name] || [];
     const subcategories = category.subcategories || [];
-    const mappedSystems = screenshotModuleSystemsForRuntimeEvent(category.name, model);
-    const mappedModules = mappedSystems.map(system => system.label);
     const active = category.count > 0;
     return `
       <article class="runtime-event-card ${active ? "active" : ""}">
-        <span>${escapeHtml(organs.join(" / ") || "Runtime")}</span>
         <strong>${escapeHtml(category.name)}</strong>
-        <p class="runtime-profile-total"><b>${category.count}</b> total ${category.count === 1 ? "fact" : "facts"}${category.latest ? ` - latest ${escapeHtml(new Date(category.latest).toLocaleTimeString())}` : ""}</p>
-        <div class="mapped-module-list"><b>Raw evidence:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>Waiting</code>"}</div>
+        <p class="runtime-profile-total">Total facts: <b>${category.count}</b></p>
         <div class="runtime-subcategory-stack">
-          ${subcategories.map(renderRuntimeFactSubcategory).join("") || `<div class="runtime-raw-card empty-raw">No Recent Facts have mapped into this profile category yet.</div>`}
+          ${subcategories.map(renderRuntimeFactSubcategory).join("") || `<div class="runtime-empty-line">No facts yet</div>`}
         </div>
-        <div class="event-tags">${(category.channels || []).slice(0, 4).map(channel => `<code>${escapeHtml(readableChannel(channel))}</code>`).join("") || "<code>Waiting</code>"}</div>
       </article>
     `;
   }).join("");
@@ -2421,16 +2415,32 @@ function renderRuntimeMappedRawData(system) {
 }
 
 function renderRuntimeFactSubcategory(subcategory) {
-  const latest = subcategory.latest ? new Date(subcategory.latest).toLocaleTimeString() : "not seen yet";
   return `
-    <div class="runtime-subcategory-card">
-      <div class="runtime-subcategory-head">
-        <strong>${escapeHtml(subcategory.name)}</strong>
-        <span>${subcategory.count} ${subcategory.count === 1 ? "fact" : "facts"}</span>
-      </div>
-      <small>latest ${escapeHtml(latest)}</small>
+    <div class="runtime-subcategory-line">
+      <span>${escapeHtml(runtimeSubcategoryDisplayName(subcategory.name))}:</span>
+      <b>${subcategory.count}</b>
     </div>
   `;
+}
+
+function runtimeSubcategoryDisplayName(name) {
+  const normalized = String(name || "").toLowerCase();
+  const labels = {
+    "dom": "DOM changes",
+    "layout": "Layout facts",
+    "cssom": "CSSOM changes",
+    "virtual dom": "VDOM changes",
+    "accessibility": "Accessibility facts",
+    "js runtime": "JS runtime",
+    "shadow dom": "Shadow DOM facts",
+    "frames / workers": "Worker facts",
+    "network": "Network facts",
+    "storage": "Storage facts",
+    "security / crawler": "Security facts",
+    "rendered browser": "Rendered facts",
+    "signal windows": "Signal windows"
+  };
+  return labels[normalized] || name || "Other facts";
 }
 
 function renderFactMappingDebug(model, summary = null) {
