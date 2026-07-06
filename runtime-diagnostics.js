@@ -1842,7 +1842,7 @@ function renderDiagnosticsToggle() {
 
 function buildSnapshot(data) {
   const runtimeFactChannels = data.runtimeFactChannels || {};
-  const facts = Object.entries(runtimeFactChannels).flatMap(([channel, items]) => (items || []).map(fact => ({ channel, fact })));
+  const facts = buildRuntimeFactLedger(data);
   const crawlerFacts = [
     ...(data.crawlerSignalHistory || []).map(status => ({ channel: `crawler/${status.fact?.type || "signal"}`, fact: status.fact, status })),
     ...(data.crawlerSignalStatus?.fact ? [{ channel: `crawler/${data.crawlerSignalStatus.fact.type || "signal"}`, fact: data.crawlerSignalStatus.fact, status: data.crawlerSignalStatus }] : [])
@@ -1874,6 +1874,30 @@ function buildSnapshot(data) {
   };
   if (!organFrequencySpectrum.state && all.length) organFrequencySpectrum.state = buildFrequencySpectrumFromFacts(all);
   return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, layerCoverage: normalizeLayerCoverage(data.runtimeLayerCoverage, all) };
+}
+
+function buildRuntimeFactLedger(data = {}) {
+  const runtimeFactChannels = data.runtimeFactChannels || {};
+  const fromChannels = Object.entries(runtimeFactChannels)
+    .flatMap(([channel, items]) => (items || []).map(fact => ({ channel, fact })));
+  const fromHistory = (data.runtimeFactHistory || [])
+    .filter(Boolean)
+    .map(fact => ({ channel: fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`, fact }));
+  const seen = new Set();
+  return [...fromChannels, ...fromHistory].filter(item => {
+    const fact = item.fact || {};
+    const key = [
+      item.channel || "",
+      fact.source || "",
+      fact.type || "",
+      fact.timestamp || "",
+      fact.context?.pageUrl || "",
+      fact.value?.signature || fact.value?.href || fact.value?.selector || fact.value?.url || ""
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function summarizeRuntimeEvents(items = []) {
@@ -1958,6 +1982,7 @@ function summarizeRuntimeEvents(items = []) {
 }
 
 function runtimeFactSubcategory(mapping = {}) {
+  if (mapping.status !== "mapped") return "Other facts";
   if (mapping.sourceModule) return mapping.sourceModule;
   const source = String(mapping.source || "").toLowerCase();
   if (source === "dom") return "DOM";
