@@ -145,6 +145,9 @@ const elements = {
   webBloombergDependencies: document.getElementById("web-bloomberg-dependencies"),
   webBloombergWindowCount: document.getElementById("web-bloomberg-window-count"),
   webBloombergWindows: document.getElementById("web-bloomberg-windows"),
+  webV2ModuleGrid: document.getElementById("web-v2-module-grid"),
+  runtimeEventGrid: document.getElementById("runtime-event-grid"),
+  runtimeEventSummary: document.getElementById("runtime-event-summary"),
   moduleTabs: document.getElementById("module-tabs"),
   moduleDetail: document.getElementById("module-detail"),
   dashboardModeLabel: document.getElementById("dashboard-mode-label"),
@@ -169,6 +172,7 @@ let activeModule = normalizePlanId(localStorage.getItem("runtimeDiagnosticsActiv
 let activeRankingBoard = localStorage.getItem("runtimeDiagnosticsRankingBoard") || "overall";
 let rankingLedger = [];
 let rankingCrawlerStatus = null;
+let currentScreenshotModuleSystems = [];
 let activeLanguage = normalizeLanguage(localStorage.getItem(globalThis.SIG9_LANGUAGE_STORAGE_KEY || "SIG9WebsiteLanguage") || navigator.language || "en");
 let languageObserver = null;
 let localizingText = false;
@@ -259,9 +263,126 @@ const PACKAGE_DEFINITIONS = Object.freeze([
     capabilities: ["All V1 organs", "Terminal model", "API exports", "Enterprise embedding"]
   }
 ]);
+const WEB_V2_MODULES = Object.freeze([
+  {
+    id: "web-activity-intelligence",
+    marketName: "Web Activity Intelligence",
+    sourceUi: "Energy / Supply",
+    structuralMapping: "Behavior",
+    runtimeEvents: ["Interaction", "Execution", "Resources"],
+    metrics: ["Activity Load", "Activity Density", "Activity Intensity", "Activity Anomalies"]
+  },
+  {
+    id: "web-rhythm-engine",
+    marketName: "Web Rhythm Engine",
+    sourceUi: "Frequency / Frequency Spectrum Graph",
+    structuralMapping: "Frequency",
+    runtimeEvents: ["Presentation", "Resources", "Execution", "Synchronization"],
+    metrics: ["Request Rhythm", "Latency Rhythm", "Error Rhythm", "Burst Rhythm"]
+  },
+  {
+    id: "web-dependency-graph",
+    marketName: "Web Dependency Graph",
+    sourceUi: "Topology",
+    structuralMapping: "Dependency",
+    runtimeEvents: ["Communication", "Execution", "Resources"],
+    metrics: ["Service Topology", "API Topology", "Resource Topology", "Failure Propagation"]
+  },
+  {
+    id: "web-risk-surface",
+    marketName: "Web Risk Surface",
+    sourceUi: "Structural Pipeline",
+    structuralMapping: "Risk",
+    runtimeEvents: ["Security", "Communication", "Execution"],
+    metrics: ["Risk Clusters", "Risk Propagation", "Risk Density", "Risk Prediction"]
+  },
+  {
+    id: "web-flow-map",
+    marketName: "Web Flow Map",
+    sourceUi: "Organ Structural Rendering",
+    structuralMapping: "Geometry",
+    runtimeEvents: ["Communication", "Presentation", "Interaction"],
+    metrics: ["Flow Topology", "Flow Shape", "Flow Anomalies", "Flow Folding"]
+  },
+  {
+    id: "web-time-dynamics",
+    marketName: "Web Time Dynamics",
+    sourceUi: "Version 2 module",
+    structuralMapping: "Time",
+    runtimeEvents: ["Synchronization", "Execution", "Resources"],
+    metrics: ["Time Density", "Time Folding", "Event Time", "Burst Time"]
+  },
+  {
+    id: "web-influence-map",
+    marketName: "Web Influence Map",
+    sourceUi: "Version 2 module",
+    structuralMapping: "Coupling",
+    runtimeEvents: ["Execution", "Communication", "Security"],
+    metrics: ["Service Influence", "Latency Influence", "Behavior Influence", "Risk Influence"]
+  },
+  {
+    id: "web-state-evolution",
+    marketName: "Web State Evolution",
+    sourceUi: "Version 2 module",
+    structuralMapping: "Evolution",
+    runtimeEvents: ["Synchronization", "Persistence", "Presentation"],
+    metrics: ["State Transitions", "State Drift", "State Velocity", "Evolution Prediction"]
+  },
+  {
+    id: "web-signal-compression",
+    marketName: "Web Signal Compression",
+    sourceUi: "Version 2 module",
+    structuralMapping: "Compression",
+    runtimeEvents: ["Compute", "Presentation", "Security", "Communication"],
+    metrics: ["Behavior Compression", "Risk Compression", "Flow Compression", "Dependency Compression"]
+  }
+]);
+const RUNTIME_EVENT_CATEGORIES = Object.freeze([
+  { name: "Interaction", detail: "User and page interaction events: clicks, input, pointer, keyboard, focus, and event dispatch." },
+  { name: "Presentation", detail: "Rendered surface events: DOM, layout, CSSOM, Shadow DOM, VDOM, paint, and accessibility structure." },
+  { name: "Communication", detail: "Network and cross-context movement: fetch, XHR, WebSocket, frames, postMessage, and channels." },
+  { name: "Synchronization", detail: "Timing coordination: timers, rAF, microtasks, Promise chains, lifecycle, and scheduling drift." },
+  { name: "Persistence", detail: "Client-held state: storage, cookies, IndexedDB, Cache API, history state, and session markers." },
+  { name: "Execution", detail: "Runtime execution: JavaScript, workers, errors, long tasks, scripts, framework hooks, and console facts." },
+  { name: "Security", detail: "Protection and risk surface: CAPTCHA, anti-bot, auth, challenge, policy, and suspicious runtime pressure." },
+  { name: "Resources", detail: "Assets and supply path: scripts, images, stylesheets, CDN, Service Worker, and resource timing." },
+  { name: "Compute", detail: "Heavy local processing: WASM, WebGPU, GPU jitter, AI-like inference, embedding, and model-loading signals." }
+]);
+const UI_RUNTIME_EVENT_MAP = Object.freeze({
+  "Signal Quality": RUNTIME_EVENT_CATEGORIES.map(category => category.name),
+  "Layer Coverage": ["Presentation", "Execution", "Resources", "Communication"],
+  "Channels Graph": ["Communication"],
+  "Technology Profile": ["Execution", "Persistence", "Communication", "Security"],
+  "Structural Pipeline": RUNTIME_EVENT_CATEGORIES.map(category => category.name),
+  "SIG9 Graph": ["SIG9 organ layer"],
+  "Frequency Spectrum": ["Security", "Compute", "Presentation", "Execution"],
+  "Commercial Package Suite": ["Resources", "Execution", "Synchronization", "Security", "Communication", "Presentation", "Compute"],
+  "Structure Engine": RUNTIME_EVENT_CATEGORIES.map(category => category.name),
+  "Recent Facts": RUNTIME_EVENT_CATEGORIES.map(category => category.name)
+});
+const RUNTIME_EVENT_TO_SIG9_ORGANS = Object.freeze({
+  Interaction: ["Behavior"],
+  Presentation: ["Rhythm", "Compression"],
+  Communication: ["Flow"],
+  Synchronization: ["Time", "State"],
+  Persistence: ["State"],
+  Execution: ["Influence", "Dependency"],
+  Security: ["Risk"],
+  Resources: ["Dependency", "Rhythm"],
+  Compute: ["Influence", "Compression"]
+});
+const PACKAGE_RUNTIME_EVENT_MAP = Object.freeze({
+  DevOps: ["Resources", "Execution", "Synchronization"],
+  Security: ["Security", "Communication"],
+  Performance: ["Presentation", "Resources", "Execution"],
+  "AI Governance": ["Compute", "Execution"],
+  Analytics: ["Interaction", "Communication", "Persistence"],
+  "OEM / Platform": RUNTIME_EVENT_CATEGORIES.map(category => category.name)
+});
 const RANKING_BOARDS = Object.freeze([
-  { id: "overall", name: "Overall", subtitle: "Weighted score across all five SIG9 packages." },
-  ...PACKAGE_DEFINITIONS.map(definition => ({ id: definition.id, name: definition.name, subtitle: definition.promise }))
+  { id: "overall", name: "Overall", subtitle: "Weighted score across SIG9 commercial packages and Web Version 2 modules." },
+  ...PACKAGE_DEFINITIONS.map(definition => ({ id: definition.id, name: definition.name, subtitle: definition.promise, boardKind: "package" })),
+  ...WEB_V2_MODULES.map(module => ({ id: module.id, name: module.marketName, subtitle: `${module.structuralMapping} view: ${module.metrics.join(", ")}`, boardKind: "web-v2" }))
 ]);
 const RANKING_SEED_VERSION = "2026-07-04-expanded-01";
 const BENCHMARK_SEED_RANKINGS = Object.freeze([
@@ -1596,6 +1717,7 @@ function buildSnapshot(data) {
   const all = [...facts, ...crawlerFacts]
     .map(item => ({ ...item, severity: factSeverity(item.fact), time: Number(item.fact.timestamp) || 0 }))
     .sort((left, right) => right.time - left.time);
+  const runtimeEventSummary = summarizeRuntimeEvents(all);
   const latest = data.runtimeFactStatus || data.crawlerSignalStatus || data.structuralMonitorStatus || null;
   const pipeline = {
     state: data.structuralPipelineState || null,
@@ -1618,7 +1740,54 @@ function buildSnapshot(data) {
     latest: data.organFrequencySpectrumLatest || null
   };
   if (!organFrequencySpectrum.state && all.length) organFrequencySpectrum.state = buildFrequencySpectrumFromFacts(all);
-  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, layerCoverage: normalizeLayerCoverage(data.runtimeLayerCoverage, all) };
+  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, layerCoverage: normalizeLayerCoverage(data.runtimeLayerCoverage, all) };
+}
+
+function summarizeRuntimeEvents(items = []) {
+  const byCategory = Object.fromEntries(RUNTIME_EVENT_CATEGORIES.map(category => [category.name, { ...category, count: 0, latest: 0, channels: new Set() }]));
+  for (const item of items) {
+    for (const category of runtimeEventCategoriesForFact(item)) {
+      if (!byCategory[category]) continue;
+      byCategory[category].count += 1;
+      byCategory[category].latest = Math.max(byCategory[category].latest, Number(item.time || item.fact?.timestamp) || 0);
+      if (item.channel) byCategory[category].channels.add(item.channel);
+    }
+  }
+  const categories = Object.values(byCategory).map(category => ({
+    ...category,
+    channels: [...category.channels].slice(0, 8)
+  }));
+  return {
+    categories,
+    activeCount: categories.filter(category => category.count > 0).length,
+    totalFacts: items.length
+  };
+}
+
+function runtimeEventCategoriesForFact(item = {}) {
+  const fact = item.fact || item;
+  const source = String(fact.source || "").toLowerCase();
+  const type = String(fact.type || "").toLowerCase();
+  const channel = String(item.channel || fact.channel || `${source}/${type}`).toLowerCase();
+  const payloadText = `${source} ${type} ${channel} ${JSON.stringify(fact.value || {})} ${JSON.stringify(fact.metadata || {})}`.toLowerCase();
+  const categories = new Set();
+  if (/interaction|click|input|pointer|mouse|keyboard|focus|blur|submit|touch|gesture|event-listener/.test(payloadText)) categories.add("Interaction");
+  if (/dom|layout|cssom|style|paint|render|shadow|vdom|accessibility|a11y|aria|slot|component|presentation/.test(payloadText)) categories.add("Presentation");
+  if (/network|fetch|xhr|websocket|ws|sendbeacon|iframe|frame|post_message|messagechannel|channel|request|response|communication/.test(payloadText)) categories.add("Communication");
+  if (/timer|interval|timeout|raf|animationframe|microtask|promise|scheduler|lifecycle|navigation|visibility|sync|heartbeat/.test(payloadText)) categories.add("Synchronization");
+  if (/storage|cookie|indexeddb|cache|session|localstorage|persistence|history-state/.test(payloadText)) categories.add("Persistence");
+  if (/runtime|javascript|script|worker|console|error|rejection|long.?task|task|execution|framework|vue|react|svelte/.test(payloadText)) categories.add("Execution");
+  if (/security|captcha|challenge|bot|protection|cloudflare|akamai|perimeterx|datadome|imperva|auth|policy|risk/.test(payloadText)) categories.add("Security");
+  if (/resource|asset|image|stylesheet|font|cdn|service-worker|sw_fetch|supply|script-src|preload/.test(payloadText)) categories.add("Resources");
+  if (/compute|wasm|webassembly|webgpu|gpu|ai|inference|embedding|model|tensor|ml/.test(payloadText)) categories.add("Compute");
+  if (!categories.size) categories.add("Execution");
+  return [...categories];
+}
+
+function runtimeEventCount(model, names = []) {
+  const summary = model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []);
+  const lookup = Object.fromEntries(summary.categories.map(category => [category.name, category]));
+  return names.reduce((sum, name) => sum + (lookup[name]?.count || 0), 0);
 }
 
 function renderSummary(model) {
@@ -1661,6 +1830,7 @@ function renderPlainEnglishSummary(model) {
     : "Normal view summarizes the site for non-technical users; Dev mode exposes the full diagnostic ledger.";
   renderNormalInsights(model, { total, high, medium, channels, pressureFacts, mutationFacts, spectrum });
   renderLayerCoverageMatrix(model);
+  renderWebV2Taxonomy(model);
 }
 
 function renderOperatingStrip(model, counts = {}) {
@@ -1737,7 +1907,14 @@ function canViewLayerEvidence() {
 }
 
 function renderNormalInsights(model, context = {}) {
+  const systems = buildScreenshotModuleSystems(model, context);
+  currentScreenshotModuleSystems = systems;
   if (!elements.normalInsightGrid) return;
+  elements.normalCoverage.textContent = `${systems.filter(system => system.active).length} / ${systems.length} systems active`;
+  elements.normalInsightGrid.innerHTML = systems.map(system => renderScreenshotModuleRawCard(system)).join("");
+}
+
+function buildScreenshotModuleSystems(model, context = {}) {
   const total = context.total ?? model.facts.length;
   const channelEntries = Object.entries(model.channels || {}).map(([channel, items]) => [channel, items?.length || 0]).sort((left, right) => right[1] - left[1]);
   const topChannels = channelEntries.slice(0, 4).map(([channel, count]) => `${readableChannel(channel)} (${count})`).join(", ") || "No active channels yet";
@@ -1761,25 +1938,38 @@ function renderNormalInsights(model, context = {}) {
   const limitedCoverage = coverageValues.filter(layer => layer.status === "first_party_only" || layer.status === "blocked_by_browser").length;
   const systems = [
     {
+      label: "Signal Quality",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Signal Quality"],
+      title: model.facts.length ? `${model.facts.length} runtime facts arrived` : "No runtime events yet",
+      detail: model.facts.length
+        ? `Runtime event arrival is active across ${model.runtimeEventSummary?.activeCount || 0} of ${RUNTIME_EVENT_CATEGORIES.length} web-native categories.`
+        : "The system has not yet received Interaction, Presentation, Communication, Synchronization, Persistence, Execution, Security, Resources, or Compute events.",
+      active: model.facts.length > 0
+    },
+    {
       label: "Layer Coverage",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Layer Coverage"],
       title: `${strongCoverage} full layers, ${limitedCoverage} browser-limited`,
       detail: Object.entries(coverage).map(([name, layer]) => `${readableCoverageName(name)}: ${readableCoverageStatus(layer.status)}`).join(" | "),
       active: coverageValues.some(layer => layer.evidenceCount > 0 || layer.status === "full")
     },
     {
       label: "Channels Graph",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Channels Graph"],
       title: `${channelEntries.length} data channels`,
       detail: topChannels,
       active: channelEntries.length > 0
     },
     {
       label: "Technology Profile",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Technology Profile"],
       title: technologySignals.length ? `${technologySignals.length} technology signals` : "No technology profile yet",
       detail: technologySignals.slice(0, 3).map(signal => `${signal.name}: ${signal.detail}`).join(" ") || "Runtime Diagnostics will infer frameworks, storage, network behavior, and security signals as facts arrive.",
       active: technologySignals.length > 0
     },
     {
       label: "Structural Pipeline",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Structural Pipeline"],
       title: pipelineLatest.classification || "No structural classification yet",
       detail: pipelineLatest.classification
         ? `${pipelineLatest.category}/${pipelineLatest.signal} scored ${formatScore(pipelineLatest.score)}. Graph has ${graph.nodeCount || 0} keys and ${graph.edgeCount || 0} links.`
@@ -1788,18 +1978,21 @@ function renderNormalInsights(model, context = {}) {
     },
     {
       label: "SIG9 Graph",
+      eventCategories: ["Layer-1 organ projection"],
       title: `${organSummary.nodeCount || 0} organ facts`,
       detail: `${organSummary.edgeCount || 0} structural edges, ${organSummary.errorCount || 0} dispatch errors, ${organSummary.organCount || 9} fixed organ lanes represented.`,
       active: Boolean(organSummary.nodeCount)
     },
     {
       label: "Frequency Spectrum",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Frequency Spectrum"],
       title: `Risk ${formatScore(products.websiteRiskScore?.score || 0)}`,
       detail: `Closure ${signature}; coherence ${formatScore(closure.coherence)}; AI/protection signal ${formatScore(products.aiActivityDetection?.score || 0)}.`,
       active: Boolean(spectrum && total)
     },
     {
       label: "Commercial Package Suite",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Commercial Package Suite"],
       title: `${activePackages.length} SIG9 packages active`,
       detail: activePackages.length
         ? activePackages.map(item => `${item.name}: ${formatScore(item.score)}`).join(" ")
@@ -1808,6 +2001,7 @@ function renderNormalInsights(model, context = {}) {
     },
     {
       label: "Structure Engine",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Structure Engine"],
       title: structureEngine.prediction?.label || "No prediction yet",
       detail: structureEngine.prediction
         ? `${structureEngine.prediction.label} with confidence ${formatScore(structureEngine.prediction.confidence)}. Signature ${signature}.`
@@ -1816,19 +2010,85 @@ function renderNormalInsights(model, context = {}) {
     },
     {
       label: "Recent Facts",
+      eventCategories: UI_RUNTIME_EVENT_MAP["Recent Facts"],
       title: latestFacts.length ? `${latestFacts.length} newest facts` : "No recent facts yet",
       detail: latestFacts.join(" ") || "The live ledger will summarize recent page behavior here without requiring Dev mode.",
       active: latestFacts.length > 0
     }
   ];
-  elements.normalCoverage.textContent = `${systems.filter(system => system.active).length} / ${systems.length} systems active`;
-  elements.normalInsightGrid.innerHTML = systems.map(system => `
+  return systems;
+}
+
+function renderScreenshotModuleRawCard(system) {
+  return `
     <article class="normal-insight-card ${system.active ? "active" : ""}">
       <span>${escapeHtml(system.label)}</span>
       <strong>${escapeHtml(system.title)}</strong>
       <p>${escapeHtml(system.detail)}</p>
+      <small>${escapeHtml((system.eventCategories || []).join(" / "))}</small>
     </article>
-  `).join("");
+  `;
+}
+
+function screenshotModulesForRuntimeEvent(categoryName) {
+  return currentScreenshotModuleSystems
+    .filter(system => (system.eventCategories || []).includes(categoryName))
+    .map(system => system.label);
+}
+
+function screenshotModuleSystemsForRuntimeEvent(categoryName, model) {
+  const systems = currentScreenshotModuleSystems.length ? currentScreenshotModuleSystems : buildScreenshotModuleSystems(model || snapshot || buildSnapshot({}));
+  return systems.filter(system => (system.eventCategories || []).includes(categoryName));
+}
+
+function renderWebV2Taxonomy(model) {
+  if (!elements.webV2ModuleGrid || !elements.runtimeEventGrid) return;
+  const summary = model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []);
+  if (elements.runtimeEventSummary) {
+    elements.runtimeEventSummary.textContent = `${summary.activeCount} / ${RUNTIME_EVENT_CATEGORIES.length} runtime event categories active`;
+  }
+  elements.webV2ModuleGrid.innerHTML = WEB_V2_MODULES.map(module => {
+    const count = runtimeEventCount(model, module.runtimeEvents);
+    const active = count > 0;
+    return `
+      <article class="web-v2-card ${active ? "active" : ""}">
+        <span>${escapeHtml(module.structuralMapping)}</span>
+        <strong>${escapeHtml(module.marketName)}</strong>
+        <p>${escapeHtml(module.metrics.join(" / "))}</p>
+        <small>From ${escapeHtml(module.sourceUi)} - ${count} mapped runtime ${count === 1 ? "event" : "events"}</small>
+        <div class="event-tags">${module.runtimeEvents.map(name => `<code>${escapeHtml(name)}</code>`).join("")}</div>
+      </article>
+    `;
+  }).join("");
+  elements.runtimeEventGrid.innerHTML = summary.categories.map(category => {
+    const organs = RUNTIME_EVENT_TO_SIG9_ORGANS[category.name] || [];
+    const mappedSystems = screenshotModuleSystemsForRuntimeEvent(category.name, model);
+    const mappedModules = mappedSystems.map(system => system.label);
+    const active = category.count > 0;
+    return `
+      <article class="runtime-event-card ${active ? "active" : ""}">
+        <span>${escapeHtml(organs.join(" / ") || "Runtime")}</span>
+        <strong>${escapeHtml(category.name)}</strong>
+        <p>${escapeHtml(category.detail)}</p>
+        <small>${category.count} ${category.count === 1 ? "fact" : "facts"}${category.latest ? ` - latest ${escapeHtml(new Date(category.latest).toLocaleTimeString())}` : ""}</small>
+        <div class="mapped-module-list"><b>Translated raw modules:</b> ${mappedModules.map(name => `<code>${escapeHtml(name)}</code>`).join("") || "<code>None</code>"}</div>
+        <div class="runtime-raw-stack">
+          ${mappedSystems.map(system => renderRuntimeMappedRawData(system)).join("") || `<div class="runtime-raw-card empty-raw">No screenshot-module data maps here yet.</div>`}
+        </div>
+        <div class="event-tags">${(category.channels || []).slice(0, 4).map(channel => `<code>${escapeHtml(readableChannel(channel))}</code>`).join("") || "<code>Waiting</code>"}</div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderRuntimeMappedRawData(system) {
+  return `
+    <div class="runtime-raw-card ${system.active ? "active" : ""}">
+      <span>${escapeHtml(system.label)}</span>
+      <strong>${escapeHtml(system.title)}</strong>
+      <p>${escapeHtml(system.detail)}</p>
+    </div>
+  `;
 }
 
 function normalizeLayerCoverage(rawCoverage, facts = []) {
@@ -2073,6 +2333,7 @@ function renderCommercialPackageSuite(model) {
       <ul class="package-capabilities">
         ${(item.capabilities || []).slice(0, 4).map(capability => `<li>${escapeHtml(capability)}</li>`).join("")}
       </ul>
+      <div class="event-tags">${(item.runtimeEvents || []).map(name => `<code>${escapeHtml(name)}</code>`).join("")}</div>
       <button class="${hasPackageAccess(item.id) ? "" : "secondary"}" type="button" data-module-action="${escapeHtml(item.id)}" data-action-kind="${hasPackageAccess(item.id) ? "open-module" : "view-plans"}">
         ${hasPackageAccess(item.id) ? "Open module" : "View pricing"}
       </button>
@@ -2171,7 +2432,7 @@ function renderRankings() {
   elements.rankingTabs.innerHTML = RANKING_BOARDS.map(item => `
     <button class="ranking-tab ${item.id === board.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === board.id}" data-ranking-board="${escapeHtml(item.id)}">
       <span>${escapeHtml(item.name)}</span>
-      <small>${item.id === "overall" ? "All packages" : "Package score"}</small>
+      <small>${item.id === "overall" ? "All scores" : item.boardKind === "web-v2" ? "Web V2 score" : "Package score"}</small>
     </button>
   `).join("");
   elements.rankingTitle.textContent = `${board.name} Ranking`;
@@ -2337,6 +2598,7 @@ function renderRankingDetail(siteId, boardId = activeRankingBoard) {
   }
   elements.rankingDetail.dataset.site = sample.id;
   const score = rankingScoreForBoard(sample, boardId);
+  const activeBoard = RANKING_BOARDS.find(item => item.id === boardId) || RANKING_BOARDS[0];
   const packageRows = PACKAGE_DEFINITIONS.map(definition => {
     const unlocked = hasPackageAccess(definition.id);
     const packageScore = sample.packageScores?.[definition.id] ?? 0;
@@ -2346,6 +2608,19 @@ function renderRankingDetail(siteId, boardId = activeRankingBoard) {
         <strong>${unlocked ? formatScore(packageScore) : "Locked"}</strong>
         <p>${escapeHtml(unlocked ? packageInsight(sample, definition.id) : "Upgrade this package to view deeper evidence, matched channels, and package-specific reasoning.")}</p>
         ${unlocked ? `<small>${escapeHtml((sample.evidence?.[definition.id] || []).slice(0, 3).join(" | ") || "No package evidence yet")}</small>` : `<button class="secondary" type="button" data-ranking-upgrade="${escapeHtml(definition.id)}">Unlock package</button>`}
+      </article>
+    `;
+  }).join("");
+  const webV2Rows = WEB_V2_MODULES.map(module => {
+    const moduleScore = sample.webV2Scores?.[module.id] ?? 0;
+    const evidence = sample.webV2Evidence?.[module.id] || [];
+    const active = activeBoard.id === module.id;
+    return `
+      <article class="ranking-package ${active ? "unlocked" : ""}">
+        <span>${escapeHtml(module.structuralMapping)} - ${escapeHtml(module.marketName)}</span>
+        <strong>${formatScore(moduleScore)}</strong>
+        <p>${escapeHtml(webV2Insight(sample, module.id))}</p>
+        <small>${escapeHtml(evidence.slice(0, 3).join(" | ") || module.runtimeEvents.join(" / "))}</small>
       </article>
     `;
   }).join("");
@@ -2363,6 +2638,15 @@ function renderRankingDetail(siteId, boardId = activeRankingBoard) {
       <article><span>What changed</span><strong>${escapeHtml(sample.normal?.change || "No change sample")}</strong><p>${escapeHtml(sample.normal?.changeDetail || "Structural changes appear after runtime facts are collected.")}</p></article>
       <article><span>Pressure</span><strong>${escapeHtml(sample.normal?.pressure || "Unknown")}</strong><p>${escapeHtml(sample.normal?.pressureDetail || "Pressure is estimated from runtime evidence.")}</p></article>
       <article><span>Recommended action</span><strong>${escapeHtml(sample.normal?.action || "Monitor")}</strong><p>${escapeHtml(sample.normal?.actionDetail || "Use Normal view first; unlock paid packages for evidence.")}</p></article>
+    </div>
+    <div class="section-title compact">
+      <h3>Web Version 2 Scores</h3>
+      <span>${escapeHtml(activeBoard.boardKind === "web-v2" ? activeBoard.name : "All market modules")}</span>
+    </div>
+    <div class="ranking-package-grid">${webV2Rows}</div>
+    <div class="section-title compact">
+      <h3>Commercial Package Scores</h3>
+      <span>Paid package surfaces</span>
     </div>
     <div class="ranking-package-grid">${packageRows}</div>
   `;
@@ -2440,6 +2724,7 @@ function buildRankingSampleFromSnapshot({ host, url, model, result, sourceLabel 
     const runtime = packages.find(item => item.id === definition.id) || {};
     return [definition.id, clamp01(Number(runtime.score) || inferredPackageScore(model, definition.id))];
   }));
+  const webV2Analysis = buildWebV2AnalysisFromModel(model, packageScores);
   const normal = buildNormalSummaryForRanking(model);
   return {
     id: normalizeRankingId(host),
@@ -2451,9 +2736,11 @@ function buildRankingSampleFromSnapshot({ host, url, model, result, sourceLabel 
     sampleCount: 1,
     confidence: Math.min(.95, .35 + Math.min(1, (model?.facts?.length || 0) / 80) * .55),
     packageScores,
-    overallScore: computeOverallRankingScore(packageScores),
+    webV2Scores: webV2Analysis.scores,
+    overallScore: computeOverallRankingScore(packageScores, webV2Analysis.scores),
     normal,
     evidence: Object.fromEntries(packages.map(item => [item.id, item.evidence || []])),
+    webV2Evidence: webV2Analysis.evidence,
     factCount: model?.facts?.length || 0,
     channelCount: Object.keys(model?.channels || {}).length,
     lastAnalyzedAt: result.analyzedAt || new Date().toISOString()
@@ -2495,7 +2782,7 @@ function inferredPackageScore(model = {}, packageId) {
 }
 
 function mergeRankingSample(sample) {
-  const normalized = { ...sample, id: normalizeRankingId(sample.host || sample.id), overallScore: computeOverallRankingScore(sample.packageScores || {}) };
+  const normalized = normalizeRankingSample(sample);
   const existingIndex = rankingLedger.findIndex(item => item.id === normalized.id);
   if (existingIndex === -1) {
     rankingLedger = [normalized, ...rankingLedger].slice(0, 500);
@@ -2509,29 +2796,39 @@ function mergeRankingSample(sample) {
     const newScore = Number(normalized.packageScores?.[definition.id]) || 0;
     packageScores[definition.id] = clamp01(((oldScore * (existing.sampleCount || 1)) + newScore) / sampleCount);
   }
+  const webV2Scores = {};
+  for (const module of WEB_V2_MODULES) {
+    const oldScore = Number(existing.webV2Scores?.[module.id]) || 0;
+    const newScore = Number(normalized.webV2Scores?.[module.id]) || 0;
+    webV2Scores[module.id] = clamp01(((oldScore * (existing.sampleCount || 1)) + newScore) / sampleCount);
+  }
   rankingLedger[existingIndex] = {
     ...existing,
     ...normalized,
     packageScores,
-    overallScore: computeOverallRankingScore(packageScores),
+    webV2Scores,
+    overallScore: computeOverallRankingScore(packageScores, webV2Scores),
     confidence: Math.max(existing.confidence || 0, normalized.confidence || 0),
     sampleCount,
     evidence: { ...(existing.evidence || {}), ...(normalized.evidence || {}) },
+    webV2Evidence: { ...(existing.webV2Evidence || {}), ...(normalized.webV2Evidence || {}) },
     normal: normalized.normal || existing.normal
   };
 }
 
 function rankWebsiteSamples(samples, boardId = "overall") {
   return [...samples]
-    .map(sample => ({ ...sample, overallScore: computeOverallRankingScore(sample.packageScores || {}) }))
+    .map(normalizeRankingSample)
     .sort((left, right) => rankingScoreForBoard(right, boardId) - rankingScoreForBoard(left, boardId));
 }
 
 function rankingScoreForBoard(sample, boardId = "overall") {
-  return boardId === "overall" ? clamp01(sample.overallScore ?? computeOverallRankingScore(sample.packageScores || {})) : clamp01(sample.packageScores?.[boardId] || 0);
+  if (boardId === "overall") return clamp01(sample.overallScore ?? computeOverallRankingScore(sample.packageScores || {}, sample.webV2Scores || {}));
+  if (WEB_V2_MODULES.some(module => module.id === boardId)) return clamp01(sample.webV2Scores?.[boardId] || 0);
+  return clamp01(sample.packageScores?.[boardId] || 0);
 }
 
-function computeOverallRankingScore(scores = {}) {
+function computeOverallRankingScore(scores = {}, webV2Scores = {}) {
   const weights = {
     devops: .16,
     security: .18,
@@ -2540,7 +2837,10 @@ function computeOverallRankingScore(scores = {}) {
     analytics: .16,
     "oem-platform": .16
   };
-  return clamp01(Object.entries(weights).reduce((sum, [id, weight]) => sum + (Number(scores[id]) || 0) * weight, 0));
+  const packageScore = Object.entries(weights).reduce((sum, [id, weight]) => sum + (Number(scores[id]) || 0) * weight, 0);
+  const webV2Values = WEB_V2_MODULES.map(module => Number(webV2Scores[module.id]) || 0).filter(value => value > 0);
+  const webV2Score = webV2Values.length ? webV2Values.reduce((sum, value) => sum + value, 0) / webV2Values.length : 0;
+  return clamp01(webV2Values.length ? packageScore * .62 + webV2Score * .38 : packageScore);
 }
 
 function packageInsight(sample, packageId) {
@@ -2551,8 +2851,19 @@ function packageInsight(sample, packageId) {
   return "No package signal in this ranking sample.";
 }
 
+function webV2Insight(sample, moduleId) {
+  const module = WEB_V2_MODULES.find(item => item.id === moduleId);
+  const score = rankingScoreForBoard(sample, moduleId);
+  if (!module) return "Unknown Web Version 2 module.";
+  if (score >= .75) return `${module.marketName} is strongly represented in this sample.`;
+  if (score >= .5) return `${module.marketName} is present with enough evidence for comparison.`;
+  if (score > 0) return `${module.marketName} has a weak signal; collect more live facts before trusting it.`;
+  return `${module.marketName} has no direct signal in this sample yet.`;
+}
+
 function rankingSeedSample(host, category, packageScores, evidence = []) {
   const normalizedScores = normalizeCommercialScoreMap(packageScores);
+  const webV2Analysis = synthesizeWebV2ScoresFromPackages(normalizedScores, evidence);
   return {
     id: normalizeRankingId(host),
     host,
@@ -2563,8 +2874,10 @@ function rankingSeedSample(host, category, packageScores, evidence = []) {
     sampleCount: 1,
     confidence: .42,
     packageScores: normalizedScores,
-    overallScore: computeOverallRankingScore(normalizedScores),
+    webV2Scores: webV2Analysis.scores,
+    overallScore: computeOverallRankingScore(normalizedScores, webV2Analysis.scores),
     evidence: Object.fromEntries(PACKAGE_DEFINITIONS.map(definition => [definition.id, evidence])),
+    webV2Evidence: webV2Analysis.evidence,
     normal: {
       health: "Benchmark baseline",
       healthDetail: `${host} is included as seed data for ranking UX and comparison workflows.`,
@@ -2593,6 +2906,62 @@ function normalizeCommercialScoreMap(scores = {}) {
   return next;
 }
 
+function normalizeRankingSample(sample = {}) {
+  const packageScores = normalizeCommercialScoreMap(sample.packageScores || {});
+  const synthesized = synthesizeWebV2ScoresFromPackages(packageScores, []);
+  const webV2Scores = {};
+  for (const module of WEB_V2_MODULES) webV2Scores[module.id] = clamp01(sample.webV2Scores?.[module.id] ?? synthesized.scores[module.id] ?? 0);
+  return {
+    ...sample,
+    id: normalizeRankingId(sample.host || sample.id),
+    packageScores,
+    webV2Scores,
+    webV2Evidence: sample.webV2Evidence || synthesized.evidence,
+    overallScore: computeOverallRankingScore(packageScores, webV2Scores)
+  };
+}
+
+function buildWebV2AnalysisFromModel(model = {}, packageScores = {}) {
+  const summary = model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []);
+  const lookup = Object.fromEntries(summary.categories.map(category => [category.name, category]));
+  const total = Math.max(1, summary.totalFacts || (model.facts || []).length || 0);
+  const scores = {};
+  const evidence = {};
+  for (const module of WEB_V2_MODULES) {
+    const eventCount = module.runtimeEvents.reduce((sum, name) => sum + (lookup[name]?.count || 0), 0);
+    const activeEvents = module.runtimeEvents.filter(name => (lookup[name]?.count || 0) > 0).length;
+    const eventDensity = Math.min(1, eventCount / Math.max(8, total * .45));
+    const eventCoverage = activeEvents / Math.max(1, module.runtimeEvents.length);
+    const packagePull = relatedPackageScoreForWebV2(module.id, packageScores);
+    scores[module.id] = clamp01(eventDensity * .5 + eventCoverage * .3 + packagePull * .2);
+    evidence[module.id] = module.runtimeEvents.map(name => `${name}: ${lookup[name]?.count || 0}`).concat(module.metrics.slice(0, 2));
+  }
+  return { scores, evidence };
+}
+
+function synthesizeWebV2ScoresFromPackages(packageScores = {}, evidence = []) {
+  const scores = {};
+  const v = id => Number(packageScores[id]) || 0;
+  const formulas = {
+    "web-activity-intelligence": () => v("devops") * .45 + v("analytics") * .35 + v("performance") * .2,
+    "web-rhythm-engine": () => v("performance") * .55 + v("devops") * .3 + v("oem-platform") * .15,
+    "web-dependency-graph": () => v("performance") * .4 + v("analytics") * .3 + v("oem-platform") * .3,
+    "web-risk-surface": () => v("security") * .5 + v("ai-governance") * .25 + v("oem-platform") * .25,
+    "web-flow-map": () => v("analytics") * .35 + v("devops") * .25 + v("performance") * .25 + v("oem-platform") * .15,
+    "web-time-dynamics": () => v("devops") * .4 + v("performance") * .35 + v("oem-platform") * .25,
+    "web-influence-map": () => v("security") * .3 + v("analytics") * .3 + v("ai-governance") * .25 + v("oem-platform") * .15,
+    "web-state-evolution": () => v("analytics") * .4 + v("devops") * .25 + v("security") * .2 + v("oem-platform") * .15,
+    "web-signal-compression": () => v("ai-governance") * .4 + v("security") * .25 + v("analytics") * .2 + v("oem-platform") * .15
+  };
+  for (const module of WEB_V2_MODULES) scores[module.id] = clamp01(formulas[module.id]?.() || 0);
+  const evidenceMap = Object.fromEntries(WEB_V2_MODULES.map(module => [module.id, evidence.length ? evidence : module.runtimeEvents]));
+  return { scores, evidence: evidenceMap };
+}
+
+function relatedPackageScoreForWebV2(moduleId, packageScores = {}) {
+  return synthesizeWebV2ScoresFromPackages(packageScores, []).scores[moduleId] || 0;
+}
+
 function loadRankingLedger() {
   try {
     const parsed = JSON.parse(localStorage.getItem("SIG9RankingLedger") || "[]");
@@ -2619,7 +2988,7 @@ function packageDefinitionsWithRuntimeData(suite = {}) {
   const legacyPackages = new Map((suite?.packages || []).map(item => [String(item.id || item.slug || item.name || "").toLowerCase(), item]));
   return PACKAGE_DEFINITIONS.map(definition => {
     const runtime = runtimePackages.get(definition.id) || legacyRuntimePackageFor(definition.id, legacyPackages);
-    return { ...definition, ...runtime, id: definition.id, name: definition.name, code: definition.code };
+    return { ...definition, ...runtime, id: definition.id, name: definition.name, code: definition.code, runtimeEvents: PACKAGE_RUNTIME_EVENT_MAP[definition.name] || [] };
   });
 }
 
@@ -2716,6 +3085,7 @@ function renderModulePages(model) {
       <article>
         <span>Module metrics</span>
         <ul>${(selected.metrics || []).map(metric => `<li>${escapeHtml(metric)}</li>`).join("")}</ul>
+        <div class="event-tags">${(selected.runtimeEvents || []).map(name => `<code>${escapeHtml(name)}</code>`).join("")}</div>
       </article>
       <article class="${unlocked ? "" : "locked-preview"}">
         <span>Live evidence</span>
@@ -3038,6 +3408,13 @@ async function exportJson() {
     downloadJson(scrubExportValue({
       exportedAt: new Date().toISOString(),
       kind: "runtime-diagnostics",
+      webVersion2: {
+        modules: WEB_V2_MODULES,
+        runtimeEventCategories: RUNTIME_EVENT_CATEGORIES,
+        uiRuntimeEventMap: UI_RUNTIME_EVENT_MAP,
+        runtimeEventToSig9Organs: RUNTIME_EVENT_TO_SIG9_ORGANS,
+        packageRuntimeEventMap: PACKAGE_RUNTIME_EVENT_MAP
+      },
       diagnostics: data
     }), "runtime-diagnostics");
     setExportStatus("Runtime diagnostics JSON exported.", "success");
@@ -3119,7 +3496,13 @@ function summarizeSnapshotForExport(model) {
     latest: model.latest ? scrubExportValue(model.latest) : null,
     structuralPipeline: scrubExportValue(model.pipeline || {}),
     organPipeline: scrubExportValue(model.organPipeline || {}),
-    organFrequencySpectrum: scrubExportValue(model.organFrequencySpectrum || {})
+    organFrequencySpectrum: scrubExportValue(model.organFrequencySpectrum || {}),
+    webVersion2: scrubExportValue({
+      runtimeEventSummary: model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []),
+      modules: WEB_V2_MODULES,
+      uiRuntimeEventMap: UI_RUNTIME_EVENT_MAP,
+      packageRuntimeEventMap: PACKAGE_RUNTIME_EVENT_MAP
+    })
   };
 }
 

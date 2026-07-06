@@ -106,6 +106,54 @@ test("Web Bloomberg terminal panels are present in the dashboard", () => {
   assert.match(css, /\.web-bloomberg-terminal/);
 });
 
+test("Web Version 2 taxonomy maps market modules to runtime events", () => {
+  for (const phrase of [
+    "Atrinit Runtime Event Profile",
+    "Web Version 2 Market Modules",
+    "Screenshot module data is sorted into the nine equivalent web-native runtime categories"
+  ]) {
+    assert.match(html, new RegExp(phrase));
+  }
+  for (const id of ["web-v2-module-grid", "runtime-event-grid", "runtime-event-summary"]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  for (const symbol of [
+    "const WEB_V2_MODULES = Object.freeze",
+    "const RUNTIME_EVENT_CATEGORIES = Object.freeze",
+    "const UI_RUNTIME_EVENT_MAP = Object.freeze",
+    "const RUNTIME_EVENT_TO_SIG9_ORGANS = Object.freeze",
+    "const PACKAGE_RUNTIME_EVENT_MAP = Object.freeze",
+    "function runtimeEventCategoriesForFact",
+    "function summarizeRuntimeEvents",
+    "function renderWebV2Taxonomy"
+  ]) {
+    assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  for (const category of ["Interaction", "Presentation", "Communication", "Synchronization", "Persistence", "Execution", "Security", "Resources", "Compute"]) {
+    assert.match(js, new RegExp(category));
+  }
+  for (const moduleName of ["Web Activity Intelligence", "Web Rhythm Engine", "Web Dependency Graph", "Web Risk Surface", "Web Flow Map", "Web Time Dynamics", "Web Influence Map", "Web State Evolution", "Web Signal Compression"]) {
+    assert.match(js, new RegExp(moduleName));
+    assert.match(languagePackets, new RegExp(moduleName));
+  }
+  assert.match(js, /webV2Scores/);
+  assert.match(js, /Signal Quality/);
+  assert.match(js, /function screenshotModulesForRuntimeEvent/);
+  assert.match(js, /function screenshotModuleSystemsForRuntimeEvent/);
+  assert.match(js, /function renderRuntimeMappedRawData/);
+  assert.match(js, /Translated raw modules/);
+  assert.match(js, /function buildWebV2AnalysisFromModel/);
+  assert.match(js, /function synthesizeWebV2ScoresFromPackages/);
+  assert.match(js, /function webV2Insight/);
+  assert.match(js, /Web Version 2 Scores/);
+  assert.match(js, /Commercial Package Scores/);
+  assert.match(css, /\.web-v2-taxonomy/);
+  assert.match(css, /\.mapped-module-list/);
+  assert.match(css, /\.runtime-raw-stack/);
+  assert.match(css, /\.runtime-raw-card/);
+  assert.match(css, /\.runtime-event-card\.active/);
+});
+
 test("paid Organ9 packages have separate module pages and locked states", () => {
   assert.match(html, /id="nav-modules"/);
   assert.match(html, /id="modules-view"/);
