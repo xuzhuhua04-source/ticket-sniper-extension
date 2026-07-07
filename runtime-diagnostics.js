@@ -383,6 +383,143 @@ const PACKAGE_RUNTIME_EVENT_MAP = Object.freeze({
   Analytics: ["Interaction", "Communication", "Persistence"],
   "OEM / Platform": RUNTIME_EVENT_CATEGORIES.map(category => category.name)
 });
+const RUNTIME_TREE_DOMAINS = Object.freeze([
+  {
+    id: "dom",
+    domain: "DOM Runtime",
+    rootLabel: "Document",
+    nodeType: "tag",
+    factTypes: ["DOM.NodeAdded", "DOM.NodeRemoved", "DOM.NodeMoved", "DOM.AttributeChanged", "DOM.TextChanged", "DOM.ChildListChanged", "DOM.TreeTopologyChanged", "DOM.NodeVisibilityChanged", "DOM.NodeConnected", "DOM.NodeDisconnected", "DOM.NodeStyleImpactChanged"]
+  },
+  {
+    id: "cssom",
+    domain: "CSSOM Runtime",
+    rootLabel: "StyleSheets",
+    nodeType: "rule",
+    factTypes: ["CSS.RuleInserted", "CSS.RuleDeleted", "CSS.RuleChanged", "CSS.SelectorChanged", "CSS.ClassChanged", "CSS.StyleChanged", "CSS.SpecificityChanged", "CSS.CascadeOverride", "CSS.InheritanceChainChanged", "CSS.MediaRuleChanged", "CSS.KeyframesRuleChanged"]
+  },
+  {
+    id: "layout",
+    domain: "Layout Runtime",
+    rootLabel: "Layout Tree",
+    nodeType: "box",
+    factTypes: ["Layout.BoxCreated", "Layout.BoxRemoved", "Layout.Reflow", "Layout.RecalcStyle", "Layout.GeometryChanged", "Layout.LayoutShift", "Layout.FlowChanged", "Layout.PositionChanged", "Layout.PositioningChanged", "Layout.SizeChanged", "Layout.BoxModelChanged", "Layout.ScrollStructureChanged"]
+  },
+  {
+    id: "shadow",
+    domain: "Shadow DOM Runtime",
+    rootLabel: "Shadow Roots",
+    nodeType: "component",
+    factTypes: ["Shadow.RootAdded", "Shadow.RootDetached", "Shadow.RootChanged", "Shadow.NodeChanged", "Shadow.SlotChanged", "Shadow.SlotMappingChanged", "Shadow.ComponentTreeChanged", "Shadow.EncapsulationBoundaryChanged"]
+  },
+  {
+    id: "a11y",
+    domain: "Accessibility Runtime",
+    rootLabel: "Accessibility Tree",
+    nodeType: "role",
+    factTypes: ["A11y.RoleChanged", "A11y.StateChanged", "A11y.NameChanged", "A11y.DescriptionChanged", "A11y.SemanticTopologyChanged", "A11y.InteractiveStructureChanged"]
+  },
+  {
+    id: "js",
+    domain: "JS Runtime",
+    rootLabel: "Main Thread",
+    nodeType: "context",
+    factTypes: ["JSRuntime.StateChanged", "JSRuntime.MemoryChanged", "JSRuntime.ExecutionChanged", "JSRuntime.MicrotaskScheduled", "JSRuntime.MicrotaskExecuted", "JSRuntime.MacrotaskScheduled", "JSRuntime.MacrotaskExecuted", "JSRuntime.PromiseChainUpdated", "JSRuntime.EventLoopPhaseChanged", "JSRuntime.RuntimeTopologyChanged", "JSRuntime.TimerScheduled", "JSRuntime.TimerExecuted"]
+  },
+  {
+    id: "worker",
+    domain: "Worker / Thread Runtime",
+    rootLabel: "Thread Graph",
+    nodeType: "worker",
+    factTypes: ["Worker.Created", "Worker.Terminated", "Worker.MessagePosted", "Worker.MessageReceived", "Worker.ChannelCreated", "Worker.ServiceWorkerRegistered", "Worker.ServiceWorkerActivated", "Worker.ServiceWorkerFetch"]
+  },
+  {
+    id: "vdom",
+    domain: "VDOM Runtime",
+    rootLabel: "Virtual Tree",
+    nodeType: "vnode",
+    factTypes: ["VDOM.NodeDiff", "VDOM.PatchApplied", "VDOM.Reconciled", "VDOM.VDOMDiff", "VDOM.VDOMPatch", "VDOM.VDOMNodeCreated", "VDOM.VDOMNodeDeleted", "VDOM.VDOMNodeUpdated", "VDOM.VDOMTreeChanged"]
+  }
+]);
+const RUNTIME_HIGHLIGHT_MAP = Object.freeze({
+  "DOM.NodeAdded": "added",
+  "DOM.NodeRemoved": "removed",
+  "DOM.NodeMoved": "changed",
+  "DOM.AttributeChanged": "changed",
+  "DOM.TextChanged": "changed",
+  "DOM.ChildListChanged": "changed",
+  "DOM.TreeTopologyChanged": "changed",
+  "DOM.NodeVisibilityChanged": "changed",
+  "DOM.NodeConnected": "added",
+  "DOM.NodeDisconnected": "removed",
+  "DOM.NodeStyleImpactChanged": "changed",
+  "CSS.RuleInserted": "added",
+  "CSS.RuleDeleted": "removed",
+  "CSS.RuleChanged": "changed",
+  "CSS.SelectorChanged": "changed",
+  "CSS.ClassChanged": "changed",
+  "CSS.StyleChanged": "changed",
+  "CSS.SpecificityChanged": "changed",
+  "CSS.CascadeOverride": "changed",
+  "CSS.InheritanceChainChanged": "changed",
+  "CSS.MediaRuleChanged": "changed",
+  "CSS.KeyframesRuleChanged": "changed",
+  "Layout.BoxCreated": "added",
+  "Layout.BoxRemoved": "removed",
+  "Layout.Reflow": "changed",
+  "Layout.RecalcStyle": "changed",
+  "Layout.GeometryChanged": "changed",
+  "Layout.LayoutShift": "changed",
+  "Layout.FlowChanged": "changed",
+  "Layout.PositionChanged": "changed",
+  "Layout.PositioningChanged": "changed",
+  "Layout.SizeChanged": "changed",
+  "Layout.BoxModelChanged": "changed",
+  "Layout.ScrollStructureChanged": "changed",
+  "Shadow.RootAdded": "added",
+  "Shadow.RootDetached": "removed",
+  "Shadow.RootChanged": "changed",
+  "Shadow.NodeChanged": "changed",
+  "Shadow.SlotChanged": "changed",
+  "Shadow.SlotMappingChanged": "changed",
+  "Shadow.ComponentTreeChanged": "changed",
+  "Shadow.EncapsulationBoundaryChanged": "changed",
+  "A11y.RoleChanged": "changed",
+  "A11y.NameChanged": "changed",
+  "A11y.StateChanged": "changed",
+  "A11y.DescriptionChanged": "changed",
+  "A11y.SemanticTopologyChanged": "changed",
+  "A11y.InteractiveStructureChanged": "changed",
+  "JSRuntime.StateChanged": "changed",
+  "JSRuntime.MemoryChanged": "changed",
+  "JSRuntime.ExecutionChanged": "changed",
+  "JSRuntime.MicrotaskScheduled": "changed",
+  "JSRuntime.MicrotaskExecuted": "changed",
+  "JSRuntime.MacrotaskScheduled": "changed",
+  "JSRuntime.MacrotaskExecuted": "changed",
+  "JSRuntime.PromiseChainUpdated": "changed",
+  "JSRuntime.EventLoopPhaseChanged": "changed",
+  "JSRuntime.RuntimeTopologyChanged": "changed",
+  "JSRuntime.TimerScheduled": "changed",
+  "JSRuntime.TimerExecuted": "changed",
+  "Worker.Created": "added",
+  "Worker.Terminated": "removed",
+  "Worker.MessagePosted": "changed",
+  "Worker.MessageReceived": "changed",
+  "Worker.ChannelCreated": "added",
+  "Worker.ServiceWorkerRegistered": "added",
+  "Worker.ServiceWorkerActivated": "changed",
+  "Worker.ServiceWorkerFetch": "changed",
+  "VDOM.NodeDiff": "changed",
+  "VDOM.PatchApplied": "changed",
+  "VDOM.Reconciled": "changed",
+  "VDOM.VDOMDiff": "changed",
+  "VDOM.VDOMPatch": "changed",
+  "VDOM.VDOMNodeCreated": "added",
+  "VDOM.VDOMNodeDeleted": "removed",
+  "VDOM.VDOMNodeUpdated": "changed",
+  "VDOM.VDOMTreeChanged": "changed"
+});
 const RAW_FACT_MAPPING_REGISTRY_VERSION = "atrinit-raw-fact-registry-v1";
 const RAW_FACT_TO_SIG9_ORGAN = Object.freeze({
   layout_shift: ["Value"],
@@ -1939,6 +2076,7 @@ function buildSnapshot(data) {
     .map(item => ({ ...item, severity: factSeverity(item.fact), time: Number(item.fact.timestamp) || 0 }))
     .sort((left, right) => right.time - left.time);
   const runtimeEventSummary = summarizeRuntimeEvents(all);
+  const runtimeLayerSummary = buildRuntimeLayerTrees(all);
   const latest = data.runtimeFactStatus || data.crawlerSignalStatus || data.structuralMonitorStatus || null;
   const pipeline = {
     state: data.structuralPipelineState || null,
@@ -1961,7 +2099,7 @@ function buildSnapshot(data) {
     latest: data.organFrequencySpectrumLatest || null
   };
   if (!organFrequencySpectrum.state && all.length) organFrequencySpectrum.state = buildFrequencySpectrumFromFacts(all);
-  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, layerCoverage: normalizeLayerCoverage(data.runtimeLayerCoverage, all) };
+  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, runtimeLayerSummary, layerCoverage: normalizeLayerCoverage(data.runtimeLayerCoverage, all) };
 }
 
 function buildRuntimeFactLedger(data = {}) {
@@ -2067,6 +2205,288 @@ function summarizeRuntimeEvents(items = []) {
     unmappedFacts,
     sourceTypeCoverage: summarizeRawFactCoverage(mappedFacts)
   };
+}
+
+function buildRuntimeLayerTrees(items = []) {
+  const treeMap = new Map(RUNTIME_TREE_DOMAINS.map(domain => {
+    const root = `${domain.id}:root`;
+    return [domain.id, {
+      id: domain.id,
+      domain: domain.domain,
+      root,
+      nodes: new Map([[root, {
+        id: root,
+        type: "root",
+        label: domain.rootLabel,
+        payload: { factTypes: domain.factTypes },
+        children: [],
+        highlight: null,
+        count: 0,
+        latest: 0
+      }]]),
+      edges: [],
+      facts: [],
+      factTypeCounts: new Map(),
+      latest: 0
+    }];
+  }));
+  for (const item of items) {
+    const canonical = canonicalRuntimeFactForRaw(item);
+    if (!canonical) continue;
+    const tree = treeMap.get(canonical.treeId);
+    if (!tree) continue;
+    const timestamp = Number(item.time || item.fact?.timestamp || canonical.timestamp || Date.now()) || Date.now();
+    const kind = RUNTIME_HIGHLIGHT_MAP[canonical.type] || "changed";
+    const target = canonical.target || `${canonical.treeId}:${slugifyRuntimeNodeId(canonical.label || canonical.type)}`;
+    const fact = {
+      type: canonical.type,
+      target,
+      timestamp,
+      summary: canonical.summary || factSummary(item.fact),
+      channel: item.channel || canonical.channel || "",
+      highlightKind: kind
+    };
+    tree.facts.push(fact);
+    tree.latest = Math.max(tree.latest, timestamp);
+    tree.factTypeCounts.set(canonical.type, (tree.factTypeCounts.get(canonical.type) || 0) + 1);
+    const node = tree.nodes.get(target) || {
+      id: target,
+      type: canonical.nodeType || RUNTIME_TREE_DOMAINS.find(domain => domain.id === canonical.treeId)?.nodeType || "node",
+      label: canonical.label || readableRuntimeFactType(canonical.type),
+      payload: canonical.payload || {},
+      children: [],
+      highlight: null,
+      count: 0,
+      latest: 0
+    };
+    node.count += 1;
+    node.latest = Math.max(node.latest, timestamp);
+    node.highlight = { kind, startedAt: timestamp };
+    tree.nodes.set(target, node);
+    const root = tree.nodes.get(tree.root);
+    if (root && !root.children.includes(target)) root.children.push(target);
+    if (!tree.edges.some(edge => edge.from === tree.root && edge.to === target)) tree.edges.push({ from: tree.root, to: target, type: "observed" });
+  }
+  const trees = [...treeMap.values()].map(tree => ({
+    ...tree,
+    nodes: [...tree.nodes.values()].sort((left, right) => {
+      if (left.id === tree.root) return -1;
+      if (right.id === tree.root) return 1;
+      return right.latest - left.latest || right.count - left.count || left.label.localeCompare(right.label);
+    }),
+    facts: tree.facts.sort((left, right) => right.timestamp - left.timestamp),
+    factTypeCounts: [...tree.factTypeCounts.entries()]
+      .map(([type, count]) => ({ type, count, highlightKind: RUNTIME_HIGHLIGHT_MAP[type] || "changed" }))
+      .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type))
+  }));
+  return {
+    trees,
+    activeCount: trees.filter(tree => tree.facts.length > 0).length,
+    totalFacts: trees.reduce((sum, tree) => sum + tree.facts.length, 0),
+    highlightMap: RUNTIME_HIGHLIGHT_MAP
+  };
+}
+
+function canonicalRuntimeFactForRaw(item = {}) {
+  const fact = item.fact || item;
+  const source = normalizeRawFactType(fact.source || "");
+  const type = normalizeRawFactType(fact.type || "fact");
+  const channel = normalizeRawFactKey(item.channel || fact.channel || `${source}/${type}`);
+  const value = fact.value || {};
+  const sourceText = `${source} ${type} ${channel}`;
+  const target = runtimeFactTargetId(fact, source, type);
+  const label = runtimeFactNodeLabel(fact, source, type);
+  const base = {
+    target,
+    label,
+    timestamp: Number(fact.timestamp) || Date.now(),
+    channel,
+    payload: scrubExportValue({ source, type, channel, value })
+  };
+  const direct = exactRuntimeFactType(source, type);
+  if (direct) return { ...base, ...direct };
+  if (/vdom|react|vue|svelte|component|props/.test(sourceText)) return { ...base, treeId: "vdom", type: vdomRuntimeFactType(type), nodeType: "vnode" };
+  if (/shadow|slot/.test(sourceText)) return { ...base, treeId: "shadow", type: shadowRuntimeFactType(type), nodeType: "component" };
+  if (/a11y|accessibility|aria|role|semantic/.test(sourceText)) return { ...base, treeId: "a11y", type: a11yRuntimeFactType(type), nodeType: "role" };
+  if (/css|style|stylesheet|selector|cascade|specificity|keyframe|media/.test(sourceText)) return { ...base, treeId: "cssom", type: cssRuntimeFactType(type), nodeType: "rule" };
+  if (/layout|paint|reflow|geometry|box|scroll|position|shift/.test(sourceText)) return { ...base, treeId: "layout", type: layoutRuntimeFactType(type), nodeType: "box" };
+  if (/worker|thread|message_channel|service_worker|sw_|post_message|iframe|frame/.test(sourceText)) return { ...base, treeId: "worker", type: workerRuntimeFactType(type), nodeType: "worker" };
+  if (/runtime|javascript|script|microtask|macrotask|promise|timer|interval|timeout|raf|event_loop|console|error|rejection|long.?task|performance|navigation|lifecycle|compute|wasm|webgpu|gpu|model|inference/.test(sourceText)) {
+    return { ...base, treeId: "js", type: jsRuntimeFactType(type), nodeType: "context" };
+  }
+  if (/dom|element|attribute|text|mutation|node|tree|structure|calendar/.test(sourceText)) return { ...base, treeId: "dom", type: domRuntimeFactType(type), nodeType: "tag" };
+  return { ...base, treeId: "js", type: "JSRuntime.StateChanged", nodeType: "context" };
+}
+
+function exactRuntimeFactType(source, type) {
+  const key = `${source}/${type}`;
+  const exact = {
+    "dom/element": ["dom", "DOM.NodeAdded", "tag"],
+    "dom/element_change": ["dom", "DOM.NodeAdded", "tag"],
+    "dom/attribute": ["dom", "DOM.AttributeChanged", "tag"],
+    "dom/attribute_change": ["dom", "DOM.AttributeChanged", "tag"],
+    "dom/text": ["dom", "DOM.TextChanged", "tag"],
+    "dom/text_change": ["dom", "DOM.TextChanged", "tag"],
+    "dom/mutation_burst": ["dom", "DOM.ChildListChanged", "tag"],
+    "dom/structure_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "dom/calendar_structure": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "cssom/css_rule_insert": ["cssom", "CSS.RuleInserted", "rule"],
+    "cssom/css_rule_delete": ["cssom", "CSS.RuleDeleted", "rule"],
+    "cssom/css_animation": ["cssom", "CSS.KeyframesRuleChanged", "rule"],
+    "cssom/css_transition": ["cssom", "CSS.StyleChanged", "rule"],
+    "cssom/style_recalc": ["cssom", "CSS.StyleChanged", "rule"],
+    "cssom/forced_style_recalc": ["cssom", "CSS.StyleChanged", "rule"],
+    "layout/layout_shift": ["layout", "Layout.LayoutShift", "box"],
+    "layout/forced_reflow": ["layout", "Layout.Reflow", "box"],
+    "layout/layout_rhythm": ["layout", "Layout.Reflow", "box"],
+    "layout/layout_dependency": ["layout", "Layout.FlowChanged", "box"],
+    "layout/layout_type_change": ["layout", "Layout.BoxModelChanged", "box"],
+    "layout/paint_order_change": ["layout", "Layout.PositionChanged", "box"],
+    "layout/stacking_context_change": ["layout", "Layout.PositioningChanged", "box"],
+    "shadow/shadow_root_created": ["shadow", "Shadow.RootAdded", "component"],
+    "shadow/shadow_node": ["shadow", "Shadow.NodeChanged", "component"],
+    "shadow/shadow_mapping": ["shadow", "Shadow.ComponentTreeChanged", "component"],
+    "shadow/slot_change": ["shadow", "Shadow.SlotChanged", "component"],
+    "a11y/a11y_role_change": ["a11y", "A11y.RoleChanged", "role"],
+    "a11y/a11y_state_change": ["a11y", "A11y.StateChanged", "role"],
+    "a11y/a11y_break": ["a11y", "A11y.InteractiveStructureChanged", "role"],
+    "a11y/a11y_conflict": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "runtime/js_microtask": ["js", "JSRuntime.MicrotaskScheduled", "context"],
+    "runtime/js_promise_chain": ["js", "JSRuntime.PromiseChainUpdated", "context"],
+    "runtime/js_event_loop_render": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
+    "runtime/js_event_loop_idle": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
+    "runtime/js_block": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/js_error": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/timer": ["js", "JSRuntime.TimerScheduled", "context"],
+    "runtime/timeout": ["js", "JSRuntime.TimerScheduled", "context"],
+    "runtime/interval": ["js", "JSRuntime.TimerScheduled", "context"],
+    "runtime/raf_tick": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
+    "multicontext/worker_created": ["worker", "Worker.Created", "worker"],
+    "multicontext/worker_message": ["worker", "Worker.MessagePosted", "worker"],
+    "multicontext/worker_post": ["worker", "Worker.MessagePosted", "worker"],
+    "multicontext/message_channel_created": ["worker", "Worker.ChannelCreated", "worker"],
+    "multicontext/message_channel_message": ["worker", "Worker.MessagePosted", "worker"],
+    "multicontext/sw_register": ["worker", "Worker.ServiceWorkerRegistered", "worker"],
+    "multicontext/sw_activated": ["worker", "Worker.ServiceWorkerActivated", "worker"],
+    "multicontext/sw_fetch": ["worker", "Worker.ServiceWorkerFetch", "worker"],
+    "vdom/vdom_commit": ["vdom", "VDOM.Reconciled", "vnode"],
+    "vdom/vdom_update": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
+    "vdom/vdom_diff": ["vdom", "VDOM.NodeDiff", "vnode"],
+    "vdom/vdom_state_change": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
+    "vdom/vdom_props_change": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
+    "vdom/vdom_topology": ["vdom", "VDOM.VDOMTreeChanged", "vnode"]
+  }[key];
+  return exact ? { treeId: exact[0], type: exact[1], nodeType: exact[2] } : null;
+}
+
+function domRuntimeFactType(type) {
+  if (/removed|disconnect|delete/.test(type)) return "DOM.NodeRemoved";
+  if (/move/.test(type)) return "DOM.NodeMoved";
+  if (/attribute/.test(type)) return "DOM.AttributeChanged";
+  if (/text/.test(type)) return "DOM.TextChanged";
+  if (/visibility|visible/.test(type)) return "DOM.NodeVisibilityChanged";
+  if (/style/.test(type)) return "DOM.NodeStyleImpactChanged";
+  if (/connect/.test(type)) return "DOM.NodeConnected";
+  if (/tree|topology|structure/.test(type)) return "DOM.TreeTopologyChanged";
+  if (/child|mutation/.test(type)) return "DOM.ChildListChanged";
+  return "DOM.NodeAdded";
+}
+
+function cssRuntimeFactType(type) {
+  if (/insert|add/.test(type)) return "CSS.RuleInserted";
+  if (/delete|remove/.test(type)) return "CSS.RuleDeleted";
+  if (/selector/.test(type)) return "CSS.SelectorChanged";
+  if (/specificity/.test(type)) return "CSS.SpecificityChanged";
+  if (/cascade|override|conflict/.test(type)) return "CSS.CascadeOverride";
+  if (/inherit/.test(type)) return "CSS.InheritanceChainChanged";
+  if (/media/.test(type)) return "CSS.MediaRuleChanged";
+  if (/keyframe|animation/.test(type)) return "CSS.KeyframesRuleChanged";
+  if (/class/.test(type)) return "CSS.ClassChanged";
+  if (/style|recalc|transition/.test(type)) return "CSS.StyleChanged";
+  return "CSS.RuleChanged";
+}
+
+function layoutRuntimeFactType(type) {
+  if (/created|add/.test(type)) return "Layout.BoxCreated";
+  if (/removed|delete/.test(type)) return "Layout.BoxRemoved";
+  if (/reflow/.test(type)) return "Layout.Reflow";
+  if (/recalc|style/.test(type)) return "Layout.RecalcStyle";
+  if (/shift/.test(type)) return "Layout.LayoutShift";
+  if (/flow|dependency/.test(type)) return "Layout.FlowChanged";
+  if (/position/.test(type)) return "Layout.PositionChanged";
+  if (/size|geometry|rect/.test(type)) return "Layout.SizeChanged";
+  if (/box|type/.test(type)) return "Layout.BoxModelChanged";
+  if (/scroll/.test(type)) return "Layout.ScrollStructureChanged";
+  return "Layout.GeometryChanged";
+}
+
+function shadowRuntimeFactType(type) {
+  if (/detach|remove/.test(type)) return "Shadow.RootDetached";
+  if (/root|attach|created/.test(type)) return "Shadow.RootAdded";
+  if (/slot/.test(type)) return "Shadow.SlotChanged";
+  if (/mapping/.test(type)) return "Shadow.SlotMappingChanged";
+  if (/boundary|encapsulation/.test(type)) return "Shadow.EncapsulationBoundaryChanged";
+  if (/tree|topology|component/.test(type)) return "Shadow.ComponentTreeChanged";
+  return "Shadow.NodeChanged";
+}
+
+function a11yRuntimeFactType(type) {
+  if (/role/.test(type)) return "A11y.RoleChanged";
+  if (/state/.test(type)) return "A11y.StateChanged";
+  if (/name/.test(type)) return "A11y.NameChanged";
+  if (/description/.test(type)) return "A11y.DescriptionChanged";
+  if (/interactive|break|conflict/.test(type)) return "A11y.InteractiveStructureChanged";
+  return "A11y.SemanticTopologyChanged";
+}
+
+function jsRuntimeFactType(type) {
+  if (/microtask/.test(type)) return "JSRuntime.MicrotaskScheduled";
+  if (/macrotask|task/.test(type)) return "JSRuntime.MacrotaskScheduled";
+  if (/promise/.test(type)) return "JSRuntime.PromiseChainUpdated";
+  if (/event_loop|raf|frame|idle|render/.test(type)) return "JSRuntime.EventLoopPhaseChanged";
+  if (/timer|timeout|interval/.test(type)) return "JSRuntime.TimerScheduled";
+  if (/memory/.test(type)) return "JSRuntime.MemoryChanged";
+  if (/topology|navigation|lifecycle/.test(type)) return "JSRuntime.RuntimeTopologyChanged";
+  if (/execute|execution|script|error|rejection|console|block|long/.test(type)) return "JSRuntime.ExecutionChanged";
+  return "JSRuntime.StateChanged";
+}
+
+function workerRuntimeFactType(type) {
+  if (/created|register|channel/.test(type)) return type.includes("sw") ? "Worker.ServiceWorkerRegistered" : "Worker.Created";
+  if (/terminated|removed|delete/.test(type)) return "Worker.Terminated";
+  if (/activated/.test(type)) return "Worker.ServiceWorkerActivated";
+  if (/fetch/.test(type)) return "Worker.ServiceWorkerFetch";
+  if (/received/.test(type)) return "Worker.MessageReceived";
+  return "Worker.MessagePosted";
+}
+
+function vdomRuntimeFactType(type) {
+  if (/created|add/.test(type)) return "VDOM.VDOMNodeCreated";
+  if (/deleted|removed/.test(type)) return "VDOM.VDOMNodeDeleted";
+  if (/patch/.test(type)) return "VDOM.PatchApplied";
+  if (/commit|reconcile/.test(type)) return "VDOM.Reconciled";
+  if (/tree|topology/.test(type)) return "VDOM.VDOMTreeChanged";
+  if (/update|state|props/.test(type)) return "VDOM.VDOMNodeUpdated";
+  return "VDOM.NodeDiff";
+}
+
+function runtimeFactTargetId(fact = {}, source = "runtime", type = "fact") {
+  const value = fact.value || {};
+  const raw = fact.target || fact.nodeId || value.nodeId || value.selector || value.target || value.href || value.url || value.name || value.signature || `${source}:${type}`;
+  return `${source}:${slugifyRuntimeNodeId(raw)}`;
+}
+
+function runtimeFactNodeLabel(fact = {}, source = "runtime", type = "fact") {
+  const value = fact.value || {};
+  return String(fact.label || value.selector || value.target || value.name || value.url || readableRuntimeFactType(`${source}.${type}`)).slice(0, 80);
+}
+
+function slugifyRuntimeNodeId(value) {
+  return String(value || "node").toLowerCase().replace(/[^a-z0-9_.:-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 72) || "node";
+}
+
+function readableRuntimeFactType(type) {
+  return String(type || "Runtime fact").replace(/[_-]/g, " ").replace(/\./g, " ");
 }
 
 function runtimeFactSubcategory(mapping = {}) {
@@ -2512,8 +2932,9 @@ function screenshotModuleSystemsForRuntimeEvent(categoryName, model) {
 function renderWebV2Taxonomy(model) {
   if (!elements.webV2ModuleGrid || !elements.runtimeEventGrid) return;
   const summary = model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []);
+  const runtimeLayer = model.runtimeLayerSummary || buildRuntimeLayerTrees(model.facts || []);
   if (elements.runtimeEventSummary) {
-    elements.runtimeEventSummary.textContent = `${summary.activeCount} / ${RUNTIME_EVENT_CATEGORIES.length} runtime event categories active`;
+    elements.runtimeEventSummary.textContent = `${runtimeLayer.activeCount} / ${RUNTIME_TREE_DOMAINS.length} runtime trees active`;
   }
   elements.webV2ModuleGrid.innerHTML = WEB_V2_MODULES.map(module => {
     const count = runtimeEventCount(model, module.runtimeEvents);
@@ -2528,20 +2949,47 @@ function renderWebV2Taxonomy(model) {
       </article>
     `;
   }).join("");
-  elements.runtimeEventGrid.innerHTML = summary.categories.map(category => {
-    const subcategories = category.subcategories || [];
-    const active = category.count > 0;
-    return `
-      <article class="runtime-event-card ${active ? "active" : ""}">
-        <strong>${escapeHtml(category.name)}</strong>
-        <p class="runtime-profile-total">Total facts: <b>${category.count}</b></p>
-        <div class="runtime-subcategory-stack">
-          ${subcategories.map(renderRuntimeFactSubcategory).join("") || `<div class="runtime-empty-line">No facts yet</div>`}
-        </div>
-      </article>
-    `;
-  }).join("");
+  elements.runtimeEventGrid.innerHTML = runtimeLayer.trees.map(renderRuntimeTreeCard).join("");
   renderFactMappingDebug(model, summary);
+}
+
+function renderRuntimeTreeCard(tree) {
+  const active = tree.facts.length > 0;
+  const factRows = tree.factTypeCounts.slice(0, 8).map(item => `
+    <div class="runtime-fact-type-line">
+      <span class="runtime-highlight-dot hl-dot-${escapeHtml(item.highlightKind)}"></span>
+      <span>${escapeHtml(readableRuntimeFactType(item.type))}</span>
+      <b>${item.count}</b>
+    </div>
+  `).join("");
+  const nodeRows = tree.nodes
+    .filter(node => node.id !== tree.root)
+    .slice(0, 4)
+    .map(node => renderRuntimeTreeNode(tree, node))
+    .join("");
+  return `
+    <article class="runtime-event-card runtime-tree-card ${active ? "active" : ""}" data-tree-id="${escapeHtml(tree.id)}">
+      <span class="runtime-tree-domain">${escapeHtml(tree.domain)}</span>
+      <strong>${tree.facts.length} ${tree.facts.length === 1 ? "fact" : "facts"}</strong>
+      <p class="runtime-profile-total">${tree.factTypeCounts.length} structural ${tree.factTypeCounts.length === 1 ? "type" : "types"} observed</p>
+      <div class="runtime-subcategory-stack runtime-fact-type-stack">
+        ${factRows || `<div class="runtime-empty-line">No facts yet</div>`}
+      </div>
+      <div class="runtime-tree-node-list" aria-label="${escapeHtml(tree.domain)} changed nodes">
+        ${nodeRows || `<div class="runtime-empty-line">No changed nodes yet</div>`}
+      </div>
+    </article>
+  `;
+}
+
+function renderRuntimeTreeNode(tree, node) {
+  const kind = node.highlight?.kind || "changed";
+  return `
+    <div class="runtime-node hl-${escapeHtml(kind)}" data-tree-id="${escapeHtml(tree.id)}" data-node-id="${escapeHtml(node.id)}">
+      <span>${escapeHtml(node.label)}</span>
+      <small>${escapeHtml(node.type)} · ${node.count} ${node.count === 1 ? "change" : "changes"}</small>
+    </div>
+  `;
 }
 
 function renderRuntimeMappedRawData(system) {
@@ -3967,6 +4415,7 @@ async function exportJson() {
         runtimeEventToSig9Organs: RUNTIME_EVENT_TO_SIG9_ORGANS,
         packageRuntimeEventMap: PACKAGE_RUNTIME_EVENT_MAP
       },
+      atrinitRuntimeLayer: scrubExportValue(exportRuntimeLayerSummary(exportSnapshot.runtimeLayerSummary || buildRuntimeLayerTrees(exportSnapshot.facts || []))),
       diagnostics: data
     }), "runtime-diagnostics");
     setExportStatus("Runtime diagnostics JSON exported.", "success");
@@ -4047,6 +4496,7 @@ function summarizeSnapshotForExport(model) {
     severities,
     latest: model.latest ? scrubExportValue(model.latest) : null,
     rawFactMapping: scrubExportValue(buildFactMappingDebugReport(model)),
+    atrinitRuntimeLayer: scrubExportValue(exportRuntimeLayerSummary(model.runtimeLayerSummary || buildRuntimeLayerTrees(model.facts || []))),
     structuralPipeline: scrubExportValue(model.pipeline || {}),
     organPipeline: scrubExportValue(model.organPipeline || {}),
     organFrequencySpectrum: scrubExportValue(model.organFrequencySpectrum || {}),
@@ -4056,6 +4506,28 @@ function summarizeSnapshotForExport(model) {
       uiRuntimeEventMap: UI_RUNTIME_EVENT_MAP,
       packageRuntimeEventMap: PACKAGE_RUNTIME_EVENT_MAP
     })
+  };
+}
+
+function exportRuntimeLayerSummary(runtimeLayer = {}) {
+  return {
+    activeCount: runtimeLayer.activeCount || 0,
+    totalFacts: runtimeLayer.totalFacts || 0,
+    domains: RUNTIME_TREE_DOMAINS.map(domain => ({ id: domain.id, domain: domain.domain, factTypes: domain.factTypes })),
+    highlightMap: RUNTIME_HIGHLIGHT_MAP,
+    trees: (runtimeLayer.trees || []).map(tree => ({
+      id: tree.id,
+      domain: tree.domain,
+      factCount: tree.facts?.length || 0,
+      nodeCount: tree.nodes?.length || 0,
+      edgeCount: tree.edges?.length || 0,
+      factTypeCounts: tree.factTypeCounts || [],
+      recentFacts: (tree.facts || []).slice(0, 12),
+      highlightedNodes: (tree.nodes || [])
+        .filter(node => node.id !== tree.root && node.highlight)
+        .slice(0, 12)
+        .map(node => ({ id: node.id, type: node.type, label: node.label, count: node.count, highlight: node.highlight }))
+    }))
   };
 }
 

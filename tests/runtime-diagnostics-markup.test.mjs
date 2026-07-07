@@ -109,9 +109,9 @@ test("Live Signal Console panels are present in the dashboard", () => {
 
 test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   for (const phrase of [
-    "Atrinit Runtime Event Profile",
+    "Atrinit Runtime Layer",
     "Web Version 2 Market Modules",
-    "Screenshot module data is sorted into the nine equivalent web-native runtime categories"
+    "Raw browser facts are organized into the 8 structural runtime trees"
   ]) {
     assert.match(html, new RegExp(phrase));
   }
@@ -128,13 +128,17 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
     "function buildRuntimeFactLedger",
     "function buildStandaloneAggregateDiagnostics",
     "function summarizeRuntimeEvents",
-    "function runtimeFactSubcategory",
-    "function inferRuntimeFactSubcategory",
-    "function renderRuntimeFactSubcategory",
-    "function runtimeSubcategoryDisplayName",
+    "function buildRuntimeLayerTrees",
+    "function canonicalRuntimeFactForRaw",
+    "function renderRuntimeTreeCard",
+    "function renderRuntimeTreeNode",
+    "function exportRuntimeLayerSummary",
     "function renderWebV2Taxonomy"
   ]) {
     assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  for (const treeName of ["DOM Runtime", "CSSOM Runtime", "Layout Runtime", "Shadow DOM Runtime", "Accessibility Runtime", "JS Runtime", "Worker / Thread Runtime", "VDOM Runtime"]) {
+    assert.match(js, new RegExp(treeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   for (const category of ["Interaction", "Presentation", "Communication", "Synchronization", "Persistence", "Execution", "Security", "Resources", "Compute"]) {
     assert.match(js, new RegExp(category));
@@ -148,17 +152,18 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /function screenshotModulesForRuntimeEvent/);
   assert.match(js, /function screenshotModuleSystemsForRuntimeEvent/);
   assert.match(js, /function renderRuntimeMappedRawData/);
-  assert.match(js, /Total facts:/);
+  assert.match(js, /structural/);
+  assert.match(js, /changed nodes/);
   assert.match(js, /runtimeFactHistory/);
   assert.match(js, /\/api\/runtime-diagnostics\/export/);
-  assert.match(js, /Other facts/);
-  assert.match(js, /DOM changes/);
-  assert.match(js, /Layout facts/);
-  assert.match(js, /CSSOM changes/);
-  assert.match(js, /VDOM changes/);
-  assert.match(js, /Iframe DOM facts/);
-  assert.match(js, /Runtime timing facts/);
-  assert.match(js, /Runtime error facts/);
+  assert.match(js, /DOM\.NodeAdded/);
+  assert.match(js, /CSS\.RuleInserted/);
+  assert.match(js, /Layout\.Reflow/);
+  assert.match(js, /Shadow\.RootAdded/);
+  assert.match(js, /A11y\.RoleChanged/);
+  assert.match(js, /JSRuntime\.MicrotaskScheduled/);
+  assert.match(js, /Worker\.Created/);
+  assert.match(js, /VDOM\.NodeDiff/);
   assert.match(js, /No facts yet/);
   assert.doesNotMatch(js, /Raw evidence:/);
   assert.doesNotMatch(js, /observations/);
@@ -169,11 +174,26 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /Web Version 2 Scores/);
   assert.match(js, /Commercial Package Scores/);
   assert.match(css, /\.web-v2-taxonomy/);
+  assert.match(css, /\.runtime-tree-card/);
+  assert.match(css, /\.runtime-node/);
+  assert.match(css, /\.hl-added/);
+  assert.match(css, /\.hl-removed/);
+  assert.match(css, /\.hl-changed/);
   assert.match(css, /\.runtime-profile-total/);
   assert.match(css, /\.runtime-subcategory-stack/);
-  assert.match(css, /\.runtime-subcategory-line/);
   assert.match(css, /\.runtime-raw-card/);
   assert.match(css, /\.runtime-event-card\.active/);
+});
+
+test("Atrinit Runtime Layer replaces the old nine profile cards with eight trees", () => {
+  assert.doesNotMatch(html, /Atrinit Runtime Event Profile/);
+  assert.doesNotMatch(html, /0 \/ 9 runtime event categories active/);
+  assert.match(html, /0 \/ 8 runtime trees active/);
+  assert.match(js, /const RUNTIME_TREE_DOMAINS = Object\.freeze/);
+  assert.match(js, /const RUNTIME_HIGHLIGHT_MAP = Object\.freeze/);
+  assert.match(js, /buildRuntimeLayerTrees\(all\)/);
+  assert.match(js, /runtimeLayer\.trees\.map\(renderRuntimeTreeCard\)/);
+  assert.match(js, /atrinitRuntimeLayer/);
 });
 
 test("Atrinit raw Recent Facts registry drives the profile categories", () => {
