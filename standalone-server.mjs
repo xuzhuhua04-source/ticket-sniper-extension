@@ -5,6 +5,9 @@ import { analyzeUrl } from "./standalone-analyzer.mjs";
 import { SecureBrowserRuntime } from "./secure-browser-runtime.mjs";
 import { accountEntitlements, billingStatus, createCheckoutSession, entitlementsFromAuthorizeNetEvent, portalUrl, verifyAuthorizeNetWebhook } from "./companion-app/src/billing.mjs";
 import { createWebBloombergStore, deriveBehaviorWindowsFromFacts } from "./web-bloomberg-engine.mjs";
+import { buildFactsLayerModel } from "./facts/index.js";
+import { buildIntelligenceLayerModel } from "./intelligence/index.js";
+import { buildAutomationLayerModel } from "./automation/exec.js";
 import "./organ-frequency-engine.js";
 
 const MAX_STANDALONE_HISTORY = 12;
@@ -228,6 +231,12 @@ export function buildStandaloneExportPayload(store = standaloneDiagnosticsStore)
   const latestDiagnostics = latest?.diagnostics || {};
   const channels = latestDiagnostics.runtimeFactChannels || {};
   const factHistory = latestDiagnostics.runtimeFactHistory || [];
+  const factsLayer = buildFactsLayerModel(factHistory.map(fact => ({
+    channel: fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`,
+    fact
+  })));
+  const intelligenceLayer = buildIntelligenceLayerModel(factHistory, latestDiagnostics.webBloombergTerminal?.windows || []);
+  const automationLayer = buildAutomationLayerModel(intelligenceLayer.msu || []);
   const packageSuite = latestDiagnostics.organFrequencySpectrumLatest?.commercialPackages ||
     latestDiagnostics.organFrequencySpectrumState?.commercialPackages ||
     {};
@@ -251,6 +260,9 @@ export function buildStandaloneExportPayload(store = standaloneDiagnosticsStore)
       historyFactLimit: MAX_HISTORY_FACTS,
       channelFactLimit: MAX_CHANNEL_FACTS
     },
+    factsLayer,
+    intelligenceLayer,
+    automationLayer,
     latest,
     history,
     webBloomberg: webBloombergStore.export()

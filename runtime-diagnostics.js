@@ -103,6 +103,13 @@ const elements = {
   plainActionDetail: document.getElementById("plain-action-detail"),
   normalCoverage: document.getElementById("normal-coverage"),
   normalInsightGrid: document.getElementById("normal-insight-grid"),
+  stlLayerStatus: document.getElementById("stl-layer-status"),
+  factsLayerTotal: document.getElementById("facts-layer-total"),
+  factsLayerList: document.getElementById("facts-layer-list"),
+  intelligenceLayerTotal: document.getElementById("intelligence-layer-total"),
+  intelligenceLayerList: document.getElementById("intelligence-layer-list"),
+  automationLayerTotal: document.getElementById("automation-layer-total"),
+  automationLayerList: document.getElementById("automation-layer-list"),
   coverageGrid: document.getElementById("coverage-grid"),
   targetSummary: document.getElementById("target-summary"),
   targetDetail: document.getElementById("target-detail"),
@@ -1530,6 +1537,7 @@ function renderEmptyRuntimeDashboard() {
   snapshot = buildSnapshot({});
   renderSummary(snapshot);
   renderPlainEnglishSummary(snapshot);
+  renderStlRuntimeLayers(snapshot);
   renderChannels(snapshot);
   renderTechnologyProfile(snapshot);
   renderStructuralPipeline(snapshot);
@@ -1563,6 +1571,7 @@ async function saveFrequencySettings() {
     renderFrequencySpectrum(snapshot);
     renderCommercialPackageSuite(snapshot);
     renderPlainEnglishSummary(snapshot);
+    renderStlRuntimeLayers(snapshot);
   }
 }
 
@@ -1708,6 +1717,7 @@ function handleStandaloneTargetInput() {
   snapshot = buildSnapshot({});
   renderSummary(snapshot);
   renderPlainEnglishSummary(snapshot);
+  renderStlRuntimeLayers(snapshot);
   renderChannels(snapshot);
   renderTechnologyProfile(snapshot);
   renderStructuralPipeline(snapshot);
@@ -1777,6 +1787,7 @@ async function renderStandaloneResult(result) {
   upsertRankingSampleFromResult(result, snapshot, "live-analysis");
   renderSummary(snapshot);
   renderPlainEnglishSummary(snapshot);
+  renderStlRuntimeLayers(snapshot);
   renderChannels(snapshot);
   renderTechnologyProfile(snapshot);
   renderStructuralPipeline(snapshot);
@@ -1860,6 +1871,7 @@ async function clearStandaloneDiagnostics() {
   snapshot = buildSnapshot({});
   renderSummary(snapshot);
   renderPlainEnglishSummary(snapshot);
+  renderStlRuntimeLayers(snapshot);
   renderChannels(snapshot);
   renderTechnologyProfile(snapshot);
   renderStructuralPipeline(snapshot);
@@ -1903,6 +1915,7 @@ function connectStandaloneDiagnosticsStream() {
       snapshot = buildSnapshot({});
       renderSummary(snapshot);
       renderPlainEnglishSummary(snapshot);
+      renderStlRuntimeLayers(snapshot);
       renderChannels(snapshot);
       renderTechnologyProfile(snapshot);
       renderStructuralPipeline(snapshot);
@@ -2029,6 +2042,9 @@ async function refresh() {
       "runtimeFactChannels",
       "runtimeFactHistory",
       "runtimeFactStatus",
+      "diagnosticFactChannels",
+      "diagnosticFactHistory",
+      "diagnosticFactStatus",
       "crawlerSignalHistory",
       "crawlerSignalStatus",
       "structuralMonitorStatus",
@@ -2053,6 +2069,7 @@ async function refresh() {
   snapshot = buildSnapshot(data);
   renderSummary(snapshot);
   renderPlainEnglishSummary(snapshot);
+  renderStlRuntimeLayers(snapshot);
   renderChannels(snapshot);
   renderTechnologyProfile(snapshot);
   renderStructuralPipeline(snapshot);
@@ -2084,6 +2101,7 @@ function renderDiagnosticsToggle() {
 function buildSnapshot(data) {
   const runtimeFactChannels = data.runtimeFactChannels || {};
   const facts = buildRuntimeFactLedger(data);
+  const diagnosticFacts = buildDiagnosticFactLedger(data);
   const crawlerFacts = [
     ...(data.crawlerSignalHistory || []).map(status => ({ channel: `crawler/${status.fact?.type || "signal"}`, fact: status.fact, status })),
     ...(data.crawlerSignalStatus?.fact ? [{ channel: `crawler/${data.crawlerSignalStatus.fact.type || "signal"}`, fact: data.crawlerSignalStatus.fact, status: data.crawlerSignalStatus }] : [])
@@ -2116,7 +2134,10 @@ function buildSnapshot(data) {
     latest: data.organFrequencySpectrumLatest || null
   };
   if (!organFrequencySpectrum.state && all.length) organFrequencySpectrum.state = buildFrequencySpectrumFromFacts(all);
-  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, runtimeLayerSummary, layerCoverage };
+  const diagnosticAll = diagnosticFacts
+    .map(item => ({ ...item, severity: factSeverity(item.fact), time: Number(item.fact.timestamp) || 0 }))
+    .sort((left, right) => right.time - left.time);
+  return { data, channels: runtimeFactChannels, facts: all, diagnosticFacts: diagnosticAll, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, runtimeLayerSummary, layerCoverage };
 }
 
 function buildRuntimeFactLedger(data = {}) {
@@ -2126,6 +2147,33 @@ function buildRuntimeFactLedger(data = {}) {
   const fromHistory = (data.runtimeFactHistory || [])
     .filter(Boolean)
     .map(fact => ({ channel: fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`, fact }));
+  const seen = new Set();
+  return [...fromChannels, ...fromHistory].filter(item => {
+    const fact = item.fact || {};
+    const key = [
+      item.channel || "",
+      fact.source || "",
+      fact.type || "",
+      fact.timestamp || "",
+      fact.context?.pageUrl || "",
+      fact.value?.signature || fact.value?.href || fact.value?.selector || fact.value?.url || ""
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildDiagnosticFactLedger(data = {}) {
+  const diagnosticFactChannels = data.diagnosticFactChannels || {};
+  const fromChannels = Object.entries(diagnosticFactChannels)
+    .flatMap(([channel, items]) => (items || []).map(fact => ({ channel, fact })));
+  const fromHistory = (data.diagnosticFactHistory || [])
+    .filter(Boolean)
+    .map(status => {
+      const fact = status.fact || status;
+      return { channel: status.channel || fact.channel || `${fact.source || "diagnostic"}/${fact.type || "fact"}`, fact };
+    });
   const seen = new Set();
   return [...fromChannels, ...fromHistory].filter(item => {
     const fact = item.fact || {};
@@ -2828,6 +2876,184 @@ function renderPlainEnglishSummary(model) {
   renderNormalInsights(model, { total, high, medium, channels, pressureFacts, mutationFacts, spectrum });
   renderLayerCoverageMatrix(model);
   renderWebV2Taxonomy(model);
+}
+
+function renderStlRuntimeLayers(model) {
+  if (!elements.factsLayerTotal || !elements.intelligenceLayerTotal || !elements.automationLayerTotal) return;
+  const layers = buildStlRuntimeLayers(model);
+  elements.stlLayerStatus.textContent = layers.factsLayer.totalFacts
+    ? `${layers.factsLayer.totalFacts} raw facts -> ${layers.intelligenceLayer.msu.length} MSUs -> ${layers.automationLayer.actions.length} recommendations`
+    : "Waiting for raw facts";
+  elements.factsLayerTotal.textContent = `${layers.factsLayer.totalFacts} raw ${layers.factsLayer.totalFacts === 1 ? "fact" : "facts"}`;
+  elements.factsLayerList.innerHTML = layers.factsLayer.channelRows.length
+    ? layers.factsLayer.channelRows.slice(0, 8).map(row => `<div><strong>${escapeHtml(readableChannel(row.channel))}</strong><span>${row.count}</span></div>`).join("")
+    : "No raw facts yet.";
+  elements.intelligenceLayerTotal.textContent = `${layers.intelligenceLayer.msu.length} MSUs`;
+  elements.intelligenceLayerList.innerHTML = [
+    `<div><strong>Metrics</strong><span>${Object.entries(layers.intelligenceLayer.metrics).map(([key, value]) => `${escapeHtml(key)}:${value}`).join(" ") || "none"}</span></div>`,
+    `<div><strong>Edges</strong><span>${layers.intelligenceLayer.edges.length}</span></div>`,
+    `<div><strong>Hints</strong><span>${layers.intelligenceLayer.hints.length}</span></div>`,
+    `<div><strong>Classifications</strong><span>${layers.intelligenceLayer.classifications.length}</span></div>`
+  ].join("");
+  elements.automationLayerTotal.textContent = `${layers.automationLayer.actions.length} ${layers.automationLayer.actions.length === 1 ? "action" : "actions"}`;
+  elements.automationLayerList.innerHTML = layers.automationLayer.actions.length
+    ? layers.automationLayer.actions.slice(0, 6).map(action => `<div><strong>${escapeHtml(action.domain)}</strong><span>${escapeHtml(action.summary)}</span></div>`).join("")
+    : "No automation actions yet.";
+}
+
+function buildStlRuntimeLayers(model) {
+  const facts = [...(model.facts || []), ...(model.diagnosticFacts || [])];
+  const factsLayer = buildStlFactsLayer(facts);
+  const intelligenceLayer = buildStlIntelligenceLayer(facts, model);
+  const automationLayer = buildStlAutomationLayer(intelligenceLayer.msu);
+  return { factsLayer, intelligenceLayer, automationLayer };
+}
+
+function buildStlFactsLayer(items = []) {
+  const channels = {};
+  const history = [];
+  for (const item of items) {
+    const fact = item.fact || item;
+    const channel = item.channel || fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`;
+    channels[channel] = channels[channel] || [];
+    channels[channel].push(fact);
+    history.push({ channel, fact, timestamp: Number(fact.timestamp || item.time) || 0 });
+  }
+  const channelRows = Object.entries(channels)
+    .map(([channel, values]) => ({ channel, count: values.length }))
+    .sort((left, right) => right.count - left.count || left.channel.localeCompare(right.channel));
+  return {
+    version: "stl-web-facts-v1",
+    totalFacts: history.length,
+    channels,
+    channelRows,
+    history: history.sort((left, right) => right.timestamp - left.timestamp),
+    status: { state: history.length ? "facts_active" : "facts_waiting" }
+  };
+}
+
+function buildStlIntelligenceLayer(items = [], model = {}) {
+  const facts = items.map(item => item.fact || item).filter(Boolean);
+  const metrics = {};
+  const edges = [];
+  const hints = [];
+  const classifications = [];
+  for (const fact of facts) {
+    const metric = stlMetricForFact(fact);
+    metrics[metric] = (metrics[metric] || 0) + 1;
+    metrics.behavior = (metrics.behavior || 0) + 1;
+    if (metric !== "behavior") edges.push({ from: "browser", to: metric, type: "runtime-frequency", weight: 1 });
+    const hint = stlHintForFact(fact, metric);
+    if (hint) hints.push(hint);
+    classifications.push({ source: fact.source || "runtime", type: fact.type || "fact", categories: stlClassifyFact(fact) });
+  }
+  const windows = model.data?.webBloombergTerminal?.windows || model.organFrequencySpectrum?.state?.webBloombergTerminal?.windows || [];
+  const msu = [
+    ...facts.slice(0, 120).map(fact => stlFactToMsu(fact)),
+    ...windows.slice(-40).map(window => stlWindowToMsu(window))
+  ];
+  return {
+    version: "stl-web-intelligence-v1",
+    metrics,
+    edges: edges.slice(0, 120),
+    hints: hints.slice(0, 80),
+    classifications: classifications.slice(0, 200),
+    windows: windows.slice(-80),
+    msu,
+    status: { state: facts.length ? "intelligence_ready" : "intelligence_waiting" }
+  };
+}
+
+function buildStlAutomationLayer(msu = []) {
+  const actions = (msu || []).slice(0, 160).map(item => {
+    const domain = item.actionDomain || "runtime";
+    return {
+      domain,
+      status: "recommended",
+      summary: stlAutomationSummary(domain),
+      msu: item
+    };
+  });
+  return {
+    version: "stl-web-automation-v1",
+    actions,
+    executionStatus: { state: actions.length ? "automation_recommendations_ready" : "automation_waiting", dryRun: true, actionCount: actions.length },
+    renderUpdates: actions.map(action => ({ target: "runtime-diagnostics", mode: "recommendation", label: action.summary }))
+  };
+}
+
+function stlMetricForFact(fact = {}) {
+  const text = `${fact.source || ""}/${fact.type || ""}`.toLowerCase();
+  if (/ai|inference|model|embedding/.test(text)) return "ai";
+  if (/wasm|webassembly/.test(text)) return "wasm";
+  if (/webgpu|gpu/.test(text)) return "webgpu";
+  if (/worker|service-worker|messagechannel|post-message|multicontext/.test(text)) return "worker";
+  if (/promise|microtask/.test(text)) return "microtask";
+  if (/longtask|long-task/.test(text)) return "longtask";
+  if (/script|javascript|runtime|timer|error|console/.test(text)) return "js";
+  if (/malicious|fingerprint|captcha|challenge|crawler|webdriver|headless/.test(text)) return "malicious";
+  if (/protect|auth|login|paywall/.test(text)) return "protection";
+  if (/network|fetch|xhr|resource|websocket|request|response/.test(text)) return "network";
+  if (/layout|style|css|paint|shift|reflow/.test(text)) return "layout";
+  if (/dom|mutation|shadow|vdom|node/.test(text)) return "dom";
+  return "behavior";
+}
+
+function stlClassifyFact(fact = {}) {
+  const text = `${fact.source || ""}/${fact.type || ""} ${JSON.stringify(fact.value || {})}`.toLowerCase();
+  return [
+    /captcha|challenge|fingerprint|crawler|webdriver|headless|bot|block/.test(text) ? "protection" : "",
+    /ai|inference|model|embedding|wasm|webgpu|gpu/.test(text) ? "ai" : "",
+    /layout|reflow|shift|paint|style|css|cascade/.test(text) ? "layout" : "",
+    /dom|mutation|node|shadow|vdom|component/.test(text) ? "structure" : "",
+    /fetch|xhr|network|websocket|resource|request|response/.test(text) ? "network" : "",
+    /microtask|promise|timer|long.?task|runtime|script|console|error/.test(text) ? "runtime" : ""
+  ].filter(Boolean).concat(["behavior"]).filter((value, index, all) => all.indexOf(value) === index);
+}
+
+function stlHintForFact(fact, metric) {
+  const severity = fact.value?.severity || fact.severity || "low";
+  if (!["high", "critical"].includes(severity) && !["malicious", "protection", "longtask", "layout", "microtask"].includes(metric)) return null;
+  return { type: metric, severity, summary: `${fact.source || "runtime"}/${fact.type || "fact"}` };
+}
+
+function stlFactToMsu(fact = {}) {
+  const metric = stlMetricForFact(fact);
+  return {
+    id: `fact:${fact.source || "runtime"}:${fact.type || "fact"}:${Number(fact.timestamp) || 0}`,
+    kind: "fact_msu",
+    source: fact.source || "runtime",
+    type: fact.type || "fact",
+    metric,
+    categories: stlClassifyFact(fact),
+    actionDomain: stlActionDomain(metric),
+    payload: { source: fact.source, type: fact.type }
+  };
+}
+
+function stlWindowToMsu(window = {}) {
+  const metrics = window.metrics || {};
+  const dominant = Object.entries(metrics).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] || "behavior";
+  return { id: `window:${window.window_id || window.start_ts || Date.now()}`, kind: "window_msu", dominantMetric: dominant, actionDomain: stlActionDomain(dominant), payload: { window_id: window.window_id || "" } };
+}
+
+function stlActionDomain(metric) {
+  if (metric === "layout") return "layout";
+  if (metric === "dom") return "dom";
+  if (metric === "network") return "network";
+  if (["malicious", "protection"].includes(metric)) return "security";
+  return "runtime";
+}
+
+function stlAutomationSummary(domain) {
+  return ({
+    layout: "Reduce layout instability and inspect shift/reflow sources.",
+    dom: "Review DOM mutation density and collapse noisy structural bursts.",
+    css: "Inspect cascade conflicts, selector pressure, and stylesheet anomalies.",
+    runtime: "Mitigate runtime overload from timers, microtasks, long tasks, or workers.",
+    network: "Review suspicious or high-pressure network/resource patterns.",
+    security: "Respond to anti-crawler, fingerprinting, challenge, or protection behavior."
+  })[domain] || "Review runtime structure.";
 }
 
 function renderOperatingStrip(model, counts = {}) {
@@ -4527,6 +4753,9 @@ async function exportJson() {
       "runtimeFactChannels",
       "runtimeFactHistory",
       "runtimeFactStatus",
+      "diagnosticFactChannels",
+      "diagnosticFactHistory",
+      "diagnosticFactStatus",
       "crawlerSignalHistory",
       "crawlerSignalStatus",
       "structuralPipelineState",
@@ -4557,6 +4786,7 @@ async function exportJson() {
         runtimeEventToSig9Organs: RUNTIME_EVENT_TO_SIG9_ORGANS,
         packageRuntimeEventMap: PACKAGE_RUNTIME_EVENT_MAP
       },
+      stlWebRuntime: scrubExportValue(buildStlRuntimeLayers(exportSnapshot)),
       atrinitRuntimeLayer: scrubExportValue(exportRuntimeLayerSummary(exportSnapshot.runtimeLayerSummary || buildRuntimeLayerTrees(exportSnapshot.facts || []))),
       diagnostics: data
     }), "runtime-diagnostics");
@@ -4638,6 +4868,7 @@ function summarizeSnapshotForExport(model) {
     severities,
     latest: model.latest ? scrubExportValue(model.latest) : null,
     rawFactMapping: scrubExportValue(buildFactMappingDebugReport(model)),
+    stlWebRuntime: scrubExportValue(buildStlRuntimeLayers(model)),
     atrinitRuntimeLayer: scrubExportValue(exportRuntimeLayerSummary(model.runtimeLayerSummary || buildRuntimeLayerTrees(model.facts || []))),
     structuralPipeline: scrubExportValue(model.pipeline || {}),
     organPipeline: scrubExportValue(model.organPipeline || {}),
@@ -4712,6 +4943,10 @@ async function clearDiagnostics() {
     "runtimeFactHistory",
     "runtimeFactStatus",
     "runtimeFactLedger",
+    "diagnosticFactChannels",
+    "diagnosticFactHistory",
+    "diagnosticFactStatus",
+    "diagnosticFactLedger",
     "crawlerSignalHistory",
     "crawlerSignalStatus",
     "crawlerSignalLedger",

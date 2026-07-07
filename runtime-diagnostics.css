@@ -115,7 +115,7 @@ label { display: block; margin-bottom: 7px; color: #40515b; font-size: 12px; fon
 .readiness-strip p, .deployment-grid p, .docs-boundary p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
 .auth-layout { display: grid; grid-template-columns: minmax(360px, .95fr) minmax(380px, 1fr); gap: 18px; align-items: stretch; }
-.auth-copy, .login-panel, .plans-heading, .plans-panel, .modules-shell, .module-nav-panel, .module-detail, .dashboard-hero, .portal-tools, .command-strip article, .summary-grid div, .plain-dashboard article, .normal-insights, .package-suite, .scope-note, aside, .content section { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.auth-copy, .login-panel, .plans-heading, .plans-panel, .modules-shell, .module-nav-panel, .module-detail, .dashboard-hero, .portal-tools, .command-strip article, .summary-grid div, .plain-dashboard article, .normal-insights, .package-suite, .scope-note, .stl-layer-shell, aside, .content section { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
 .auth-copy { display: grid; align-content: center; min-height: 560px; padding: 30px; overflow: hidden; }
 .auth-copy h2 { max-width: 520px; margin-bottom: 12px; font-size: clamp(34px, 4vw, 52px); line-height: 1.02; }
 .auth-copy p { max-width: 530px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
@@ -422,6 +422,16 @@ label { display: block; margin-bottom: 7px; color: #40515b; font-size: 12px; fon
 .locked-evidence { padding: 12px; border: 1px dashed #c7b06b; border-radius: 8px; background: #fffaf0; color: #6f540a; }
 .locked-evidence strong { display: block; margin-bottom: 4px; color: #5d4504; }
 .scope-note { margin-bottom: 16px; padding: 14px 16px; color: var(--muted); font-size: 12px; line-height: 1.5; box-shadow: none; }
+.stl-layer-shell { margin-bottom: 16px; padding: 16px; box-shadow: none; }
+.stl-layer-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stl-layer-card { min-height: 210px; padding: 14px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; background: #f8fbfb; }
+.stl-layer-card span { display: block; color: var(--accent); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+.stl-layer-card strong { display: block; margin: 8px 0; font-size: 19px; }
+.stl-layer-card p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.stl-layer-card .terminal-list div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.stl-layer-card .terminal-list div:last-child { border-bottom: 0; }
+.stl-layer-card .terminal-list strong { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.stl-layer-card .terminal-list span { color: var(--ink); font-size: 12px; font-weight: 750; text-transform: none; overflow-wrap: anywhere; }
 .docs-boundary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .docs-boundary article { min-height: 150px; padding: 18px; box-shadow: none; }
 .scope-note strong { color: var(--ink); }
@@ -498,7 +508,7 @@ td { color: #26343b; }
 @media (max-width: 900px) {
   .topbar { position: static; }
   .topbar, .top-actions, .home-hero, .portal-tools, .layout, .auth-layout, .dashboard-hero, .modules-shell, .module-hero, .module-business-row, .module-grid, .ranking-hero, .ranking-shell, .ranking-toolbar, .site-footer { grid-template-columns: 1fr; display: grid; }
-  .summary-grid, .organ-summary, .plain-dashboard, .plans-panel, .module-plan-panel, .addon-plan-panel, .command-strip, .faq-grid, .home-use-cases, .readiness-strip, .deployment-grid, .docs-boundary, .ranking-ops-grid, .ranking-normal-grid, .ranking-package-grid, .terminal-grid, .terminal-split, .web-v2-module-grid, .runtime-event-grid { grid-template-columns: repeat(2, 1fr); }
+  .summary-grid, .organ-summary, .plain-dashboard, .plans-panel, .module-plan-panel, .addon-plan-panel, .command-strip, .faq-grid, .home-use-cases, .readiness-strip, .deployment-grid, .docs-boundary, .ranking-ops-grid, .ranking-normal-grid, .ranking-package-grid, .terminal-grid, .terminal-split, .web-v2-module-grid, .runtime-event-grid, .stl-layer-grid { grid-template-columns: repeat(2, 1fr); }
   .product-flow { grid-template-columns: 1fr; }
   .login-grid { grid-template-columns: 1fr; }
   .url-row { flex-wrap: wrap; }
@@ -513,7 +523,7 @@ td { color: #26343b; }
 }
 @media (max-width: 580px) {
   main { width: min(100vw - 20px, 1200px); }
-  .summary-grid, .organ-summary, .plain-dashboard, .normal-insight-grid, .plans-panel, .module-plan-panel, .addon-plan-panel, .auth-proof, .command-strip, .faq-grid, .home-use-cases, .readiness-strip, .deployment-grid, .docs-boundary, .ranking-ops-grid, .ranking-normal-grid, .ranking-package-grid, .terminal-grid, .terminal-split, .web-v2-module-grid, .runtime-event-grid { grid-template-columns: 1fr; }
+  .summary-grid, .organ-summary, .plain-dashboard, .normal-insight-grid, .plans-panel, .module-plan-panel, .addon-plan-panel, .auth-proof, .command-strip, .faq-grid, .home-use-cases, .readiness-strip, .deployment-grid, .docs-boundary, .ranking-ops-grid, .ranking-normal-grid, .ranking-package-grid, .terminal-grid, .terminal-split, .web-v2-module-grid, .runtime-event-grid, .stl-layer-grid { grid-template-columns: 1fr; }
   .ranking-row { grid-template-columns: 34px minmax(0, 1fr) 54px; }
   .ranking-row meter { display: none; }
   .auth-copy { min-height: auto; padding: 22px; }

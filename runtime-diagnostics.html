@@ -661,6 +661,33 @@
       Runtime Diagnostics observes the selected website's rendered page structure, network/resource behavior, and runtime mutations from the monitored browser session. It does not claim access to private server analytics or every visitor's activity unless that website exposes those signals.
     </section>
 
+    <section class="stl-layer-shell" aria-label="STL-Web Runtime layers">
+      <div class="section-title">
+        <h2>STL-Web Runtime Pipeline</h2>
+        <span id="stl-layer-status">Waiting for facts</span>
+      </div>
+      <div class="stl-layer-grid">
+        <article class="stl-layer-card">
+          <span>Facts Layer</span>
+          <strong id="facts-layer-total">0 raw facts</strong>
+          <p>Pure browser input grouped by raw source/type channels.</p>
+          <div id="facts-layer-list" class="terminal-list">No raw facts yet.</div>
+        </article>
+        <article class="stl-layer-card">
+          <span>Intelligence Layer</span>
+          <strong id="intelligence-layer-total">0 MSUs</strong>
+          <p>Metrics, dependency edges, risk hints, classifications, normalized windows, and MSU generation.</p>
+          <div id="intelligence-layer-list" class="terminal-list">No intelligence output yet.</div>
+        </article>
+        <article class="stl-layer-card">
+          <span>Automation Layer</span>
+          <strong id="automation-layer-total">0 actions</strong>
+          <p>MSU execution recommendations and structural action status.</p>
+          <div id="automation-layer-list" class="terminal-list">No automation actions yet.</div>
+        </article>
+      </div>
+    </section>
+
     <section class="layout dev-only">
       <aside>
         <h2>Channels</h2>

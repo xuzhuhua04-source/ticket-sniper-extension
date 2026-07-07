@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import { metricFromFact } from "./intelligence/metrics.js";
+import { dependencyEdgeFromFact } from "./intelligence/edges.js";
+import { riskHintFromFact } from "./intelligence/hints.js";
+import { compactEdges, compactHints } from "./intelligence/windowNormalize.js";
 
 export const WEB_BLOOMBERG_BUCKETS = Object.freeze([10, 50, 100, 1000]);
 
@@ -202,8 +206,8 @@ export function validateBehaviorWindow(candidate = {}, context = {}) {
     end_ts: Math.floor(endTs),
     bucket_ms: bucketMs,
     metrics,
-    dependency_edges: normalizeDependencyEdges(candidate.dependency_edges),
-    risk_hints: normalizeRiskHints(candidate.risk_hints),
+    dependency_edges: compactEdges(candidate.dependency_edges),
+    risk_hints: compactHints(candidate.risk_hints),
     capture_mode: String(candidate.capture_mode || context.captureMode || "browser_local_window").slice(0, 80),
     schema_version: "web-bloomberg-v1"
   };
@@ -285,7 +289,7 @@ export function deriveBehaviorWindowsFromFacts(facts = [], context = {}) {
       });
     }
     const window = grouped.get(key);
-    const metric = metricFromRuntimeFact(fact);
+    const metric = metricFromFact(fact);
     window.metrics[metric] = (window.metrics[metric] || 0) + 1;
     window.metrics.behavior = (window.metrics.behavior || 0) + 1;
     const edge = dependencyEdgeFromFact(fact);
@@ -461,58 +465,6 @@ function normalizeMetricKey(key) {
   return alias[value] || value;
 }
 
-function normalizeDependencyEdges(edges) {
-  if (!Array.isArray(edges)) return [];
-  return edges.slice(0, 120).map(edge => ({
-    from: normalizeId(edge?.from || "browser"),
-    to: normalizeId(edge?.to || "runtime"),
-    type: normalizeId(edge?.type || "behavior"),
-    weight: Math.min(10000, Math.max(0, Number(edge?.weight) || 1))
-  })).filter(edge => edge.from && edge.to);
-}
-
-function normalizeRiskHints(hints) {
-  if (!Array.isArray(hints)) return [];
-  return hints.slice(0, 80).map(hint => ({
-    type: normalizeId(hint?.type || hint || "risk"),
-    severity: normalizeSeverity(hint?.severity || "medium"),
-    summary: String(hint?.summary || hint?.message || hint || "").slice(0, 220)
-  })).filter(hint => hint.type);
-}
-
-function metricFromRuntimeFact(fact = {}) {
-  const text = `${fact.source || ""}/${fact.type || ""}`.toLowerCase();
-  if (/ai|inference|model|embedding/.test(text)) return "ai";
-  if (/wasm|webassembly/.test(text)) return "wasm";
-  if (/webgpu|gpu/.test(text)) return "webgpu";
-  if (/worker|service-worker|messagechannel|post-message/.test(text)) return "worker";
-  if (/promise|microtask/.test(text)) return "microtask";
-  if (/longtask/.test(text)) return "longtask";
-  if (/raf|frame|animation/.test(text)) return "raf";
-  if (/script|javascript|runtime|timer|error|console/.test(text)) return "js";
-  if (/malicious|fingerprint|captcha|challenge|crawler|webdriver|headless/.test(text)) return "malicious";
-  if (/protect|auth|login|paywall/.test(text)) return "protection";
-  if (/network|fetch|xhr|resource|websocket/.test(text)) return "network";
-  if (/layout|style|css|paint|shift/.test(text)) return "layout";
-  if (/dom|mutation|shadow|vdom/.test(text)) return "dom";
-  return "behavior";
-}
-
-function dependencyEdgeFromFact(fact = {}) {
-  const metric = metricFromRuntimeFact(fact);
-  if (metric === "behavior") return null;
-  return { from: "browser", to: metric, type: "runtime-frequency", weight: 1 };
-}
-
-function riskHintFromFact(fact = {}) {
-  const metric = metricFromRuntimeFact(fact);
-  const severity = normalizeSeverity(fact.value?.severity || fact.severity || "low");
-  if (severity === "high" || metric === "malicious" || metric === "protection") {
-    return { type: metric, severity, summary: `${fact.source || "runtime"}/${fact.type || "fact"}` };
-  }
-  return null;
-}
-
 function mergeMetrics(target, source) {
   for (const key of Object.keys(source || {})) target[key] = (target[key] || 0) + (Number(source[key]) || 0);
   return target;
@@ -564,10 +516,6 @@ function normalizePath(value) {
 
 function normalizeSegment(value) {
   return normalizeId(value || "default") || "default";
-}
-
-function normalizeSeverity(value) {
-  return ["low", "medium", "high", "critical"].includes(String(value || "").toLowerCase()) ? String(value).toLowerCase() : "low";
 }
 
 function hostFromUrl(value) {

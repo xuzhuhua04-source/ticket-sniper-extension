@@ -19,11 +19,19 @@ const RUNTIME_FACT_LEDGER_LIMIT = 600;
 const RUNTIME_FACT_HISTORY_LIMIT = 100;
 const RUNTIME_FACT_CHANNEL_LIMIT = 40;
 const RUNTIME_FACT_CHANNEL_ITEM_LIMIT = 80;
+const DIAGNOSTIC_FACT_LEDGER_LIMIT = 600;
+const DIAGNOSTIC_FACT_HISTORY_LIMIT = 120;
+const DIAGNOSTIC_FACT_CHANNEL_LIMIT = 50;
+const DIAGNOSTIC_FACT_CHANNEL_ITEM_LIMIT = 80;
 const RUNTIME_DIAGNOSTICS_STORAGE_KEYS = [
   "runtimeFactChannels",
   "runtimeFactHistory",
   "runtimeFactStatus",
   "runtimeFactLedger",
+  "diagnosticFactChannels",
+  "diagnosticFactHistory",
+  "diagnosticFactStatus",
+  "diagnosticFactLedger",
   "crawlerSignalHistory",
   "crawlerSignalStatus",
   "structuralPipelineState",
@@ -42,6 +50,7 @@ const RUNTIME_DIAGNOSTICS_STORAGE_KEYS = [
   "organFrequencySpectrumLatest"
 ];
 let runtimeFactWriteQueue = Promise.resolve();
+let diagnosticFactWriteQueue = Promise.resolve();
 const runtimeTargetWriteCache = new Map();
 
 // Lifecycle and alarms.
@@ -88,6 +97,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.type === "STRUCTURAL_DOM_UPDATED") handleStructuralUpdate(message.payload, sender.tab, "mutation").then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
   else if (message.type === "CRAWLER_SIGNAL_DETECTED") handleCrawlerSignal(message.payload, sender.tab).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
   else if (message.type === "RUNTIME_FACT_DETECTED") handleRuntimeFact(message.payload, sender.tab).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
+  else if (message.type === "DIAGNOSTIC_FACT_DETECTED") handleDiagnosticFact(message.payload, sender.tab).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
   else if (message.type === "SET_RUNTIME_DIAGNOSTICS_TARGET") setRuntimeDiagnosticsTarget(message.payload).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
   else if (message.type === "ENSURE_RUNTIME_DIAGNOSTICS_TARGET") ensureRuntimeDiagnosticsTarget(message.payload).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
   else if (message.type === "UPDATE_GMAIL_MONITOR") updateGmailMonitor(message.payload).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
@@ -436,6 +446,57 @@ async function handleRuntimeFactQueued(payload, tab) {
   return { ok: true, alerted: shouldNotify, status, pipeline: pipelineResult.summary, organPipeline: organPipelineResult.summary, frequencySpectrum: spectrumResult.summary };
 }
 
+async function handleDiagnosticFact(payload, tab) {
+  const next = diagnosticFactWriteQueue.catch(() => {}).then(() => handleDiagnosticFactQueued(payload, tab));
+  diagnosticFactWriteQueue = next.catch(() => {});
+  return next;
+}
+
+async function handleDiagnosticFactQueued(payload, tab) {
+  if (!isRuntimeInspectableUrl(tab?.url)) throw new Error("Diagnostic facts are accepted only from normal HTTP or HTTPS pages.");
+  const settings = await getRuntimeDiagnosticsSettings();
+  if (!settings.enabled || !payload?.fact) return { ok: true, stored: false };
+  const fact = normalizeRuntimeFact(payload.fact);
+  const severity = runtimeFactSeverity(fact);
+  const key = runtimeFactKey(tab.url, fact);
+  const { diagnosticFactLedger = {}, diagnosticFactHistory = [], diagnosticFactChannels = {} } = await chrome.storage.local.get([
+    "diagnosticFactLedger",
+    "diagnosticFactHistory",
+    "diagnosticFactChannels"
+  ]);
+  const now = payload.timestamp || Date.now();
+  const previousAt = diagnosticFactLedger[key] || 0;
+  const channel = `${fact.source}/${fact.type}`;
+  diagnosticFactChannels[channel] = [fact, ...(diagnosticFactChannels[channel] || [])].slice(0, DIAGNOSTIC_FACT_CHANNEL_ITEM_LIMIT);
+  const prunedDiagnosticFactChannels = pruneDiagnosticFactChannels(diagnosticFactChannels);
+  if (now - previousAt < 1000) {
+    await chrome.storage.local.set({ diagnosticFactChannels: prunedDiagnosticFactChannels });
+    return { ok: true, duplicate: true, channel };
+  }
+
+  diagnosticFactLedger[key] = now;
+  pruneRuntimeLedger(diagnosticFactLedger, DIAGNOSTIC_FACT_LEDGER_LIMIT);
+  const status = {
+    state: "diagnostic_fact_detected",
+    message: describeRuntimeFact(fact),
+    checkedAt: now,
+    tabId: tab.id,
+    host: new URL(tab.url).hostname,
+    page: payload.page || {},
+    severity,
+    channel,
+    fact
+  };
+  const history = [status, ...diagnosticFactHistory].slice(0, DIAGNOSTIC_FACT_HISTORY_LIMIT);
+  await chrome.storage.local.set({
+    diagnosticFactLedger,
+    diagnosticFactChannels: prunedDiagnosticFactChannels,
+    diagnosticFactHistory: history,
+    diagnosticFactStatus: status
+  });
+  return { ok: true, stored: true, status };
+}
+
 async function setRuntimeDiagnosticsTarget(payload = {}) {
   const url = validateRuntimeDiagnosticsUrl(payload.url || "");
   await clearRuntimeDiagnosticsIfTargetChanged(url);
@@ -621,6 +682,17 @@ function pruneRuntimeFactChannels(channels) {
     .filter(([, facts]) => facts.length);
   entries.sort((left, right) => newestRuntimeFactTimestamp(right[1]) - newestRuntimeFactTimestamp(left[1]));
   return Object.fromEntries(entries.slice(0, RUNTIME_FACT_CHANNEL_LIMIT));
+}
+
+function pruneDiagnosticFactChannels(channels) {
+  const entries = Object.entries(channels || {})
+    .map(([channel, facts]) => [
+      channel,
+      Array.isArray(facts) ? facts.slice(0, DIAGNOSTIC_FACT_CHANNEL_ITEM_LIMIT) : []
+    ])
+    .filter(([, facts]) => facts.length);
+  entries.sort((left, right) => newestRuntimeFactTimestamp(right[1]) - newestRuntimeFactTimestamp(left[1]));
+  return Object.fromEntries(entries.slice(0, DIAGNOSTIC_FACT_CHANNEL_LIMIT));
 }
 
 function newestRuntimeFactTimestamp(facts) {
