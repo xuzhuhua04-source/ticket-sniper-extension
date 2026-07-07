@@ -1805,10 +1805,13 @@ async function loadStandaloneDashboardDiagnostics(result) {
 
 function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null) {
   const records = [
+    fallbackResult,
     payload.latest,
     ...(Array.isArray(payload.history) ? payload.history : [])
-  ].filter(Boolean);
-  if (!records.length && fallbackResult) records.push(fallbackResult);
+  ].filter(Boolean).filter((record, index, all) => {
+    const key = `${record.analyzedAt || ""}:${record.finalUrl || record.requestedUrl || ""}`;
+    return all.findIndex(item => `${item.analyzedAt || ""}:${item.finalUrl || item.requestedUrl || ""}` === key) === index;
+  });
   const latest = records[0] || fallbackResult || {};
   const runtimeFactHistory = [];
   const runtimeFactChannels = {};
@@ -1993,7 +1996,17 @@ function shouldRenderStandaloneStreamResult(result) {
 }
 
 function canRenderStandaloneStreamResult(result) {
-  return Boolean(accountState.email && result && shouldRenderStandaloneStreamResult(result));
+  if (!accountState.email || !result || !shouldRenderStandaloneStreamResult(result)) return false;
+  const incomingFacts = standaloneResultFactCount(result);
+  const currentFacts = snapshot?.facts?.length || standaloneResultFactCount(standaloneState.lastResult);
+  if (!incomingFacts && currentFacts) return false;
+  return true;
+}
+
+function standaloneResultFactCount(result = {}) {
+  const historyCount = Array.isArray(result?.diagnostics?.runtimeFactHistory) ? result.diagnostics.runtimeFactHistory.length : 0;
+  const channelCount = Object.values(result?.diagnostics?.runtimeFactChannels || {}).reduce((sum, facts) => sum + (Array.isArray(facts) ? facts.length : 0), 0);
+  return Math.max(historyCount, channelCount);
 }
 
 async function diagnosticsTick() {

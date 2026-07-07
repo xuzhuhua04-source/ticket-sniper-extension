@@ -258,6 +258,13 @@ test("Runtime Layer export and debug evidence include tree coverage and degradat
   assert.match(js, /blocked_by_browser/);
 });
 
+test("standalone UI keeps fresh analysis facts ahead of stale export or empty stream data", () => {
+  assert.match(js, /fallbackResult,\s*payload\.latest/);
+  assert.match(js, /function standaloneResultFactCount/);
+  assert.match(js, /if \(!incomingFacts && currentFacts\) return false/);
+  assert.match(js, /shouldRenderStandaloneStreamResult/);
+});
+
 test("Atrinit raw Recent Facts registry drives the profile categories", () => {
   for (const symbol of [
     "const RAW_FACT_MAPPING_REGISTRY_VERSION =",
