@@ -359,6 +359,8 @@ label { display: block; margin-bottom: 7px; color: #40515b; font-size: 12px; fon
 .runtime-profile-total b { color: var(--ink); font-size: 15px; line-height: 1; }
 .runtime-tree-capture { min-height: 34px; padding: 7px 8px; border: 1px solid #dbe8ec; border-radius: 7px; background: #fff; color: #526a74; font-size: 11px; line-height: 1.35; }
 .runtime-tree-capture.limited { border-color: #ead5a7; background: #fffaf0; color: #715a24; }
+.runtime-evidence-split { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; color: #536875; font-size: 11px; }
+.runtime-evidence-split span { border: 1px solid #dbe7eb; border-radius: 999px; padding: 3px 7px; background: #fff; }
 .web-v2-card small, .runtime-event-card small { display: block; color: #4f6570; font-size: 11px; line-height: 1.4; }
 .mapped-module-list { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; color: #40525c; font-size: 11px; line-height: 1.35; }
 .mapped-module-list b { margin-right: 2px; color: var(--ink); font-weight: 850; }

@@ -813,6 +813,10 @@
     return {
       "runtime/js_microtask": { treeId: "js", type: "JSRuntime.MicrotaskScheduled" },
       "runtime/js_promise_chain": { treeId: "js", type: "JSRuntime.PromiseChainUpdated" },
+      "runtime/js_fetch_start": { treeId: "worker", type: "Worker.MessagePosted" },
+      "runtime/js_fetch_end": { treeId: "worker", type: "Worker.MessageReceived" },
+      "runtime/js_ws_send": { treeId: "worker", type: "Worker.MessagePosted" },
+      "runtime/js_ws_message": { treeId: "worker", type: "Worker.MessageReceived" },
       "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
       "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
       "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
@@ -836,6 +840,7 @@
       "multicontext/message_channel_message": { treeId: "worker", type: "Worker.MessagePosted" },
       "multicontext/sw_register": { treeId: "worker", type: "Worker.ServiceWorkerRegistered" },
       "multicontext/sw_activated": { treeId: "worker", type: "Worker.ServiceWorkerActivated" },
+      "multicontext/sw_fetch_capability": { treeId: "worker", type: "Worker.ServiceWorkerFetch" },
       "vdom/vdom_commit": { treeId: "vdom", type: "VDOM.Reconciled" },
       "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
       "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" },

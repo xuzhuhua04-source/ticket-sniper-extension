@@ -128,6 +128,9 @@ function buildFacts({ url, requestedUrl, response, html, bytes, headers, started
   const resources = resourceSummary(html, url);
   const providers = detectProtectionProviders(html, headers);
   const technology = technologySummary(html, headers);
+  const cssom = cssomSummary(html);
+  const layout = layoutStaticSummary(html);
+  const a11y = accessibilitySummary(html);
   const timingMs = fetchedAt - startedAt;
   facts.push(fact("network", "document-fetch", {
     severity: response.status >= 500 ? "high" : response.status >= 400 ? "medium" : "low",
@@ -160,20 +163,52 @@ function buildFacts({ url, requestedUrl, response, html, bytes, headers, started
     server: headers.server || "",
     poweredBy: headers["x-powered-by"] || ""
   }, { headerNames: Object.keys(headers).slice(0, 40) }, page, fetchedAt + 3));
+  if (cssom.stylesheets || cssom.inlineStyleBlocks || cssom.inlineStyleAttributes || cssom.mediaRules || cssom.keyframeRules) {
+    facts.push(fact("cssom", "stylesheet-snapshot", {
+      severity: cssom.crossOriginLikely > 6 ? "medium" : "low",
+      ...cssom
+    }, { source: "standalone-static-projection", captureMode: "standalone_static_projection" }, page, fetchedAt + 4));
+  }
+  if (layout.layoutElements || layout.positionedElements || layout.scrollContainers || layout.mediaElements) {
+    facts.push(fact("layout", "static-geometry-snapshot", {
+      severity: layout.positionedElements > 80 || layout.mediaElements > 120 ? "medium" : "low",
+      ...layout
+    }, { source: "standalone-static-projection", captureMode: "standalone_static_projection" }, page, fetchedAt + 5));
+  }
+  if (a11y.roles || a11y.ariaStates || a11y.namedControls || a11y.interactiveElements) {
+    facts.push(fact("a11y", "semantic-topology", {
+      severity: a11y.unnamedInteractive > 0 ? "medium" : "low",
+      ...a11y
+    }, { source: "standalone-static-projection", captureMode: "standalone_static_projection" }, page, fetchedAt + 6));
+  }
+  if (resources.iframes) {
+    facts.push(fact("multicontext", "iframe-observed", {
+      severity: resources.iframes > 8 ? "medium" : "low",
+      count: resources.iframes,
+      iframeHostCount: resources.iframeHosts.length
+    }, { iframeHosts: resources.iframeHosts, source: "standalone-static-projection", captureMode: "standalone_static_projection" }, page, fetchedAt + 7));
+  }
+  if (technology.frameworks.length) {
+    facts.push(fact("vdom", "framework-surface", {
+      severity: "low",
+      frameworks: technology.frameworks,
+      exposedRuntimeHooks: false
+    }, { source: "standalone-static-projection", captureMode: "standalone_static_projection", limitation: "Framework runtime internals require page injection or exposed dev hooks." }, page, fetchedAt + 8));
+  }
   for (const provider of providers) {
     facts.push(fact("anti_crawler", "challenge", {
       severity: provider.severity,
       provider: provider.provider,
       kind: provider.kind,
       marker: provider.marker
-    }, { detection: "standalone-html-header-scan" }, page, fetchedAt + 4));
+    }, { detection: "standalone-html-header-scan", captureMode: "standalone_static_projection" }, page, fetchedAt + 9));
   }
   const calendar = calendarSummary(html);
   if (calendar.hasCalendar || calendar.dateLikeCount) {
     facts.push(fact("dom", "calendar-structure", {
       severity: calendar.hasCalendar ? "low" : "info",
       ...calendar
-    }, { note: "Standalone URL analysis reads fetched markup only; authenticated dynamic calendars may not be present in server HTML." }, page, fetchedAt + 5));
+    }, { note: "Standalone URL analysis reads fetched markup only; authenticated dynamic calendars may not be present in server HTML.", captureMode: "standalone_static_projection" }, page, fetchedAt + 10));
   }
   return facts.sort((left, right) => right.timestamp - left.timestamp);
 }
@@ -220,6 +255,42 @@ function resourceSummary(html, baseUrl) {
     scriptHosts: uniqueHosts(scripts),
     styleHosts: uniqueHosts(styles),
     iframeHosts: uniqueHosts(iframes)
+  };
+}
+
+function cssomSummary(html) {
+  return {
+    stylesheets: countMatches(html, /<link\b[^>]*rel=["']?stylesheet|<link\b[^>]*href=["'][^"']+\.css(?:[?#][^"']*)?["']/gi),
+    inlineStyleBlocks: countMatches(html, /<style\b/gi),
+    inlineStyleAttributes: countMatches(html, /\sstyle=["'][^"']+["']/gi),
+    mediaRules: countMatches(html, /@media\b/gi),
+    keyframeRules: countMatches(html, /@(?:-\w+-)?keyframes\b/gi),
+    classSelectors: countMatches(html, /\bclass=["'][^"']+["']/gi),
+    crossOriginLikely: uniqueHosts(extractUrls(html, /<link\b[^>]*href=["']([^"']+)["'][^>]*rel=["']?stylesheet|<link\b[^>]*rel=["']?stylesheet[^>]*href=["']([^"']+)["']/gi, "https://standalone.invalid/")).length
+  };
+}
+
+function layoutStaticSummary(html) {
+  return {
+    layoutElements: countMatches(html, /<(main|section|article|aside|nav|header|footer|form|table|ul|ol|li|div)\b/gi),
+    positionedElements: countMatches(html, /position\s*:\s*(absolute|fixed|sticky|relative)|\b(top|left|right|bottom)\s*:/gi),
+    scrollContainers: countMatches(html, /overflow(?:-[xy])?\s*:\s*(auto|scroll|hidden)/gi),
+    gridHints: countMatches(html, /display\s*:\s*grid|\bgrid-template\b|\bgrid\b/gi),
+    flexHints: countMatches(html, /display\s*:\s*flex|\bflex-direction\b|\bflex\b/gi),
+    mediaElements: countMatches(html, /<(img|picture|source|video|canvas|svg)\b/gi)
+  };
+}
+
+function accessibilitySummary(html) {
+  const interactive = countMatches(html, /<(button|a\b[^>]*href=|input|select|textarea|summary)\b/gi);
+  const labels = countMatches(html, /<(label)\b|\baria-label=|\baria-labelledby=/gi);
+  return {
+    roles: countMatches(html, /\srole=["'][^"']+["']/gi),
+    ariaStates: countMatches(html, /\saria-(expanded|selected|checked|disabled|hidden|pressed|current|invalid)=/gi),
+    namedControls: labels,
+    interactiveElements: interactive,
+    semanticLandmarks: countMatches(html, /<(main|nav|header|footer|aside|section|article)\b|\srole=["'](?:main|navigation|banner|contentinfo|complementary|region)["']/gi),
+    unnamedInteractive: Math.max(0, interactive - labels)
   };
 }
 
@@ -386,6 +457,11 @@ function runtimeLayerFact(source, type, value = {}, metadata = {}) {
     "browser/rendered_dom_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "dom/structure_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "dom/calendar_structure": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "cssom/stylesheet_snapshot": ["cssom", "CSS.RuleChanged", "rule"],
+    "layout/static_geometry_snapshot": ["layout", "Layout.GeometryChanged", "box"],
+    "a11y/semantic_topology": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "multicontext/iframe_observed": ["worker", "Worker.Created", "worker"],
+    "vdom/framework_surface": ["vdom", "VDOM.VDOMTreeChanged", "vnode"],
     "network/document_fetch": ["worker", "Worker.MessageReceived", "worker"],
     "network/resource_map": ["worker", "Worker.MessageReceived", "worker"],
     "network/response_status": ["worker", "Worker.MessageReceived", "worker"],

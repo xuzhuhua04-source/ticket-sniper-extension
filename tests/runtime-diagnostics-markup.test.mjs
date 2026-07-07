@@ -203,7 +203,11 @@ test("Atrinit Runtime Layer replaces the old nine profile cards with eight trees
   assert.match(js, /function runtimeTreeCaptureLine/);
   assert.match(js, /collector-injection-warning/);
   assert.match(js, /degradedCount/);
+  assert.match(js, /function runtimeEvidenceKind/);
+  assert.match(js, /runtime-evidence-split/);
+  assert.match(js, /static fallback facts/);
   assert.match(css, /\.runtime-tree-capture/);
+  assert.match(css, /\.runtime-evidence-split/);
 });
 
 test("collector, secure browser, and standalone analyzer emit canonical runtime layer facts", () => {
@@ -217,6 +221,16 @@ test("collector, secure browser, and standalone analyzer emit canonical runtime 
   assert.match(pageRuntimeHooks, /runtimeLayerDirect/);
   assert.match(secureBrowserRuntime, /ensureRuntimeLayerFact/);
   assert.match(standaloneAnalyzer, /browser\/rendered_dom_snapshot/);
+  for (const standaloneFact of [
+    "stylesheet-snapshot",
+    "static-geometry-snapshot",
+    "semantic-topology",
+    "iframe-observed",
+    "framework-surface",
+    "standalone_static_projection"
+  ]) {
+    assert.match(standaloneAnalyzer + js, new RegExp(standaloneFact));
+  }
   for (const canonical of [
     "DOM.NodeAdded",
     "CSS.RuleInserted",

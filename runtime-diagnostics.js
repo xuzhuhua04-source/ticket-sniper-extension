@@ -2248,6 +2248,8 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
       timestamp,
       summary: canonical.summary || factSummary(item.fact),
       channel: item.channel || canonical.channel || "",
+      captureMode: canonical.captureMode || fact.captureMode || "",
+      evidenceKind: runtimeEvidenceKind(canonical.captureMode || fact.captureMode || ""),
       highlightKind: kind
     };
     tree.facts.push(fact);
@@ -2279,6 +2281,10 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
       return right.latest - left.latest || right.count - left.count || left.label.localeCompare(right.label);
     }),
     facts: tree.facts.sort((left, right) => right.timestamp - left.timestamp),
+    evidenceCounts: tree.facts.reduce((counts, fact) => {
+      counts[fact.evidenceKind] = (counts[fact.evidenceKind] || 0) + 1;
+      return counts;
+    }, {}),
     factTypeCounts: [...tree.factTypeCounts.entries()]
       .map(([type, count]) => ({ type, count, highlightKind: RUNTIME_HIGHLIGHT_MAP[type] || "changed" }))
       .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type))
@@ -2304,6 +2310,7 @@ function canonicalRuntimeFactForRaw(item = {}) {
       label: stamped.label || runtimeFactNodeLabel(fact, stamped.treeId, stamped.type),
       timestamp: Number(fact.timestamp) || Date.now(),
       channel: item.channel || fact.channel || `${fact.source || stamped.treeId}/${fact.type || "fact"}`,
+      captureMode: stamped.captureMode || fact.captureMode || "",
       payload: scrubExportValue({ source: fact.source, type: fact.type, stamped })
     };
   }
@@ -2319,6 +2326,7 @@ function canonicalRuntimeFactForRaw(item = {}) {
     label,
     timestamp: Number(fact.timestamp) || Date.now(),
     channel,
+    captureMode: fact.captureMode || value.captureMode || fact.metadata?.captureMode || "",
     payload: scrubExportValue({ source, type, channel, value })
   };
   const direct = exactRuntimeFactType(source, type);
@@ -2352,6 +2360,9 @@ function exactRuntimeFactType(source, type) {
     "runtime/structural_fallback": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "cssom/css_rule_insert": ["cssom", "CSS.RuleInserted", "rule"],
     "cssom/css_rule_delete": ["cssom", "CSS.RuleDeleted", "rule"],
+    "cssom/css_rule": ["cssom", "CSS.RuleChanged", "rule"],
+    "cssom/stylesheet_snapshot": ["cssom", "CSS.RuleChanged", "rule"],
+    "cssom/stylesheet_change": ["cssom", "CSS.RuleChanged", "rule"],
     "cssom/css_animation": ["cssom", "CSS.KeyframesRuleChanged", "rule"],
     "cssom/css_transition": ["cssom", "CSS.StyleChanged", "rule"],
     "cssom/style_recalc": ["cssom", "CSS.StyleChanged", "rule"],
@@ -2360,6 +2371,8 @@ function exactRuntimeFactType(source, type) {
     "layout/forced_reflow": ["layout", "Layout.Reflow", "box"],
     "layout/layout_rhythm": ["layout", "Layout.Reflow", "box"],
     "layout/layout_dependency": ["layout", "Layout.FlowChanged", "box"],
+    "layout/layout_tree": ["layout", "Layout.GeometryChanged", "box"],
+    "layout/static_geometry_snapshot": ["layout", "Layout.GeometryChanged", "box"],
     "layout/layout_type_change": ["layout", "Layout.BoxModelChanged", "box"],
     "layout/paint_order_change": ["layout", "Layout.PositionChanged", "box"],
     "layout/stacking_context_change": ["layout", "Layout.PositioningChanged", "box"],
@@ -2371,8 +2384,10 @@ function exactRuntimeFactType(source, type) {
     "shadow/slot_change": ["shadow", "Shadow.SlotChanged", "component"],
     "a11y/a11y_role_change": ["a11y", "A11y.RoleChanged", "role"],
     "a11y/a11y_state_change": ["a11y", "A11y.StateChanged", "role"],
+    "a11y/a11y_topology": ["a11y", "A11y.SemanticTopologyChanged", "role"],
     "a11y/a11y_break": ["a11y", "A11y.InteractiveStructureChanged", "role"],
     "a11y/a11y_conflict": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "a11y/semantic_topology": ["a11y", "A11y.SemanticTopologyChanged", "role"],
     "runtime/js_microtask": ["js", "JSRuntime.MicrotaskScheduled", "context"],
     "runtime/js_promise_chain": ["js", "JSRuntime.PromiseChainUpdated", "context"],
     "runtime/js_event_loop_render": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
@@ -2389,6 +2404,10 @@ function exactRuntimeFactType(source, type) {
     "runtime/timeout": ["js", "JSRuntime.TimerScheduled", "context"],
     "runtime/interval": ["js", "JSRuntime.TimerScheduled", "context"],
     "runtime/raf_tick": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
+    "multicontext/iframe_created": ["worker", "Worker.Created", "worker"],
+    "multicontext/iframe_observed": ["worker", "Worker.Created", "worker"],
+    "dom/iframe_observed": ["worker", "Worker.Created", "worker"],
+    "multicontext/iframe_loaded": ["worker", "Worker.MessageReceived", "worker"],
     "multicontext/worker_created": ["worker", "Worker.Created", "worker"],
     "multicontext/worker_message": ["worker", "Worker.MessagePosted", "worker"],
     "multicontext/worker_post": ["worker", "Worker.MessagePosted", "worker"],
@@ -2407,7 +2426,8 @@ function exactRuntimeFactType(source, type) {
     "vdom/vdom_diff": ["vdom", "VDOM.NodeDiff", "vnode"],
     "vdom/vdom_state_change": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
     "vdom/vdom_props_change": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
-    "vdom/vdom_topology": ["vdom", "VDOM.VDOMTreeChanged", "vnode"]
+    "vdom/vdom_topology": ["vdom", "VDOM.VDOMTreeChanged", "vnode"],
+    "vdom/framework_surface": ["vdom", "VDOM.VDOMTreeChanged", "vnode"]
   }[key];
   return exact ? { treeId: exact[0], type: exact[1], nodeType: exact[2] } : null;
 }
@@ -2533,6 +2553,13 @@ function vdomRuntimeFactType(type) {
   if (/tree|topology/.test(type)) return "VDOM.VDOMTreeChanged";
   if (/update|state|props/.test(type)) return "VDOM.VDOMNodeUpdated";
   return "VDOM.NodeDiff";
+}
+
+function runtimeEvidenceKind(captureMode = "") {
+  const mode = String(captureMode || "").toLowerCase();
+  if (/standalone|fetched|static|snapshot|fallback/.test(mode)) return "static";
+  if (/page_injection|framework|chrome_devtools|first_party|runtime/.test(mode)) return "live";
+  return "unknown";
 }
 
 function runtimeFactTargetId(fact = {}, source = "runtime", type = "fact") {
@@ -3021,6 +3048,7 @@ function renderWebV2Taxonomy(model) {
 function renderRuntimeTreeCard(tree) {
   const active = tree.facts.length > 0;
   const degradation = tree.degradation || {};
+  const evidence = tree.evidenceCounts || {};
   const factRows = tree.factTypeCounts.slice(0, 8).map(item => `
     <div class="runtime-fact-type-line">
       <span class="runtime-highlight-dot hl-dot-${escapeHtml(item.highlightKind)}"></span>
@@ -3038,6 +3066,11 @@ function renderRuntimeTreeCard(tree) {
       <span class="runtime-tree-domain">${escapeHtml(tree.domain)}</span>
       <strong>${tree.facts.length} ${tree.facts.length === 1 ? "fact" : "facts"}</strong>
       <p class="runtime-profile-total">${tree.factTypeCounts.length} structural ${tree.factTypeCounts.length === 1 ? "type" : "types"} observed</p>
+      <p class="runtime-evidence-split">
+        <span>${Number(evidence.live || 0)} live</span>
+        <span>${Number(evidence.static || 0)} static</span>
+        <span>${Number(evidence.unknown || 0)} unknown</span>
+      </p>
       <p class="runtime-tree-capture ${degradation.limited ? "limited" : ""}">
         ${escapeHtml(runtimeTreeCaptureLine(tree))}
       </p>
@@ -3053,6 +3086,12 @@ function renderRuntimeTreeCard(tree) {
 
 function runtimeTreeCaptureLine(tree) {
   if (tree.facts.length) {
+    const counts = tree.evidenceCounts || {};
+    const live = Number(counts.live || 0);
+    const staticFacts = Number(counts.static || 0);
+    if (live && staticFacts) return `${live} live collector facts and ${staticFacts} static fallback facts.`;
+    if (live) return `${live} live collector facts captured through ${readableCoverageStatus(tree.coverage?.captureMode || tree.facts[0]?.captureMode || "page_injection")}.`;
+    if (staticFacts) return `${staticFacts} static fallback facts only. Open/render the target with collector injection for live runtime facts.`;
     const mode = tree.coverage?.captureMode || tree.facts[0]?.captureMode || "runtime facts";
     return `${tree.facts.length} facts captured through ${readableCoverageStatus(mode)}.`;
   }
@@ -4610,6 +4649,7 @@ function exportRuntimeLayerSummary(runtimeLayer = {}) {
       edgeCount: tree.edges?.length || 0,
       coverage: tree.coverage || null,
       degradation: tree.degradation || null,
+      evidenceCounts: tree.evidenceCounts || {},
       factTypeCounts: tree.factTypeCounts || [],
       recentFacts: (tree.facts || []).slice(0, 12),
       highlightedNodes: (tree.nodes || [])
