@@ -438,18 +438,39 @@ const RUNTIME_TREE_DOMAINS = Object.freeze([
     factTypes: ["JSRuntime.StateChanged", "JSRuntime.MemoryChanged", "JSRuntime.ExecutionChanged", "JSRuntime.MicrotaskScheduled", "JSRuntime.MicrotaskExecuted", "JSRuntime.MacrotaskScheduled", "JSRuntime.MacrotaskExecuted", "JSRuntime.PromiseChainUpdated", "JSRuntime.EventLoopPhaseChanged", "JSRuntime.RuntimeTopologyChanged", "JSRuntime.TimerScheduled", "JSRuntime.TimerExecuted"]
   },
   {
-    id: "worker",
-    domain: "Worker / Thread Runtime",
-    rootLabel: "Thread Graph",
-    nodeType: "worker",
-    factTypes: ["Worker.Created", "Worker.Terminated", "Worker.MessagePosted", "Worker.MessageReceived", "Worker.ChannelCreated", "Worker.ServiceWorkerRegistered", "Worker.ServiceWorkerActivated", "Worker.ServiceWorkerFetch"]
-  },
-  {
     id: "vdom",
     domain: "VDOM Runtime",
     rootLabel: "Virtual Tree",
     nodeType: "vnode",
     factTypes: ["VDOM.NodeDiff", "VDOM.PatchApplied", "VDOM.Reconciled", "VDOM.VDOMDiff", "VDOM.VDOMPatch", "VDOM.VDOMNodeCreated", "VDOM.VDOMNodeDeleted", "VDOM.VDOMNodeUpdated", "VDOM.VDOMTreeChanged"]
+  },
+  {
+    id: "network",
+    domain: "Network Runtime",
+    rootLabel: "Network Flow",
+    nodeType: "request",
+    factTypes: ["request_start", "request_end", "response_start", "response_end", "resource_observed", "resource_error", "document_fetch"]
+  },
+  {
+    id: "interaction",
+    domain: "Interaction Runtime",
+    rootLabel: "User Interaction",
+    nodeType: "event",
+    factTypes: ["click", "input", "scroll", "wheel", "focus", "blur", "focus_change", "selection_change", "pointer_move", "key_press"]
+  },
+  {
+    id: "storage",
+    domain: "Storage Runtime",
+    rootLabel: "Browser Storage",
+    nodeType: "store",
+    factTypes: ["storage_snapshot", "local_storage", "session_storage", "cookie_change", "indexeddb_change"]
+  },
+  {
+    id: "anti_crawler",
+    domain: "Anti-Crawler Runtime",
+    rootLabel: "Protection Surface",
+    nodeType: "signal",
+    factTypes: ["crawler_challenge", "crawler_fingerprint", "crawler_block", "crawler_pattern"]
   }
 ]);
 const RUNTIME_HIGHLIGHT_MAP = Object.freeze({
@@ -2299,6 +2320,7 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
       edges: [],
       facts: [],
       factTypeCounts: new Map(),
+      rawTypeCounts: new Map(),
       latest: 0
     }];
   }));
@@ -2313,6 +2335,7 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
     const rawFact = item.fact || {};
     const fact = {
       type: canonical.type,
+      rawType: canonical.rawType || normalizeRawFactType(rawFact.type || canonical.channel?.split("/").pop() || canonical.type),
       target,
       timestamp,
       summary: canonical.summary || factSummary(item.fact),
@@ -2324,6 +2347,7 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
     tree.facts.push(fact);
     tree.latest = Math.max(tree.latest, timestamp);
     tree.factTypeCounts.set(canonical.type, (tree.factTypeCounts.get(canonical.type) || 0) + 1);
+    tree.rawTypeCounts.set(fact.rawType, (tree.rawTypeCounts.get(fact.rawType) || 0) + 1);
     const node = tree.nodes.get(target) || {
       id: target,
       type: canonical.nodeType || RUNTIME_TREE_DOMAINS.find(domain => domain.id === canonical.treeId)?.nodeType || "node",
@@ -2356,6 +2380,9 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
     }, {}),
     factTypeCounts: [...tree.factTypeCounts.entries()]
       .map(([type, count]) => ({ type, count, highlightKind: RUNTIME_HIGHLIGHT_MAP[type] || "changed" }))
+      .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type)),
+    rawTypeCounts: [...tree.rawTypeCounts.entries()]
+      .map(([type, count]) => ({ type, count }))
       .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type))
   }));
   return {
@@ -2370,22 +2397,27 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
 function canonicalRuntimeFactForRaw(item = {}) {
   const fact = item.fact || item;
   const stamped = fact.runtimeLayer || fact.metadata?.runtimeLayer || fact.payload?.runtimeLayer || null;
+  const rawSource = normalizeRawFactType(fact.source || "");
+  const rawType = normalizeRawFactType(fact.type || "fact");
+  const rawChannel = normalizeRawFactKey(item.channel || fact.channel || `${rawSource}/${rawType}`);
   if (stamped?.treeId && stamped?.type) {
+    const routed = runtimeProfileRouteForRaw(rawSource, rawType, rawChannel, stamped.treeId);
     return {
-      treeId: stamped.treeId,
+      treeId: routed.treeId,
       type: stamped.type,
-      nodeType: stamped.nodeType || RUNTIME_TREE_DOMAINS.find(domain => domain.id === stamped.treeId)?.nodeType || "node",
-      target: stamped.target || runtimeFactTargetId(fact, stamped.treeId, stamped.type),
-      label: stamped.label || runtimeFactNodeLabel(fact, stamped.treeId, stamped.type),
+      rawType,
+      nodeType: stamped.nodeType || RUNTIME_TREE_DOMAINS.find(domain => domain.id === routed.treeId)?.nodeType || "node",
+      target: stamped.target || runtimeFactTargetId(fact, routed.treeId, stamped.type),
+      label: stamped.label || runtimeFactNodeLabel(fact, routed.treeId, stamped.type),
       timestamp: Number(fact.timestamp) || Date.now(),
-      channel: item.channel || fact.channel || `${fact.source || stamped.treeId}/${fact.type || "fact"}`,
+      channel: rawChannel,
       captureMode: stamped.captureMode || fact.captureMode || "",
       payload: scrubExportValue({ source: fact.source, type: fact.type, stamped })
     };
   }
-  const source = normalizeRawFactType(fact.source || "");
-  const type = normalizeRawFactType(fact.type || "fact");
-  const channel = normalizeRawFactKey(item.channel || fact.channel || `${source}/${type}`);
+  const source = rawSource;
+  const type = rawType;
+  const channel = rawChannel;
   const value = fact.value || {};
   const sourceText = `${source} ${type} ${channel}`;
   const target = runtimeFactTargetId(fact, source, type);
@@ -2393,6 +2425,7 @@ function canonicalRuntimeFactForRaw(item = {}) {
   const base = {
     target,
     label,
+    rawType: type,
     timestamp: Number(fact.timestamp) || Date.now(),
     channel,
     captureMode: fact.captureMode || value.captureMode || fact.metadata?.captureMode || "",
@@ -2400,6 +2433,8 @@ function canonicalRuntimeFactForRaw(item = {}) {
   };
   const direct = exactRuntimeFactType(source, type);
   if (direct) return { ...base, ...direct };
+  const routed = runtimeProfileRouteForRaw(source, type, channel, "");
+  if (routed.treeId !== "js") return { ...base, ...routed };
   if (/vdom|react|vue|svelte|component|props/.test(sourceText)) return { ...base, treeId: "vdom", type: vdomRuntimeFactType(type), nodeType: "vnode" };
   if (/shadow|slot/.test(sourceText)) return { ...base, treeId: "shadow", type: shadowRuntimeFactType(type), nodeType: "component" };
   if (/a11y|accessibility|aria|role|semantic/.test(sourceText)) return { ...base, treeId: "a11y", type: a11yRuntimeFactType(type), nodeType: "role" };
@@ -2411,6 +2446,30 @@ function canonicalRuntimeFactForRaw(item = {}) {
   }
   if (/dom|element|attribute|text|mutation|node|tree|structure|calendar/.test(sourceText)) return { ...base, treeId: "dom", type: domRuntimeFactType(type), nodeType: "tag" };
   return { ...base, treeId: "js", type: "JSRuntime.StateChanged", nodeType: "context" };
+}
+
+function runtimeProfileRouteForRaw(source, type, channel, fallbackTreeId = "") {
+  const text = `${source || ""}/${type || ""} ${channel || ""}`.toLowerCase();
+  if (/^network\//.test(text) || /fetch|xhr|request|response|websocket|beacon|resource|document_fetch/.test(text)) {
+    return { treeId: "network", type: networkRuntimeFactType(type), nodeType: "request" };
+  }
+  if (/^storage\//.test(text) || /local_storage|session_storage|cookie|indexeddb|storage_snapshot/.test(text)) {
+    return { treeId: "storage", type: storageRuntimeFactType(type), nodeType: "store" };
+  }
+  if (/^interaction\//.test(text) || /click|input|pointer|scroll|wheel|focus|blur|selection|key_press/.test(text)) {
+    return { treeId: "interaction", type: interactionRuntimeFactType(type), nodeType: "event" };
+  }
+  if (/^anti_crawler\//.test(text) || /^crawler\//.test(text) || /crawler|captcha|challenge|fingerprint|bot|block|turnstile|cloudflare/.test(text)) {
+    return { treeId: "anti_crawler", type: antiCrawlerRuntimeFactType(type), nodeType: "signal" };
+  }
+  if (/worker|thread|message_channel|service_worker|sw_|post_message|iframe|frame|multicontext/.test(text)) {
+    return { treeId: "network", type: networkRuntimeFactType(type), nodeType: "request" };
+  }
+  return {
+    treeId: fallbackTreeId && RUNTIME_TREE_DOMAINS.some(domain => domain.id === fallbackTreeId) ? fallbackTreeId : "js",
+    type: "JSRuntime.StateChanged",
+    nodeType: "context"
+  };
 }
 
 function exactRuntimeFactType(source, type) {
@@ -2473,23 +2532,47 @@ function exactRuntimeFactType(source, type) {
     "runtime/timeout": ["js", "JSRuntime.TimerScheduled", "context"],
     "runtime/interval": ["js", "JSRuntime.TimerScheduled", "context"],
     "runtime/raf_tick": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
-    "multicontext/iframe_created": ["worker", "Worker.Created", "worker"],
-    "multicontext/iframe_observed": ["worker", "Worker.Created", "worker"],
-    "dom/iframe_observed": ["worker", "Worker.Created", "worker"],
-    "multicontext/iframe_loaded": ["worker", "Worker.MessageReceived", "worker"],
-    "multicontext/worker_created": ["worker", "Worker.Created", "worker"],
-    "multicontext/worker_message": ["worker", "Worker.MessagePosted", "worker"],
-    "multicontext/worker_post": ["worker", "Worker.MessagePosted", "worker"],
-    "multicontext/message_channel_created": ["worker", "Worker.ChannelCreated", "worker"],
-    "multicontext/message_channel_message": ["worker", "Worker.MessagePosted", "worker"],
-    "multicontext/sw_register": ["worker", "Worker.ServiceWorkerRegistered", "worker"],
-    "multicontext/sw_activated": ["worker", "Worker.ServiceWorkerActivated", "worker"],
-    "multicontext/sw_fetch": ["worker", "Worker.ServiceWorkerFetch", "worker"],
-    "network/request": ["worker", "Worker.MessagePosted", "worker"],
-    "network/response": ["worker", "Worker.MessageReceived", "worker"],
-    "network/document_fetch": ["worker", "Worker.MessageReceived", "worker"],
-    "network/resource_map": ["worker", "Worker.MessageReceived", "worker"],
-    "network/resource_observed": ["worker", "Worker.MessageReceived", "worker"],
+    "multicontext/iframe_created": ["network", "network_context_created", "request"],
+    "multicontext/iframe_observed": ["network", "network_context_created", "request"],
+    "dom/iframe_observed": ["network", "network_context_created", "request"],
+    "multicontext/iframe_loaded": ["network", "response_end", "request"],
+    "multicontext/worker_created": ["network", "worker_created", "request"],
+    "multicontext/worker_message": ["network", "worker_message", "request"],
+    "multicontext/worker_post": ["network", "worker_post", "request"],
+    "multicontext/message_channel_created": ["network", "message_channel_created", "request"],
+    "multicontext/message_channel_message": ["network", "message_channel_message", "request"],
+    "multicontext/sw_register": ["network", "service_worker_registered", "request"],
+    "multicontext/sw_activated": ["network", "service_worker_activated", "request"],
+    "multicontext/sw_fetch": ["network", "service_worker_fetch", "request"],
+    "network/request": ["network", "request_start", "request"],
+    "network/request_start": ["network", "request_start", "request"],
+    "network/request_end": ["network", "request_end", "request"],
+    "network/response": ["network", "response_end", "request"],
+    "network/response_start": ["network", "response_start", "request"],
+    "network/response_end": ["network", "response_end", "request"],
+    "network/document_fetch": ["network", "document_fetch", "request"],
+    "network/resource_map": ["network", "resource_observed", "request"],
+    "network/resource_observed": ["network", "resource_observed", "request"],
+    "network/resource_error": ["network", "resource_error", "request"],
+    "storage/storage_snapshot": ["storage", "storage_snapshot", "store"],
+    "storage/local_storage": ["storage", "local_storage", "store"],
+    "storage/session_storage": ["storage", "session_storage", "store"],
+    "storage/cookie_change": ["storage", "cookie_change", "store"],
+    "storage/indexeddb_change": ["storage", "indexeddb_change", "store"],
+    "interaction/click": ["interaction", "click", "event"],
+    "interaction/input": ["interaction", "input", "event"],
+    "interaction/scroll": ["interaction", "scroll", "event"],
+    "interaction/wheel": ["interaction", "wheel", "event"],
+    "interaction/focus": ["interaction", "focus_change", "event"],
+    "interaction/focus_change": ["interaction", "focus_change", "event"],
+    "interaction/blur": ["interaction", "blur", "event"],
+    "interaction/pointer_move": ["interaction", "pointer_move", "event"],
+    "interaction/key_press": ["interaction", "key_press", "event"],
+    "interaction/selection_change": ["interaction", "selection_change", "event"],
+    "anti_crawler/crawler_challenge": ["anti_crawler", "crawler_challenge", "signal"],
+    "anti_crawler/crawler_fingerprint": ["anti_crawler", "crawler_fingerprint", "signal"],
+    "anti_crawler/crawler_block": ["anti_crawler", "crawler_block", "signal"],
+    "anti_crawler/crawler_pattern": ["anti_crawler", "crawler_pattern", "signal"],
     "vdom/vdom_commit": ["vdom", "VDOM.Reconciled", "vnode"],
     "vdom/vdom_update": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
     "vdom/vdom_diff": ["vdom", "VDOM.NodeDiff", "vnode"],
@@ -2509,8 +2592,11 @@ function runtimeTreeCoverage(treeId, coverage = null) {
     shadow: "shadow",
     a11y: "accessibility",
     js: "javascript",
-    worker: "multicontext",
-    vdom: "vdom"
+    vdom: "vdom",
+    network: "framesWorkers",
+    interaction: "dom",
+    storage: "javascript",
+    anti_crawler: "javascript"
   };
   return coverage?.[map[treeId]] || null;
 }
@@ -2521,7 +2607,7 @@ function runtimeTreeDegradation(treeId, coverage = null) {
   const limited = !["full", "best_effort"].includes(status) || coverage.evidenceCount === 0;
   const browserBoundaries = {
     shadow: "Closed Shadow DOM roots remain browser-protected; open roots are captured when exposed.",
-    worker: "Third-party Service Worker fetch internals are browser-protected unless a first-party helper emits them.",
+    network: "Third-party Service Worker fetch internals are browser-protected unless a first-party helper emits them.",
     vdom: "Framework internals are captured only when React/Vue/Svelte hooks are exposed by the page."
   };
   return {
@@ -2612,6 +2698,44 @@ function workerRuntimeFactType(type) {
   if (/fetch/.test(type)) return "Worker.ServiceWorkerFetch";
   if (/received/.test(type)) return "Worker.MessageReceived";
   return "Worker.MessagePosted";
+}
+
+function networkRuntimeFactType(type) {
+  if (/request_end/.test(type)) return "request_end";
+  if (/request|fetch_start|created|post|send/.test(type)) return "request_start";
+  if (/response_start/.test(type)) return "response_start";
+  if (/response|fetch_end|loaded|message|activated/.test(type)) return "response_end";
+  if (/error|fail|block/.test(type)) return "resource_error";
+  if (/document/.test(type)) return "document_fetch";
+  if (/resource|map|worker|iframe|channel|sw_/.test(type)) return "resource_observed";
+  return "resource_observed";
+}
+
+function storageRuntimeFactType(type) {
+  if (/local/.test(type)) return "local_storage";
+  if (/session/.test(type)) return "session_storage";
+  if (/cookie/.test(type)) return "cookie_change";
+  if (/indexed/.test(type)) return "indexeddb_change";
+  return "storage_snapshot";
+}
+
+function interactionRuntimeFactType(type) {
+  if (/input/.test(type)) return "input";
+  if (/scroll/.test(type)) return "scroll";
+  if (/wheel/.test(type)) return "wheel";
+  if (/focus/.test(type)) return "focus_change";
+  if (/blur/.test(type)) return "blur";
+  if (/pointer/.test(type)) return "pointer_move";
+  if (/key/.test(type)) return "key_press";
+  if (/selection/.test(type)) return "selection_change";
+  return "click";
+}
+
+function antiCrawlerRuntimeFactType(type) {
+  if (/fingerprint|service_worker|environment/.test(type)) return "crawler_fingerprint";
+  if (/block|deny|forbidden|rate/.test(type)) return "crawler_block";
+  if (/pattern|behavior|timing|burst/.test(type)) return "crawler_pattern";
+  return "crawler_challenge";
 }
 
 function vdomRuntimeFactType(type) {
@@ -3349,40 +3473,93 @@ function renderWebV2Taxonomy(model) {
 function renderRuntimeTreeCard(tree) {
   const active = tree.facts.length > 0;
   const degradation = tree.degradation || {};
-  const evidence = tree.evidenceCounts || {};
-  const factRows = tree.factTypeCounts.slice(0, 8).map(item => `
+  const profile = runtimeProfileStats(tree);
+  const factRows = profile.breakdown.slice(0, 8).map(item => `
     <div class="runtime-fact-type-line">
-      <span class="runtime-highlight-dot hl-dot-${escapeHtml(item.highlightKind)}"></span>
-      <span>${escapeHtml(readableRuntimeFactType(item.type))}</span>
+      <span>${escapeHtml(item.type)}:</span>
       <b>${item.count}</b>
     </div>
   `).join("");
-  const nodeRows = tree.nodes
-    .filter(node => node.id !== tree.root)
-    .slice(0, 4)
-    .map(node => renderRuntimeTreeNode(tree, node))
-    .join("");
+  const timelineRows = profile.timeline.map(fact => `
+    <div class="runtime-timeline-line">
+      <time>${escapeHtml(formatRuntimeTimelineTime(fact.timestamp))}</time>
+      <span>${escapeHtml(fact.rawType || readableRuntimeFactType(fact.type))}</span>
+    </div>
+  `).join("");
   return `
     <article class="runtime-event-card runtime-tree-card ${active ? "active" : ""}" data-tree-id="${escapeHtml(tree.id)}">
-      <span class="runtime-tree-domain">${escapeHtml(tree.domain)}</span>
-      <strong>${tree.facts.length} ${tree.facts.length === 1 ? "fact" : "facts"}</strong>
-      <p class="runtime-profile-total">${tree.factTypeCounts.length} structural ${tree.factTypeCounts.length === 1 ? "type" : "types"} observed</p>
-      <p class="runtime-evidence-split">
-        <span>${Number(evidence.live || 0)} live</span>
-        <span>${Number(evidence.static || 0)} static</span>
-        <span>${Number(evidence.unknown || 0)} unknown</span>
-      </p>
-      <p class="runtime-tree-capture ${degradation.limited ? "limited" : ""}">
-        ${escapeHtml(runtimeTreeCaptureLine(tree))}
-      </p>
+      <div class="runtime-profile-heading">
+        <span class="runtime-tree-domain">${escapeHtml(tree.domain)}</span>
+        <strong>${escapeHtml(pressureBar(profile.pressure))} ${profile.pressure}% pressure</strong>
+      </div>
+      <p class="runtime-profile-total">Facts: <b>${tree.facts.length}</b> total</p>
+      <p class="runtime-profile-label">Breakdown:</p>
       <div class="runtime-subcategory-stack runtime-fact-type-stack">
         ${factRows || `<div class="runtime-empty-line">No facts yet</div>`}
       </div>
-      <div class="runtime-tree-node-list" aria-label="${escapeHtml(tree.domain)} changed nodes">
-        ${nodeRows || `<div class="runtime-empty-line">No changed nodes yet</div>`}
+      <p class="runtime-profile-label">Timeline (last 5s):</p>
+      <div class="runtime-timeline-stack">
+        ${timelineRows || `<div class="runtime-empty-line">No recent facts yet</div>`}
       </div>
+      <div class="runtime-profile-footer">
+        <span>Burst: <b>${profile.burst ? "Yes" : "No"}</b> (${profile.burstCount} facts / ${profile.burstWindowSeconds.toFixed(1)}s)</span>
+        <span>Health: <b class="${escapeHtml(profile.healthClass)}">${escapeHtml(profile.health)}</b></span>
+        <span>Last fact: <b>${escapeHtml(profile.lastAge)}</b></span>
+      </div>
+      ${!active && degradation.reason ? `<p class="runtime-tree-capture ${degradation.limited ? "limited" : ""}">${escapeHtml(runtimeTreeCaptureLine(tree))}</p>` : ""}
     </article>
   `;
+}
+
+function runtimeProfileStats(tree) {
+  const facts = [...(tree.facts || [])].sort((left, right) => right.timestamp - left.timestamp);
+  const now = Date.now();
+  const latest = facts[0]?.timestamp || 0;
+  const recent = facts.filter(fact => now - fact.timestamp <= 5000);
+  const timeline = (recent.length ? recent : facts).slice(0, 5).reverse();
+  const burstWindowMs = 1000;
+  let burstCount = 0;
+  for (const fact of facts) {
+    const count = facts.filter(candidate => Math.abs(fact.timestamp - candidate.timestamp) <= burstWindowMs).length;
+    burstCount = Math.max(burstCount, count);
+  }
+  const burst = burstCount >= 4;
+  const pressure = Math.min(100, Math.round((tree.facts.length * 3) + (burstCount * 5) + (recent.length * 2)));
+  const health = runtimeProfileHealth(pressure, burst);
+  return {
+    pressure,
+    breakdown: tree.rawTypeCounts?.length ? tree.rawTypeCounts : tree.factTypeCounts.map(item => ({ ...item, type: readableRuntimeFactType(item.type) })),
+    timeline,
+    burst,
+    burstCount,
+    burstWindowSeconds: burstWindowMs / 1000,
+    health: health.label,
+    healthClass: health.className,
+    lastAge: latest ? `${formatAgeSeconds(now - latest)} ago` : "none yet"
+  };
+}
+
+function runtimeProfileHealth(pressure, burst) {
+  if (pressure >= 75) return { label: "High", className: "runtime-health-high" };
+  if (pressure >= 55) return { label: burst ? "Medium-High" : "Medium", className: "runtime-health-medium" };
+  if (pressure >= 30) return { label: burst ? "Medium" : "Good-Medium", className: "runtime-health-medium" };
+  return { label: "Good", className: "runtime-health-good" };
+}
+
+function pressureBar(pressure) {
+  const filled = Math.max(0, Math.min(6, Math.round((Number(pressure) || 0) / 100 * 6)));
+  return `${"█".repeat(filled)}${"░".repeat(6 - filled)}`;
+}
+
+function formatRuntimeTimelineTime(timestamp) {
+  return timestamp ? new Date(timestamp).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--";
+}
+
+function formatAgeSeconds(ms) {
+  const seconds = Math.max(0, Number(ms) || 0) / 1000;
+  if (seconds < 10) return `${seconds.toFixed(1)}s`;
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  return `${Math.round(seconds / 60)}m`;
 }
 
 function runtimeTreeCaptureLine(tree) {

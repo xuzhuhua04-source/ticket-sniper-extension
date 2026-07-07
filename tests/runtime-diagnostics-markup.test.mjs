@@ -115,7 +115,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   for (const phrase of [
     "Atrinit Runtime Layer",
     "Web Version 2 Market Modules",
-    "Raw browser facts are organized into the 8 structural runtime trees"
+    "Raw browser facts are organized into runtime pressure profiles"
   ]) {
     assert.match(html, new RegExp(phrase));
   }
@@ -135,13 +135,14 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
     "function buildRuntimeLayerTrees",
     "function canonicalRuntimeFactForRaw",
     "function renderRuntimeTreeCard",
-    "function renderRuntimeTreeNode",
+    "function runtimeProfileStats",
+    "function pressureBar",
     "function exportRuntimeLayerSummary",
     "function renderWebV2Taxonomy"
   ]) {
     assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  for (const treeName of ["DOM Runtime", "CSSOM Runtime", "Layout Runtime", "Shadow DOM Runtime", "Accessibility Runtime", "JS Runtime", "Worker / Thread Runtime", "VDOM Runtime"]) {
+  for (const treeName of ["DOM Runtime", "CSSOM Runtime", "Layout Runtime", "Shadow DOM Runtime", "Accessibility Runtime", "JS Runtime", "VDOM Runtime", "Network Runtime", "Interaction Runtime", "Storage Runtime", "Anti-Crawler Runtime"]) {
     assert.match(js, new RegExp(treeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   for (const category of ["Interaction", "Presentation", "Communication", "Synchronization", "Persistence", "Execution", "Security", "Resources", "Compute"]) {
@@ -157,7 +158,10 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /function screenshotModuleSystemsForRuntimeEvent/);
   assert.match(js, /function renderRuntimeMappedRawData/);
   assert.match(js, /structural/);
-  assert.match(js, /changed nodes/);
+  assert.match(js, /Timeline \(last 5s\)/);
+  assert.match(js, /Burst:/);
+  assert.match(js, /Health:/);
+  assert.match(js, /Last fact:/);
   assert.match(js, /runtimeFactHistory/);
   assert.match(js, /\/api\/runtime-diagnostics\/export/);
   assert.match(js, /DOM\.NodeAdded/);
@@ -166,8 +170,10 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /Shadow\.RootAdded/);
   assert.match(js, /A11y\.RoleChanged/);
   assert.match(js, /JSRuntime\.MicrotaskScheduled/);
-  assert.match(js, /Worker\.Created/);
   assert.match(js, /VDOM\.NodeDiff/);
+  assert.match(js, /request_start/);
+  assert.match(js, /local_storage/);
+  assert.match(js, /crawler_challenge/);
   assert.match(js, /No facts yet/);
   assert.doesNotMatch(js, /Raw evidence:/);
   assert.doesNotMatch(js, /observations/);
@@ -179,7 +185,8 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /Commercial Package Scores/);
   assert.match(css, /\.web-v2-taxonomy/);
   assert.match(css, /\.runtime-tree-card/);
-  assert.match(css, /\.runtime-node/);
+  assert.match(css, /\.runtime-timeline-line/);
+  assert.match(css, /\.runtime-profile-footer/);
   assert.match(css, /\.hl-added/);
   assert.match(css, /\.hl-removed/);
   assert.match(css, /\.hl-changed/);
@@ -189,25 +196,31 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(css, /\.runtime-event-card\.active/);
 });
 
-test("Atrinit Runtime Layer replaces the old nine profile cards with eight trees", () => {
+test("Atrinit Runtime Layer replaces the old nine profile cards with runtime pressure profiles", () => {
   assert.doesNotMatch(html, /Atrinit Runtime Event Profile/);
   assert.doesNotMatch(html, /0 \/ 9 runtime event categories active/);
-  assert.match(html, /0 \/ 8 runtime trees active/);
+  assert.match(html, /0 \/ 11 runtime profiles active/);
   assert.match(js, /const RUNTIME_TREE_DOMAINS = Object\.freeze/);
   assert.match(js, /const RUNTIME_HIGHLIGHT_MAP = Object\.freeze/);
   assert.match(js, /buildRuntimeLayerTrees\(all, layerCoverage\)/);
   assert.match(js, /runtimeLayer\.trees\.map\(renderRuntimeTreeCard\)/);
   assert.match(js, /atrinitRuntimeLayer/);
+  assert.match(js, /function runtimeProfileRouteForRaw/);
+  assert.match(js, /function networkRuntimeFactType/);
+  assert.match(js, /function storageRuntimeFactType/);
+  assert.match(js, /function interactionRuntimeFactType/);
+  assert.match(js, /function antiCrawlerRuntimeFactType/);
   assert.match(js, /function runtimeTreeCoverage/);
   assert.match(js, /function runtimeTreeDegradation/);
   assert.match(js, /function runtimeTreeCaptureLine/);
   assert.match(js, /collector-injection-warning/);
   assert.match(js, /degradedCount/);
   assert.match(js, /function runtimeEvidenceKind/);
-  assert.match(js, /runtime-evidence-split/);
+  assert.match(js, /runtime-profile-heading/);
   assert.match(js, /static fallback facts/);
   assert.match(css, /\.runtime-tree-capture/);
-  assert.match(css, /\.runtime-evidence-split/);
+  assert.match(css, /\.runtime-profile-heading/);
+  assert.match(css, /\.runtime-profile-label/);
 });
 
 test("collector, secure browser, and standalone analyzer emit canonical runtime layer facts", () => {
