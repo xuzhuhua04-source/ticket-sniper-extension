@@ -1,0 +1,1 @@
+export const LAYOUT_SCAN_DIAGNOSTIC_FACTS = Object.freeze(["layout/layout_dependency", "layout/layout_tree", "layout/forced_reflow", "layout/layout_type_change", "layout/paint_order_change", "layout/stacking_context_change"]);

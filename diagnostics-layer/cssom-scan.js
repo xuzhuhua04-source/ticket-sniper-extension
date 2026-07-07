@@ -1,0 +1,1 @@
+export const CSSOM_SCAN_DIAGNOSTIC_FACTS = Object.freeze(["cssom/css_rule", "cssom/stylesheet_change", "cssom/css_animation", "cssom/css_transition", "cssom/style_recalc", "cssom/forced_style_recalc"]);

@@ -23,6 +23,40 @@ let runtimeCollectorEnabled = false;
 let runtimeCollector = null;
 let runtimeHookInjected = false;
 
+const RUNTIME_STRUCTURAL_FACT_KEYS = new Set([
+  "dom/element_change",
+  "dom/attribute_change",
+  "dom/text_change",
+  "dom/shadow_root",
+  "cssom/css_rule_insert",
+  "cssom/css_rule_delete",
+  "layout/layout_shift",
+  "shadow/shadow_root_created",
+  "shadow/shadow_mapping",
+  "shadow/slot_change",
+  "a11y/a11y_role_change",
+  "a11y/a11y_state_change",
+  "runtime/js_microtask",
+  "runtime/js_promise_chain",
+  "runtime/js_event_loop_render",
+  "runtime/js_event_loop_idle",
+  "runtime/scheduling",
+  "multicontext/iframe_created",
+  "multicontext/iframe_loaded",
+  "multicontext/post_message",
+  "multicontext/worker_created",
+  "multicontext/worker_message",
+  "multicontext/worker_post",
+  "multicontext/message_channel_created",
+  "multicontext/message_channel_message",
+  "multicontext/sw_register",
+  "multicontext/sw_activated",
+  "multicontext/sw_fetch",
+  "vdom/vdom_commit",
+  "vdom/vdom_update",
+  "vdom/vdom_diff"
+]);
+
 initializeRuntimeCollector().catch(() => {});
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -99,15 +133,23 @@ class RuntimeCollector {
   start() {
     if (this.started || !isRuntimeSupportedPage()) return;
     this.started = true;
-    this.emit("runtime", "collector-state", { state: "started", visibility: document.visibilityState }, { readyState: document.readyState });
+    this.startRuntimeLayer();
+    this.startDiagnosticsLayer();
+  }
+
+  startRuntimeLayer() {
     this.observeDocument();
     this.observePageHookFacts();
     this.observeShadowRoots();
+    this.observeLayoutRuntime();
+  }
+
+  startDiagnosticsLayer() {
+    this.emitDiagnosticFact("runtime", "collector-state", { state: "started", visibility: document.visibilityState }, { readyState: document.readyState });
     this.observeUrlChanges();
     this.observeStorageSnapshots();
     this.observeRuntimeErrors();
     this.observePerformance();
-    this.observeLayoutRuntime();
     this.scanAccessibilityTree();
     this.observeResources();
     this.scanExistingStructure();
@@ -149,6 +191,45 @@ class RuntimeCollector {
   }
 
   emit(source, type, value = {}, metadata = {}) {
+    if (isRuntimeStructuralFact(source, type)) return this.emitRuntimeFact(source, type, value, metadata);
+    return this.emitDiagnosticFact(source, type, value, metadata);
+  }
+
+  emitRuntimeFact(source, type, value = {}, metadata = {}) {
+    if (!runtimeCollectorEnabled || !this.started) return;
+    const timestamp = Date.now();
+    const channel = `${source}/${type}`;
+    const captureMode = metadata.captureMode || captureModeForRuntimeFact(source, type);
+    const runtimeLayer = runtimeLayerFact(source, type, value, metadata);
+    const fact = {
+      timestamp,
+      source,
+      type,
+      channel,
+      runtimeLayer,
+      organ: inferRuntimeOrgan(source, type),
+      confidence: runtimeFactConfidence(source, type, metadata),
+      captureMode,
+      payload: sanitizeRuntimeValue({ value, metadata }),
+      value: sanitizeRuntimeValue(value),
+      metadata: sanitizeRuntimeValue(metadata),
+      context: runtimeFactContext(this.sessionId)
+    };
+    const key = `${source}:${type}:${stableRuntimeKey(fact.value, fact.metadata)}`;
+    const previous = this.lastReports.get(key) || 0;
+    if (fact.timestamp - previous < this.options.reportCooldownMs) return;
+    this.lastReports.set(key, fact.timestamp);
+    chrome.runtime.sendMessage({
+      type: "RUNTIME_FACT_DETECTED",
+      payload: {
+        timestamp: fact.timestamp,
+        page: sanitizeRuntimePageLocation(),
+        fact
+      }
+    }).catch(() => {});
+  }
+
+  emitDiagnosticFact(source, type, value = {}, metadata = {}) {
     if (!runtimeCollectorEnabled || !this.started) return;
     const timestamp = Date.now();
     const channel = `${source}/${type}`;
@@ -170,13 +251,13 @@ class RuntimeCollector {
       metadata: sanitizeRuntimeValue(metadata),
       context: runtimeFactContext(this.sessionId)
     };
-    const key = `${source}:${type}:${stableRuntimeKey(fact.value, fact.metadata)}`;
+    const key = `diagnostic:${source}:${type}:${stableRuntimeKey(fact.value, fact.metadata)}`;
     const previous = this.lastReports.get(key) || 0;
     if (fact.timestamp - previous < this.options.reportCooldownMs) return;
     this.lastReports.set(key, fact.timestamp);
     this.recordWebBloombergFact(fact);
     chrome.runtime.sendMessage({
-      type: "RUNTIME_FACT_DETECTED",
+      type: "DIAGNOSTIC_FACT_DETECTED",
       payload: {
         timestamp: fact.timestamp,
         page: sanitizeRuntimePageLocation(),
@@ -190,7 +271,7 @@ class RuntimeCollector {
     this.sampleSequence += 1;
     const dirty = this.dirtySinceSample;
     this.lastForcedSampleAt = now;
-    this.emit("runtime", "diagnostics_tick", {
+    this.emitDiagnosticFact("runtime", "diagnostics_tick", {
       severity: "info",
       reason,
       sequence: this.sampleSequence,
@@ -400,26 +481,10 @@ class RuntimeCollector {
     this.pageFactFlushScheduled = false;
     const facts = this.pageFactQueue.splice(0, 50);
     for (const fact of facts) {
-      const payload = {
-        timestamp: Number(fact.timestamp) || Date.now(),
-        page: sanitizeRuntimePageLocation(),
-        fact: {
-          timestamp: Number(fact.timestamp) || Date.now(),
-          source: String(fact.source).slice(0, 40),
-          type: String(fact.type).slice(0, 60),
-          value: sanitizeRuntimeValue(fact.value || {}),
-          metadata: sanitizeRuntimeValue(fact.metadata || {}),
-          context: sanitizeRuntimeValue(fact.context || runtimeFactContext(this.sessionId))
-        }
-      };
-      this.recordRelaySeen(payload.fact.source, payload.fact.type);
-      chrome.runtime.sendMessage({ type: "RUNTIME_FACT_DETECTED", payload }).then(response => {
-        if (response?.ok === false) {
-          chrome.storage.local.set({ runtimeRelayError: { checkedAt: Date.now(), source: payload.fact.source, type: payload.fact.type, error: response.error || "Background rejected fact." } }).catch(() => {});
-        }
-      }).catch(error => {
-        chrome.storage.local.set({ runtimeRelayError: { checkedAt: Date.now(), source: payload.fact.source, type: payload.fact.type, error: error.message || String(error) } }).catch(() => {});
-      });
+      const source = String(fact.source).slice(0, 40);
+      const type = String(fact.type).slice(0, 60);
+      this.recordRelaySeen(source, type);
+      this.emit(source, type, sanitizeRuntimeValue(fact.value || {}), sanitizeRuntimeValue(fact.metadata || {}));
     }
     if (this.pageFactQueue.length) {
       this.pageFactFlushScheduled = true;
@@ -1329,51 +1394,20 @@ function runtimeLayerDirectMap() {
     "dom/element_change": { treeId: "dom", type: "DOM.NodeAdded" },
     "dom/attribute_change": { treeId: "dom", type: "DOM.AttributeChanged" },
     "dom/text_change": { treeId: "dom", type: "DOM.TextChanged" },
-    "dom/mutation_burst": { treeId: "dom", type: "DOM.ChildListChanged" },
-    "dom/structure_snapshot": { treeId: "dom", type: "DOM.TreeTopologyChanged" },
-    "dom/calendar_structure": { treeId: "dom", type: "DOM.TreeTopologyChanged" },
     "dom/shadow_root": { treeId: "shadow", type: "Shadow.RootAdded" },
     "cssom/css_rule_insert": { treeId: "cssom", type: "CSS.RuleInserted" },
     "cssom/css_rule_delete": { treeId: "cssom", type: "CSS.RuleDeleted" },
-    "cssom/css_rule": { treeId: "cssom", type: "CSS.RuleChanged" },
-    "cssom/stylesheet_change": { treeId: "cssom", type: "CSS.RuleChanged" },
-    "cssom/css_animation": { treeId: "cssom", type: "CSS.KeyframesRuleChanged" },
-    "cssom/css_transition": { treeId: "cssom", type: "CSS.StyleChanged" },
-    "cssom/style_recalc": { treeId: "cssom", type: "CSS.StyleChanged" },
-    "cssom/forced_style_recalc": { treeId: "cssom", type: "CSS.StyleChanged" },
     "layout/layout_shift": { treeId: "layout", type: "Layout.LayoutShift" },
-    "layout/forced_reflow": { treeId: "layout", type: "Layout.Reflow" },
-    "layout/layout_rhythm": { treeId: "layout", type: "Layout.Reflow" },
-    "layout/layout_dependency": { treeId: "layout", type: "Layout.FlowChanged" },
-    "layout/layout_tree": { treeId: "layout", type: "Layout.GeometryChanged" },
-    "layout/layout_type_change": { treeId: "layout", type: "Layout.BoxModelChanged" },
-    "layout/paint_order_change": { treeId: "layout", type: "Layout.PositionChanged" },
-    "layout/stacking_context_change": { treeId: "layout", type: "Layout.PositioningChanged" },
     "shadow/shadow_root_created": { treeId: "shadow", type: "Shadow.RootAdded" },
     "shadow/shadow_mapping": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
-    "shadow/shadow_topology": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
     "shadow/slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
     "a11y/a11y_role_change": { treeId: "a11y", type: "A11y.RoleChanged" },
     "a11y/a11y_state_change": { treeId: "a11y", type: "A11y.StateChanged" },
-    "a11y/a11y_topology": { treeId: "a11y", type: "A11y.SemanticTopologyChanged" },
-    "a11y/a11y_break": { treeId: "a11y", type: "A11y.InteractiveStructureChanged" },
-    "a11y/a11y_conflict": { treeId: "a11y", type: "A11y.InteractiveStructureChanged" },
     "runtime/js_microtask": { treeId: "js", type: "JSRuntime.MicrotaskScheduled" },
     "runtime/js_promise_chain": { treeId: "js", type: "JSRuntime.PromiseChainUpdated" },
     "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
     "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
-    "runtime/js_block": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-    "runtime/js_error": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-    "runtime/script_error": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-    "runtime/unhandled_rejection": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-    "runtime/console": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
     "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
-    "runtime/diagnostics_tick": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
-    "runtime/collector_state": { treeId: "js", type: "JSRuntime.StateChanged" },
-    "runtime/layer_coverage": { treeId: "js", type: "JSRuntime.RuntimeTopologyChanged" },
-    "runtime/navigation": { treeId: "js", type: "JSRuntime.RuntimeTopologyChanged" },
-    "runtime/health_heartbeat": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
-    "dom/iframe_observed": { treeId: "worker", type: "Worker.Created" },
     "multicontext/iframe_created": { treeId: "worker", type: "Worker.Created" },
     "multicontext/iframe_loaded": { treeId: "worker", type: "Worker.MessageReceived" },
     "multicontext/post_message": { treeId: "worker", type: "Worker.MessagePosted" },
@@ -1387,21 +1421,7 @@ function runtimeLayerDirectMap() {
     "multicontext/sw_fetch": { treeId: "worker", type: "Worker.ServiceWorkerFetch" },
     "vdom/vdom_commit": { treeId: "vdom", type: "VDOM.Reconciled" },
     "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
-    "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" },
-    "vdom/vdom_topology": { treeId: "vdom", type: "VDOM.VDOMTreeChanged" },
-    "vdom/vdom_capability": { treeId: "vdom", type: "VDOM.VDOMTreeChanged" },
-    "vdom/vdom_break": { treeId: "vdom", type: "VDOM.NodeDiff" },
-    "storage/storage_snapshot": { treeId: "js", type: "JSRuntime.StateChanged" },
-    "storage/storage_change": { treeId: "js", type: "JSRuntime.StateChanged" },
-    "storage/indexeddb_open": { treeId: "js", type: "JSRuntime.StateChanged" },
-    "network/request": { treeId: "worker", type: "Worker.MessagePosted" },
-    "network/response": { treeId: "worker", type: "Worker.MessageReceived" },
-    "network/error": { treeId: "worker", type: "Worker.MessageReceived" },
-    "network/resource_observed": { treeId: "worker", type: "Worker.MessageReceived" },
-    "web_bloomberg/behavior_window": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
-    "anti_crawler/challenge": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-    "anti_crawler/fingerprint": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-    "anti_crawler/block": { treeId: "js", type: "JSRuntime.ExecutionChanged" }
+    "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" }
   };
 }
 
@@ -1439,6 +1459,11 @@ function runtimeLayerLabel(value = {}, metadata = {}, canonicalType = "Runtime f
 
 function normalizeRuntimeFactName(value) {
   return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
+}
+
+function isRuntimeStructuralFact(source, type) {
+  const key = `${normalizeRuntimeFactName(source)}/${normalizeRuntimeFactName(type)}`;
+  return RUNTIME_STRUCTURAL_FACT_KEYS.has(key);
 }
 
 function calculateSpecificity(selector) {
