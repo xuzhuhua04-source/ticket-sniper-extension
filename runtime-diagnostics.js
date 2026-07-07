@@ -636,7 +636,7 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("layout", ["layout_shift"], ["Presentation"], "Layout", "Layout instability changes visible presentation.", 0.96),
   rawFactEntry("layout", ["forced_reflow", "layout_rhythm"], ["Presentation", "Synchronization"], "Layout", "Layout timing and reflow facts describe rendered timing pressure.", 0.95),
   rawFactEntry("layout", ["layout_dependency", "stacking_context_change"], ["Presentation", "Communication"], "Layout", "Layout dependency facts describe structural relationships between rendered elements.", 0.93),
-  rawFactEntry("layout", ["layout_type_change", "paint_order_change"], ["Presentation", "Interaction"], "Layout", "Layout/paint ordering changes affect observable page behavior.", 0.9),
+  rawFactEntry("layout", ["layout_type_change", "paint_order_change", "resize", "scroll"], ["Presentation", "Interaction"], "Layout", "Layout/paint ordering and viewport changes affect observable page behavior.", 0.9),
   rawFactEntry("layout", ["layout_tree"], ["Presentation", "Communication"], "Layout", "Layout tree facts describe rendered topology.", 0.9),
   rawFactEntry("vdom", ["vdom_commit", "vdom_update"], ["Presentation", "Synchronization"], "Virtual DOM", "Framework commits and updates are rendered timing events.", 0.92),
   rawFactEntry("vdom", ["vdom_diff", "vdom_state_change", "vdom_props_change"], ["Presentation", "Interaction"], "Virtual DOM", "Framework diff, state, and prop changes alter visible behavior.", 0.92),
@@ -648,9 +648,9 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("cssom", ["forced_style_recalc", "cascade_conflict", "selector_conflict", "specificity_conflict"], ["Presentation", "Security"], "CSSOM", "Style recalculation and cascade conflicts are presentation integrity issues.", 0.9),
   rawFactEntry("cssom", ["selector_topology"], ["Presentation", "Communication"], "CSSOM", "Selector topology connects rendered rules to page structure.", 0.88),
   rawFactEntry("a11y", ["a11y_break", "a11y_conflict"], ["Presentation", "Security"], "Accessibility", "Accessibility break/conflict facts describe user-facing integrity risk.", 0.92),
-  rawFactEntry("a11y", ["a11y_role_change", "a11y_state_change"], ["Presentation", "Interaction"], "Accessibility", "ARIA role/state changes alter user interaction semantics.", 0.9),
+  rawFactEntry("a11y", ["a11y_role_change", "a11y_state_change", "focus_change"], ["Presentation", "Interaction"], "Accessibility", "ARIA role/state and focus changes alter user interaction semantics.", 0.9),
   rawFactEntry("a11y", ["a11y_topology", "cdp_ax_tree"], ["Presentation", "Communication"], "Accessibility", "Accessibility topology describes relationships in the rendered accessibility tree.", 0.9),
-  rawFactEntry("runtime", ["js_event_loop_render", "js_event_loop_idle", "js_microtask", "js_block", "scheduling"], ["Execution", "Synchronization"], "JS Runtime", "Event loop, scheduler, and microtask facts describe execution timing.", 0.94),
+  rawFactEntry("runtime", ["js_event_loop_render", "js_event_loop_idle", "js_microtask", "js_block", "scheduling", "js_scheduler_task", "js_atomics_wait_async"], ["Execution", "Synchronization"], "JS Runtime", "Event loop, scheduler, and microtask facts describe execution timing.", 0.94),
   rawFactEntry("runtime", ["timer", "interval", "timeout", "raf", "raf_tick", "animation_frame", "microtask", "scheduler"], ["Synchronization", "Execution"], "Synchronization", "Runtime timer, animation-frame, and scheduler facts describe coordination pressure.", 0.9),
   rawFactEntry("runtime", ["js_promise_chain"], ["Execution", "Communication"], "JS Runtime", "Promise chains connect asynchronous execution paths.", 0.9),
   rawFactEntry("runtime", ["js_fetch_start", "js_fetch_end", "js_ws_send", "js_ws_message", "js_worker_message"], ["Communication", "Execution"], "JS Runtime", "Runtime network and worker message facts connect execution to communication.", 0.94),
@@ -660,12 +660,12 @@ const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
   rawFactEntry("runtime", ["navigation", "page-lifecycle", "diagnostics_tick", "collector-state", "health-heartbeat", "layer_coverage"], ["Synchronization", "Execution"], "JS Runtime", "Lifecycle, diagnostic tick, and collector health facts describe runtime state coordination.", 0.86),
   rawFactEntry("shadow", ["shadow_root_created", "shadow_node", "shadow_mapping", "shadow_topology", "shadow-root"], ["Presentation", "Communication"], "Shadow DOM", "Shadow DOM structure maps rendered components to hidden host relationships.", 0.9),
   rawFactEntry("shadow", ["slot_change"], ["Presentation", "Interaction"], "Shadow DOM", "Slot changes alter projected component behavior.", 0.9),
-  rawFactEntry("multicontext", ["iframe_created", "worker_created", "message_channel_created"], ["Communication", "Execution"], "Frames/workers", "Frame, worker, and channel creation adds cross-context execution paths.", 0.91),
-  rawFactEntry("multicontext", ["iframe_loaded", "post_message", "worker_message", "worker_post", "message_channel_message"], ["Communication", "Resources"], "Frames/workers", "Cross-context messages and loaded frames move data/resources across boundaries.", 0.91),
+  rawFactEntry("multicontext", ["iframe_created", "worker_created", "message_channel_created", "broadcast_channel_created"], ["Communication", "Execution"], "Frames/workers", "Frame, worker, and channel creation adds cross-context execution paths.", 0.91),
+  rawFactEntry("multicontext", ["iframe_loaded", "post_message", "worker_message", "worker_post", "message_channel_message", "broadcast_channel_message"], ["Communication", "Resources"], "Frames/workers", "Cross-context messages and loaded frames move data/resources across boundaries.", 0.91),
   rawFactEntry("multicontext", ["sw_register", "sw_activated", "sw_fetch", "sw_fetch_capability"], ["Resources", "Synchronization"], "Service Worker", "Service worker facts describe resource lifecycle and timing boundaries.", 0.88),
-  rawFactEntry("network", ["document-fetch", "resource-map", "request", "response", "error", "request-failed", "response-status", "resource-observed", "resource-timing", "fetch", "xhr", "websocket", "sendbeacon"], ["Communication", "Resources"], "Network", "Network/resource facts describe request flow and asset supply.", 0.94),
+  rawFactEntry("network", ["document-fetch", "resource-map", "request", "response", "error", "request-failed", "response-status", "resource-observed", "resource-timing", "fetch", "xhr", "websocket", "sendbeacon", "beacon", "websocket_open", "websocket_close", "websocket_message"], ["Communication", "Resources"], "Network", "Network/resource facts describe request flow and asset supply.", 0.94),
   rawFactEntry("storage", ["storage-change", "storage-mutation", "storage-snapshot", "indexeddb-open", "cookie-change", "localstorage", "sessionstorage", "cache-access", "history-state"], ["Persistence"], "Storage", "Storage facts describe client-held state without exposing values.", 0.95),
-  rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker", "captcha", "auth-challenge", "bot-defense", "crawler-block", "policy", "protection"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
+  rawFactEntry("anti_crawler", ["challenge", "fingerprint", "block", "service-worker", "captcha", "auth-challenge", "bot-defense", "crawler-block", "policy", "protection", "environment_flag"], ["Security"], "Protection", "Crawler/anti-bot markers describe page protection pressure.", 0.95),
   rawFactEntry("crawler", ["crawler-pattern", "crawler-behavior"], ["Security", "Synchronization"], "Crawler cadence", "Crawler-like timing and behavior facts describe suspicious cadence.", 0.88),
   rawFactEntry("browser", ["rendered-dom-snapshot"], ["Presentation"], "Rendered browser", "Rendered browser snapshots describe what the secure runtime saw on the page.", 0.86),
   rawFactEntry("web_bloomberg", ["behavior-window"], ["Synchronization", "Execution", "Communication"], "SIG9 Signal Console", "Behavior windows aggregate timing, execution, and communication pressure.", 0.88),
@@ -2885,8 +2885,22 @@ function renderStlRuntimeLayers(model) {
     ? `${layers.factsLayer.totalFacts} raw facts -> ${layers.intelligenceLayer.msu.length} MSUs -> ${layers.automationLayer.actions.length} recommendations`
     : "Waiting for raw facts";
   elements.factsLayerTotal.textContent = `${layers.factsLayer.totalFacts} raw ${layers.factsLayer.totalFacts === 1 ? "fact" : "facts"}`;
-  elements.factsLayerList.innerHTML = layers.factsLayer.channelRows.length
-    ? layers.factsLayer.channelRows.slice(0, 8).map(row => `<div><strong>${escapeHtml(readableChannel(row.channel))}</strong><span>${row.count}</span></div>`).join("")
+  elements.factsLayerList.innerHTML = layers.factsLayer.domainCards.length
+    ? layers.factsLayer.domainCards.slice(0, 8).map(card => {
+        const pressurePct = Math.max(0, Math.min(100, Number(card.pressurePct) || 0));
+        const pressureLabel = pressurePct > 70 ? "High" : pressurePct > 35 ? "Medium" : "Low";
+        return `<article class="stl-facts-card">
+          <div class="stl-facts-header">
+            <strong>${escapeHtml(readableChannel(card.channel))}</strong>
+            <span>${card.count} facts</span>
+          </div>
+          <div class="stl-facts-bar"><span style="width:${pressurePct}%"></span></div>
+          <p>${escapeHtml(`${pressureLabel} pressure (${pressurePct}%)`)}</p>
+          <div class="stl-facts-breakdown">${Object.entries(card.breakdown).slice(0, 4).map(([name, count]) => `<code>${escapeHtml(name)}:${count}</code>`).join("") || "<code>none</code>"}</div>
+          <small>${escapeHtml(card.burst ? `Burst: Yes (${card.burstCount} facts / ${card.burstWindowMs}ms)` : "Burst: No")}${card.lastFactLabel ? ` · Last ${escapeHtml(card.lastFactLabel)}` : ""}</small>
+          <div class="stl-facts-timeline">${card.timeline.slice(0, 4).map(item => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+        </article>`;
+      }).join("")
     : "No raw facts yet.";
   elements.intelligenceLayerTotal.textContent = `${layers.intelligenceLayer.msu.length} MSUs`;
   elements.intelligenceLayerList.innerHTML = [
@@ -2922,11 +2936,43 @@ function buildStlFactsLayer(items = []) {
   const channelRows = Object.entries(channels)
     .map(([channel, values]) => ({ channel, count: values.length }))
     .sort((left, right) => right.count - left.count || left.channel.localeCompare(right.channel));
+  const domainCards = channelRows.map(row => {
+    const values = channels[row.channel] || [];
+    const now = Date.now();
+    const recent = values.filter(value => Number(value.timestamp || 0) >= now - 5000);
+    const breakdown = {};
+    for (const fact of values) {
+      const key = `${fact.source || "runtime"}/${fact.type || "fact"}`;
+      breakdown[key] = (breakdown[key] || 0) + 1;
+    }
+    const severe = values.filter(value => ["high", "critical"].includes(String(value.severity || value.value?.severity || "").toLowerCase())).length;
+    const burstWindowMs = 1200;
+    const burstCount = recent.filter(value => Number(value.timestamp || 0) >= now - burstWindowMs).length;
+    const burst = burstCount >= 4;
+    const pressurePct = Math.max(0, Math.min(100, Math.round(values.length * 4 + severe * 12 + (burst ? 18 : 0))));
+    const timeline = recent.slice(0, 4).map(value => {
+      const ts = Number(value.timestamp || 0);
+      const timeLabel = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "now";
+      return `${timeLabel} ${value.source || "runtime"}/${value.type || "fact"}`;
+    });
+    return {
+      channel: row.channel,
+      count: row.count,
+      breakdown,
+      pressurePct,
+      burst,
+      burstCount,
+      burstWindowMs,
+      timeline,
+      lastFactLabel: timeline[0] || ""
+    };
+  });
   return {
     version: "stl-web-facts-v1",
     totalFacts: history.length,
     channels,
     channelRows,
+    domainCards,
     history: history.sort((left, right) => right.timestamp - left.timestamp),
     status: { state: history.length ? "facts_active" : "facts_waiting" }
   };
@@ -3041,7 +3087,12 @@ function stlActionDomain(metric) {
   if (metric === "layout") return "layout";
   if (metric === "dom") return "dom";
   if (metric === "network") return "network";
+  if (metric === "worker") return "runtime";
+  if (metric === "microtask") return "runtime";
   if (["malicious", "protection"].includes(metric)) return "security";
+  if (metric === "accessibility") return "a11y";
+  if (metric === "shadow") return "shadow";
+  if (metric === "vdom") return "vdom";
   return "runtime";
 }
 
@@ -3052,7 +3103,10 @@ function stlAutomationSummary(domain) {
     css: "Inspect cascade conflicts, selector pressure, and stylesheet anomalies.",
     runtime: "Mitigate runtime overload from timers, microtasks, long tasks, or workers.",
     network: "Review suspicious or high-pressure network/resource patterns.",
-    security: "Respond to anti-crawler, fingerprinting, challenge, or protection behavior."
+    security: "Respond to anti-crawler, fingerprinting, challenge, or protection behavior.",
+    a11y: "Address accessibility conflicts, missing names, and focus-flow regressions.",
+    shadow: "Inspect shadow-root topology, slot changes, and encapsulation leaks.",
+    vdom: "Inspect VDOM reconciliation pressure, topology drift, and framework runtime hooks."
   })[domain] || "Review runtime structure.";
 }
 

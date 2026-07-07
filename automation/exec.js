@@ -4,6 +4,9 @@ import { executeCssMSU } from "./autoCss.js";
 import { executeRuntimeMSU } from "./autoRuntime.js";
 import { executeNetworkMSU } from "./autoNetwork.js";
 import { executeSecurityMSU } from "./autoSecurity.js";
+import { executeA11yMSU } from "./autoA11y.js";
+import { executeShadowMSU } from "./autoShadow.js";
+import { executeVDOMMSU } from "./autoVDOM.js";
 
 export const AUTOMATION_LAYER_VERSION = "stl-web-automation-v1";
 
@@ -15,7 +18,10 @@ export function executeMSU(msu = {}, options = {}) {
     css: executeCssMSU,
     runtime: executeRuntimeMSU,
     network: executeNetworkMSU,
-    security: executeSecurityMSU
+    security: executeSecurityMSU,
+    a11y: executeA11yMSU,
+    shadow: executeShadowMSU,
+    vdom: executeVDOMMSU
   }[domain] || executeRuntimeMSU;
   return dispatcher(msu, options);
 }

@@ -31,16 +31,21 @@ const RUNTIME_STRUCTURAL_FACT_KEYS = new Set(globalThis.TicketSniperRuntimeLayer
   "cssom/css_rule_insert",
   "cssom/css_rule_delete",
   "layout/layout_shift",
+  "layout/resize",
+  "layout/scroll",
   "shadow/shadow_root_created",
   "shadow/shadow_mapping",
   "shadow/slot_change",
   "a11y/a11y_role_change",
   "a11y/a11y_state_change",
+  "a11y/focus_change",
   "runtime/js_microtask",
   "runtime/js_promise_chain",
   "runtime/js_event_loop_render",
   "runtime/js_event_loop_idle",
   "runtime/scheduling",
+  "runtime/js_scheduler_task",
+  "runtime/js_atomics_wait_async",
   "multicontext/iframe_created",
   "multicontext/iframe_loaded",
   "multicontext/post_message",
@@ -52,6 +57,13 @@ const RUNTIME_STRUCTURAL_FACT_KEYS = new Set(globalThis.TicketSniperRuntimeLayer
   "multicontext/sw_register",
   "multicontext/sw_activated",
   "multicontext/sw_fetch",
+  "multicontext/broadcast_channel_created",
+  "multicontext/broadcast_channel_message",
+  "network/beacon",
+  "network/websocket_open",
+  "network/websocket_close",
+  "network/websocket_message",
+  "anti_crawler/environment_flag",
   "vdom/vdom_commit",
   "vdom/vdom_update",
   "vdom/vdom_diff"
@@ -142,6 +154,14 @@ class RuntimeCollector {
     this.observePageHookFacts();
     this.observeShadowRoots();
     this.observeLayoutRuntime();
+    this.observeScheduler();
+    this.observeAtomics();
+    this.observeBeacon();
+    this.observeWebSocket();
+    this.observeBroadcastChannel();
+    this.observeScrollAndResize();
+    this.observeFocusTopology();
+    this.observeWebdriverFlags();
   }
 
   startDiagnosticsLayer() {
@@ -644,6 +664,142 @@ class RuntimeCollector {
         message: safeRuntimeMessage(event.reason?.message || event.reason || "Unhandled promise rejection")
       });
     }, true);
+  }
+
+  observeScheduler() {
+    if (!window.scheduler?.postTask) return;
+    const original = window.scheduler.postTask.bind(window.scheduler);
+    window.scheduler.postTask = (callback, options = {}) => {
+      this.emit("runtime", "js_scheduler_task", {
+        severity: "low",
+        priority: options.priority || "default"
+      });
+      return original(callback, options);
+    };
+  }
+
+  observeAtomics() {
+    if (!window.Atomics?.waitAsync) return;
+    const original = window.Atomics.waitAsync.bind(window.Atomics);
+    window.Atomics.waitAsync = (...args) => {
+      this.emit("runtime", "js_atomics_wait_async", {
+        severity: "low",
+        argsCount: args.length
+      });
+      return original(...args);
+    };
+  }
+
+  observeBeacon() {
+    const original = navigator.sendBeacon?.bind(navigator);
+    if (!original) return;
+    navigator.sendBeacon = (url, data) => {
+      this.emit("network", "beacon", {
+        severity: "info",
+        url: sanitizeRuntimeUrl(url),
+        hasBody: Boolean(data)
+      });
+      return original(url, data);
+    };
+  }
+
+  observeWebSocket() {
+    if (!window.WebSocket) return;
+    const OriginalWS = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+      const ws = new OriginalWS(url, protocols);
+      this.emit("network", "websocket_open", {
+        severity: "info",
+        url: sanitizeRuntimeUrl(url)
+      });
+      ws.addEventListener("close", () => {
+        this.emit("network", "websocket_close", {
+          severity: "info",
+          url: sanitizeRuntimeUrl(url)
+        });
+      });
+      ws.addEventListener("message", event => {
+        this.emit("network", "websocket_message", {
+          severity: "info",
+          length: String(event.data || "").length
+        });
+      });
+      return ws;
+    }.bind(this);
+  }
+
+  observeBroadcastChannel() {
+    if (!window.BroadcastChannel) return;
+    const OriginalBC = window.BroadcastChannel;
+    window.BroadcastChannel = name => {
+      const channel = new OriginalBC(name);
+      this.emit("multicontext", "broadcast_channel_created", {
+        severity: "info",
+        name
+      });
+      channel.addEventListener("message", event => {
+        this.emit("multicontext", "broadcast_channel_message", {
+          severity: "info",
+          name,
+          hasData: event.data !== undefined
+        });
+      });
+      return channel;
+    };
+  }
+
+  observeScrollAndResize() {
+    this.addListener(window, "scroll", () => {
+      this.emit("layout", "scroll", {
+        severity: "info",
+        x: window.scrollX,
+        y: window.scrollY
+      });
+    }, { passive: true });
+
+    if (window.ResizeObserver) {
+      const observer = new ResizeObserver(entries => {
+        for (const entry of entries.slice(0, 40)) {
+          const rect = entry.contentRect;
+          this.emit("layout", "resize", {
+            severity: "info",
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          }, {
+            selector: stableSelector(entry.target),
+            path: stableDomPath(entry.target)
+          });
+        }
+      });
+      observer.observe(document.documentElement);
+      this.observers.push(observer);
+    }
+  }
+
+  observeFocusTopology() {
+    this.addListener(window, "focus", event => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      this.emit("a11y", "focus_change", {
+        severity: "info",
+        tag: target.tagName.toLowerCase()
+      }, {
+        selector: stableSelector(target),
+        path: stableDomPath(target)
+      });
+    }, true);
+  }
+
+  observeWebdriverFlags() {
+    const webdriver = navigator.webdriver === true;
+    const headless = /headless/i.test(navigator.userAgent || "");
+    if (webdriver || headless) {
+      this.emit("anti_crawler", "environment_flag", {
+        severity: "medium",
+        webdriver,
+        headless
+      });
+    }
   }
 
   observeUrlChanges() {
@@ -1408,6 +1564,8 @@ function runtimeLayerDirectMap() {
     "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
     "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
     "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
+    "runtime/js_scheduler_task": { treeId: "js", type: "JSRuntime.SchedulerTaskObserved" },
+    "runtime/js_atomics_wait_async": { treeId: "js", type: "JSRuntime.AtomicsObserved" },
     "multicontext/iframe_created": { treeId: "worker", type: "Worker.Created" },
     "multicontext/iframe_loaded": { treeId: "worker", type: "Worker.MessageReceived" },
     "multicontext/post_message": { treeId: "worker", type: "Worker.MessagePosted" },
@@ -1419,6 +1577,16 @@ function runtimeLayerDirectMap() {
     "multicontext/sw_register": { treeId: "worker", type: "Worker.ServiceWorkerRegistered" },
     "multicontext/sw_activated": { treeId: "worker", type: "Worker.ServiceWorkerActivated" },
     "multicontext/sw_fetch": { treeId: "worker", type: "Worker.ServiceWorkerFetch" },
+    "multicontext/broadcast_channel_created": { treeId: "worker", type: "Worker.BroadcastChannelCreated" },
+    "multicontext/broadcast_channel_message": { treeId: "worker", type: "Worker.BroadcastChannelMessage" },
+    "network/beacon": { treeId: "worker", type: "Network.BeaconSent" },
+    "network/websocket_open": { treeId: "worker", type: "Network.WebSocketOpened" },
+    "network/websocket_close": { treeId: "worker", type: "Network.WebSocketClosed" },
+    "network/websocket_message": { treeId: "worker", type: "Network.WebSocketMessage" },
+    "layout/resize": { treeId: "layout", type: "Layout.ResizeObserved" },
+    "layout/scroll": { treeId: "layout", type: "Layout.ScrollObserved" },
+    "a11y/focus_change": { treeId: "a11y", type: "A11y.FocusChanged" },
+    "anti_crawler/environment_flag": { treeId: "worker", type: "Security.EnvironmentFlag" },
     "vdom/vdom_commit": { treeId: "vdom", type: "VDOM.Reconciled" },
     "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
     "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" }
