@@ -361,11 +361,13 @@ function fact(source, type, value, metadata, page, timestamp = Date.now()) {
   const channel = `${source}/${type}`;
   const severity = normalizeSeverity(value?.severity);
   const captureMode = metadata?.captureMode || captureModeForFact(source, type);
+  const runtimeLayer = runtimeLayerFact(source, type, value, metadata);
   return {
     timestamp,
     source,
     type,
     channel,
+    runtimeLayer,
     organ: inferOrgan(source, type),
     severity,
     confidence: confidenceForFact(source, type, metadata),
@@ -375,6 +377,46 @@ function fact(source, type, value, metadata, page, timestamp = Date.now()) {
     metadata: sanitizeValue(metadata),
     context: page
   };
+}
+
+function runtimeLayerFact(source, type, value = {}, metadata = {}) {
+  const sourceKey = normalizeFactName(source);
+  const typeKey = normalizeFactName(type);
+  const mapped = {
+    "browser/rendered_dom_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "dom/structure_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "dom/calendar_structure": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "network/document_fetch": ["worker", "Worker.MessageReceived", "worker"],
+    "network/resource_map": ["worker", "Worker.MessageReceived", "worker"],
+    "network/response_status": ["worker", "Worker.MessageReceived", "worker"],
+    "network/request_failed": ["worker", "Worker.MessageReceived", "worker"],
+    "runtime/script_error": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/technology_profile": ["js", "JSRuntime.RuntimeTopologyChanged", "context"],
+    "anti_crawler/challenge": ["js", "JSRuntime.ExecutionChanged", "context"]
+  }[`${sourceKey}/${typeKey}`] || runtimeLayerFallback(`${sourceKey} ${typeKey}`);
+  return {
+    treeId: mapped[0],
+    type: mapped[1],
+    nodeType: mapped[2],
+    highlightKind: /Added|Created|Inserted|Registered/.test(mapped[1]) ? "added" : /Removed|Deleted|Detached|Terminated/.test(mapped[1]) ? "removed" : "changed",
+    target: `${mapped[0]}:${hashString(String(value?.signature || value?.url || metadata?.url || typeKey)).slice(0, 12)}`,
+    label: String(value?.title || value?.kind || value?.provider || value?.url || mapped[1]).slice(0, 80),
+    confidence: confidenceForFact(source, type, metadata),
+    captureMode: metadata?.captureMode || captureModeForFact(source, type)
+  };
+}
+
+function runtimeLayerFallback(text) {
+  if (/css|style|stylesheet|selector/.test(text)) return ["cssom", "CSS.StyleChanged", "rule"];
+  if (/layout|rendered|snapshot|structure|dom|calendar/.test(text)) return ["dom", "DOM.TreeTopologyChanged", "tag"];
+  if (/network|fetch|request|response|resource/.test(text)) return ["worker", "Worker.MessageReceived", "worker"];
+  if (/a11y|accessibility|aria/.test(text)) return ["a11y", "A11y.SemanticTopologyChanged", "role"];
+  return ["js", "JSRuntime.StateChanged", "context"];
+}
+
+function normalizeFactName(value) {
+  return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
 }
 
 function buildLayerCoverage(facts) {

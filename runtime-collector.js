@@ -154,11 +154,13 @@ class RuntimeCollector {
     const channel = `${source}/${type}`;
     const severity = normalizeRuntimeSeverity(value?.severity);
     const captureMode = metadata.captureMode || captureModeForRuntimeFact(source, type);
+    const runtimeLayer = runtimeLayerFact(source, type, value, metadata);
     const fact = {
       timestamp,
       source,
       type,
       channel,
+      runtimeLayer,
       organ: inferRuntimeOrgan(source, type),
       severity,
       confidence: runtimeFactConfidence(source, type, metadata),
@@ -1300,6 +1302,139 @@ function inferRuntimeOrgan(source, type) {
   if (/dependency|iframe|worker|message_channel|promise|vdom/.test(text)) return "Dependency";
   if (/rhythm|microtask|animation|transition|reflow|recalc|frame/.test(text)) return "Rhythm";
   return "Topology";
+}
+
+function runtimeLayerFact(source, type, value = {}, metadata = {}) {
+  const normalizedSource = normalizeRuntimeFactName(source);
+  const normalizedType = normalizeRuntimeFactName(type);
+  const key = `${normalizedSource}/${normalizedType}`;
+  const direct = runtimeLayerDirectMap()[key];
+  const text = `${normalizedSource} ${normalizedType} ${JSON.stringify(value || {})} ${JSON.stringify(metadata || {})}`.toLowerCase();
+  const mapped = direct || runtimeLayerFallback(text, normalizedType);
+  const nodeType = runtimeLayerNodeType(mapped.treeId);
+  return {
+    treeId: mapped.treeId,
+    type: mapped.type,
+    nodeType,
+    highlightKind: runtimeLayerHighlightKind(mapped.type),
+    target: runtimeLayerTarget(mapped.treeId, value, metadata, normalizedType),
+    label: runtimeLayerLabel(value, metadata, mapped.type),
+    confidence: runtimeFactConfidence(source, type, metadata),
+    captureMode: metadata.captureMode || captureModeForRuntimeFact(source, type)
+  };
+}
+
+function runtimeLayerDirectMap() {
+  return {
+    "dom/element_change": { treeId: "dom", type: "DOM.NodeAdded" },
+    "dom/attribute_change": { treeId: "dom", type: "DOM.AttributeChanged" },
+    "dom/text_change": { treeId: "dom", type: "DOM.TextChanged" },
+    "dom/mutation_burst": { treeId: "dom", type: "DOM.ChildListChanged" },
+    "dom/structure_snapshot": { treeId: "dom", type: "DOM.TreeTopologyChanged" },
+    "dom/calendar_structure": { treeId: "dom", type: "DOM.TreeTopologyChanged" },
+    "dom/shadow_root": { treeId: "shadow", type: "Shadow.RootAdded" },
+    "cssom/css_rule_insert": { treeId: "cssom", type: "CSS.RuleInserted" },
+    "cssom/css_rule_delete": { treeId: "cssom", type: "CSS.RuleDeleted" },
+    "cssom/css_animation": { treeId: "cssom", type: "CSS.KeyframesRuleChanged" },
+    "cssom/css_transition": { treeId: "cssom", type: "CSS.StyleChanged" },
+    "cssom/style_recalc": { treeId: "cssom", type: "CSS.StyleChanged" },
+    "cssom/forced_style_recalc": { treeId: "cssom", type: "CSS.StyleChanged" },
+    "layout/layout_shift": { treeId: "layout", type: "Layout.LayoutShift" },
+    "layout/forced_reflow": { treeId: "layout", type: "Layout.Reflow" },
+    "layout/layout_rhythm": { treeId: "layout", type: "Layout.Reflow" },
+    "layout/layout_dependency": { treeId: "layout", type: "Layout.FlowChanged" },
+    "layout/layout_tree": { treeId: "layout", type: "Layout.GeometryChanged" },
+    "layout/layout_type_change": { treeId: "layout", type: "Layout.BoxModelChanged" },
+    "layout/paint_order_change": { treeId: "layout", type: "Layout.PositionChanged" },
+    "layout/stacking_context_change": { treeId: "layout", type: "Layout.PositioningChanged" },
+    "shadow/shadow_root_created": { treeId: "shadow", type: "Shadow.RootAdded" },
+    "shadow/shadow_mapping": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
+    "shadow/shadow_topology": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
+    "shadow/slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
+    "a11y/a11y_role_change": { treeId: "a11y", type: "A11y.RoleChanged" },
+    "a11y/a11y_state_change": { treeId: "a11y", type: "A11y.StateChanged" },
+    "a11y/a11y_topology": { treeId: "a11y", type: "A11y.SemanticTopologyChanged" },
+    "a11y/a11y_break": { treeId: "a11y", type: "A11y.InteractiveStructureChanged" },
+    "a11y/a11y_conflict": { treeId: "a11y", type: "A11y.InteractiveStructureChanged" },
+    "runtime/js_microtask": { treeId: "js", type: "JSRuntime.MicrotaskScheduled" },
+    "runtime/js_promise_chain": { treeId: "js", type: "JSRuntime.PromiseChainUpdated" },
+    "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+    "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+    "runtime/js_block": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "runtime/js_error": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "runtime/script_error": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "runtime/unhandled_rejection": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "runtime/console": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
+    "runtime/diagnostics_tick": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+    "runtime/collector_state": { treeId: "js", type: "JSRuntime.StateChanged" },
+    "runtime/layer_coverage": { treeId: "js", type: "JSRuntime.RuntimeTopologyChanged" },
+    "runtime/navigation": { treeId: "js", type: "JSRuntime.RuntimeTopologyChanged" },
+    "runtime/health_heartbeat": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+    "multicontext/iframe_created": { treeId: "worker", type: "Worker.Created" },
+    "multicontext/iframe_loaded": { treeId: "worker", type: "Worker.MessageReceived" },
+    "multicontext/post_message": { treeId: "worker", type: "Worker.MessagePosted" },
+    "multicontext/worker_created": { treeId: "worker", type: "Worker.Created" },
+    "multicontext/worker_message": { treeId: "worker", type: "Worker.MessageReceived" },
+    "multicontext/worker_post": { treeId: "worker", type: "Worker.MessagePosted" },
+    "multicontext/message_channel_created": { treeId: "worker", type: "Worker.ChannelCreated" },
+    "multicontext/message_channel_message": { treeId: "worker", type: "Worker.MessagePosted" },
+    "multicontext/sw_register": { treeId: "worker", type: "Worker.ServiceWorkerRegistered" },
+    "multicontext/sw_activated": { treeId: "worker", type: "Worker.ServiceWorkerActivated" },
+    "multicontext/sw_fetch": { treeId: "worker", type: "Worker.ServiceWorkerFetch" },
+    "vdom/vdom_commit": { treeId: "vdom", type: "VDOM.Reconciled" },
+    "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
+    "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" },
+    "vdom/vdom_topology": { treeId: "vdom", type: "VDOM.VDOMTreeChanged" },
+    "vdom/vdom_break": { treeId: "vdom", type: "VDOM.NodeDiff" },
+    "storage/storage_snapshot": { treeId: "js", type: "JSRuntime.StateChanged" },
+    "storage/storage_change": { treeId: "js", type: "JSRuntime.StateChanged" },
+    "storage/indexeddb_open": { treeId: "js", type: "JSRuntime.StateChanged" },
+    "network/request": { treeId: "worker", type: "Worker.MessagePosted" },
+    "network/response": { treeId: "worker", type: "Worker.MessageReceived" },
+    "network/error": { treeId: "worker", type: "Worker.MessageReceived" },
+    "network/resource_observed": { treeId: "worker", type: "Worker.MessageReceived" },
+    "web_bloomberg/behavior_window": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+    "anti_crawler/challenge": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "anti_crawler/fingerprint": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+    "anti_crawler/block": { treeId: "js", type: "JSRuntime.ExecutionChanged" }
+  };
+}
+
+function runtimeLayerFallback(text, type) {
+  if (/vdom|react|vue|svelte|component|props/.test(text)) return { treeId: "vdom", type: "VDOM.NodeDiff" };
+  if (/shadow|slot/.test(text)) return { treeId: "shadow", type: "Shadow.NodeChanged" };
+  if (/a11y|accessibility|aria|role|semantic/.test(text)) return { treeId: "a11y", type: "A11y.SemanticTopologyChanged" };
+  if (/css|style|stylesheet|selector|cascade|specificity|keyframe|media/.test(text)) return { treeId: "cssom", type: "CSS.StyleChanged" };
+  if (/layout|paint|reflow|geometry|box|scroll|position|shift/.test(text)) return { treeId: "layout", type: "Layout.GeometryChanged" };
+  if (/worker|thread|message_channel|service_worker|sw_|post_message|iframe|frame|network|fetch|xhr|websocket/.test(text)) return { treeId: "worker", type: "Worker.MessagePosted" };
+  if (/dom|element|attribute|text|mutation|node|tree|structure|calendar/.test(text)) return { treeId: "dom", type: "DOM.TreeTopologyChanged" };
+  if (/microtask|promise|timer|interval|timeout/.test(text)) return { treeId: "js", type: "JSRuntime.TimerScheduled" };
+  if (/wasm|webassembly|webgpu|gpu|ai|model|inference/.test(text)) return { treeId: "js", type: "JSRuntime.ExecutionChanged" };
+  return { treeId: "js", type: "JSRuntime.StateChanged" };
+}
+
+function runtimeLayerNodeType(treeId) {
+  return { dom: "tag", cssom: "rule", layout: "box", shadow: "component", a11y: "role", js: "context", worker: "worker", vdom: "vnode" }[treeId] || "node";
+}
+
+function runtimeLayerHighlightKind(type) {
+  if (/Added|Created|Inserted|Registered/.test(type)) return "added";
+  if (/Removed|Deleted|Detached|Terminated/.test(type)) return "removed";
+  return "changed";
+}
+
+function runtimeLayerTarget(treeId, value = {}, metadata = {}, type = "fact") {
+  const raw = value.nodeId || metadata.nodeId || metadata.selector || metadata.hostSelector || value.hostId || value.workerId || value.channelId || value.iframeId || value.url || metadata.url || type;
+  return `${treeId}:${hashRuntimeString(String(raw)).slice(0, 12)}`;
+}
+
+function runtimeLayerLabel(value = {}, metadata = {}, canonicalType = "Runtime fact") {
+  return String(metadata.selector || metadata.hostSelector || value.tag || value.kind || value.level || value.framework || value.area || value.url || canonicalType).slice(0, 80);
+}
+
+function normalizeRuntimeFactName(value) {
+  return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
 }
 
 function calculateSpecificity(selector) {

@@ -460,7 +460,7 @@ export class SecureBrowserRuntime {
 
   acceptRuntimeMessage(message) {
     if (message?.type !== "RUNTIME_FACT_DETECTED" || !message.payload?.fact) return;
-    const fact = message.payload.fact;
+    const fact = ensureRuntimeLayerFact(message.payload.fact);
     if (!this.factBelongsToActiveTarget(fact)) return;
     this.runtimeFacts.push(fact);
     this.runtimeFacts = this.runtimeFacts.slice(-MAX_FACTS);
@@ -503,6 +503,7 @@ export class SecureBrowserRuntime {
           source,
           type,
           channel,
+          runtimeLayer: runtimeLayerFact(source, type, value, metadata),
           organ: inferOrgan(source, type),
           severity: normalizeSeverity(value?.severity),
           confidence: confidenceForFact(source, type, metadata),
@@ -688,6 +689,55 @@ function inferOrgan(source, type) {
   if (/dependency|iframe|worker|message_channel|promise|vdom/.test(text)) return "Dependency";
   if (/rhythm|microtask|animation|transition|reflow|recalc|frame/.test(text)) return "Rhythm";
   return "Topology";
+}
+
+function ensureRuntimeLayerFact(fact = {}) {
+  if (fact.runtimeLayer?.treeId && fact.runtimeLayer?.type) return fact;
+  return {
+    ...fact,
+    runtimeLayer: runtimeLayerFact(fact.source || "runtime", fact.type || "fact", fact.value || {}, fact.metadata || {})
+  };
+}
+
+function runtimeLayerFact(source, type, value = {}, metadata = {}) {
+  const sourceKey = normalizeFactName(source);
+  const typeKey = normalizeFactName(type);
+  const mapped = {
+    "runtime/diagnostics_tick": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
+    "runtime/collector_injection_warning": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/script_error": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "a11y/cdp_ax_tree": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "a11y/cdp_ax_unavailable": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "browser/rendered_dom_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "network/request_failed": ["worker", "Worker.MessageReceived", "worker"],
+    "network/response_status": ["worker", "Worker.MessageReceived", "worker"]
+  }[`${sourceKey}/${typeKey}`] || runtimeLayerFallback(`${sourceKey} ${typeKey}`);
+  return {
+    treeId: mapped[0],
+    type: mapped[1],
+    nodeType: mapped[2],
+    highlightKind: /Added|Created|Inserted|Registered/.test(mapped[1]) ? "added" : /Removed|Deleted|Detached|Terminated/.test(mapped[1]) ? "removed" : "changed",
+    target: `${mapped[0]}:${stableHash(String(value?.signature || value?.url || metadata?.url || typeKey)).slice(0, 12)}`,
+    label: String(value?.message || value?.kind || value?.status || value?.url || mapped[1]).slice(0, 80),
+    confidence: confidenceForFact(source, type, metadata),
+    captureMode: metadata?.captureMode || captureModeForFact(source, type)
+  };
+}
+
+function runtimeLayerFallback(text) {
+  if (/vdom|react|vue|svelte/.test(text)) return ["vdom", "VDOM.NodeDiff", "vnode"];
+  if (/shadow|slot/.test(text)) return ["shadow", "Shadow.NodeChanged", "component"];
+  if (/a11y|accessibility|aria|role/.test(text)) return ["a11y", "A11y.SemanticTopologyChanged", "role"];
+  if (/css|style|selector/.test(text)) return ["cssom", "CSS.StyleChanged", "rule"];
+  if (/layout|reflow|geometry|box|shift/.test(text)) return ["layout", "Layout.GeometryChanged", "box"];
+  if (/worker|message|sw_|iframe|frame|network|fetch|xhr|websocket/.test(text)) return ["worker", "Worker.MessagePosted", "worker"];
+  if (/dom|element|attribute|text|mutation|node|structure/.test(text)) return ["dom", "DOM.TreeTopologyChanged", "tag"];
+  return ["js", "JSRuntime.StateChanged", "context"];
+}
+
+function normalizeFactName(value) {
+  return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
 }
 
 function sanitizeRuntimeFactValue(value) {

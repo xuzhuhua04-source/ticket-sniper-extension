@@ -6,6 +6,10 @@ const html = await readFile(new URL("../runtime-diagnostics.html", import.meta.u
 const js = await readFile(new URL("../runtime-diagnostics.js", import.meta.url), "utf8");
 const css = await readFile(new URL("../runtime-diagnostics.css", import.meta.url), "utf8");
 const languagePackets = await readFile(new URL("../runtime-language-packets.js", import.meta.url), "utf8");
+const runtimeCollector = await readFile(new URL("../runtime-collector.js", import.meta.url), "utf8");
+const pageRuntimeHooks = await readFile(new URL("../page-runtime-hooks.js", import.meta.url), "utf8");
+const standaloneAnalyzer = await readFile(new URL("../standalone-analyzer.mjs", import.meta.url), "utf8");
+const secureBrowserRuntime = await readFile(new URL("../secure-browser-runtime.mjs", import.meta.url), "utf8");
 
 test("runtime diagnostics controls expose production-grade button semantics", () => {
   const buttons = [...html.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
@@ -191,9 +195,53 @@ test("Atrinit Runtime Layer replaces the old nine profile cards with eight trees
   assert.match(html, /0 \/ 8 runtime trees active/);
   assert.match(js, /const RUNTIME_TREE_DOMAINS = Object\.freeze/);
   assert.match(js, /const RUNTIME_HIGHLIGHT_MAP = Object\.freeze/);
-  assert.match(js, /buildRuntimeLayerTrees\(all\)/);
+  assert.match(js, /buildRuntimeLayerTrees\(all, layerCoverage\)/);
   assert.match(js, /runtimeLayer\.trees\.map\(renderRuntimeTreeCard\)/);
   assert.match(js, /atrinitRuntimeLayer/);
+  assert.match(js, /function runtimeTreeCoverage/);
+  assert.match(js, /function runtimeTreeDegradation/);
+  assert.match(js, /function runtimeTreeCaptureLine/);
+  assert.match(js, /collector-injection-warning/);
+  assert.match(js, /degradedCount/);
+  assert.match(css, /\.runtime-tree-capture/);
+});
+
+test("collector, secure browser, and standalone analyzer emit canonical runtime layer facts", () => {
+  for (const source of [runtimeCollector, pageRuntimeHooks, standaloneAnalyzer, secureBrowserRuntime]) {
+    assert.match(source, /function runtimeLayerFact/);
+    assert.match(source, /runtimeLayer/);
+    assert.match(source, /DOM\.|CSS\.|Layout\.|Shadow\.|A11y\.|JSRuntime\.|Worker\.|VDOM\./);
+  }
+  assert.match(runtimeCollector, /runtimeLayerDirectMap/);
+  assert.match(runtimeCollector, /runtimeLayerHighlightKind/);
+  assert.match(pageRuntimeHooks, /runtimeLayerDirect/);
+  assert.match(secureBrowserRuntime, /ensureRuntimeLayerFact/);
+  assert.match(standaloneAnalyzer, /browser\/rendered_dom_snapshot/);
+  for (const canonical of [
+    "DOM.NodeAdded",
+    "CSS.RuleInserted",
+    "Layout.Reflow",
+    "Shadow.RootAdded",
+    "A11y.RoleChanged",
+    "JSRuntime.MicrotaskScheduled",
+    "Worker.Created",
+    "VDOM.NodeDiff"
+  ]) {
+    assert.match(runtimeCollector + pageRuntimeHooks + standaloneAnalyzer + secureBrowserRuntime + js, new RegExp(canonical.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+});
+
+test("Runtime Layer export and debug evidence include tree coverage and degradation", () => {
+  assert.match(js, /exportRuntimeLayerSummary/);
+  assert.match(js, /coverage: tree\.coverage/);
+  assert.match(js, /degradation: tree\.degradation/);
+  assert.match(js, /highlightedNodes/);
+  assert.match(js, /const runtimeLayer = exportRuntimeLayerSummary/);
+  assert.match(js, /atrinitRuntimeLayer: scrubExportValue\(exportRuntimeLayerSummary/);
+  assert.match(js, /runtimeLayerSummary/);
+  assert.match(js, /captureMode/);
+  assert.match(js, /first_party_only/);
+  assert.match(js, /blocked_by_browser/);
 });
 
 test("Atrinit raw Recent Facts registry drives the profile categories", () => {

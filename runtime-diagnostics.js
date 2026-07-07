@@ -2076,7 +2076,8 @@ function buildSnapshot(data) {
     .map(item => ({ ...item, severity: factSeverity(item.fact), time: Number(item.fact.timestamp) || 0 }))
     .sort((left, right) => right.time - left.time);
   const runtimeEventSummary = summarizeRuntimeEvents(all);
-  const runtimeLayerSummary = buildRuntimeLayerTrees(all);
+  const layerCoverage = normalizeLayerCoverage(data.runtimeLayerCoverage, all);
+  const runtimeLayerSummary = buildRuntimeLayerTrees(all, layerCoverage);
   const latest = data.runtimeFactStatus || data.crawlerSignalStatus || data.structuralMonitorStatus || null;
   const pipeline = {
     state: data.structuralPipelineState || null,
@@ -2099,7 +2100,7 @@ function buildSnapshot(data) {
     latest: data.organFrequencySpectrumLatest || null
   };
   if (!organFrequencySpectrum.state && all.length) organFrequencySpectrum.state = buildFrequencySpectrumFromFacts(all);
-  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, runtimeLayerSummary, layerCoverage: normalizeLayerCoverage(data.runtimeLayerCoverage, all) };
+  return { data, channels: runtimeFactChannels, facts: all, latest, pipeline, organPipeline, organFrequencySpectrum, runtimeEventSummary, runtimeLayerSummary, layerCoverage };
 }
 
 function buildRuntimeFactLedger(data = {}) {
@@ -2207,13 +2208,16 @@ function summarizeRuntimeEvents(items = []) {
   };
 }
 
-function buildRuntimeLayerTrees(items = []) {
+function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
   const treeMap = new Map(RUNTIME_TREE_DOMAINS.map(domain => {
     const root = `${domain.id}:root`;
+    const coverage = runtimeTreeCoverage(domain.id, layerCoverage);
     return [domain.id, {
       id: domain.id,
       domain: domain.domain,
       root,
+      coverage,
+      degradation: runtimeTreeDegradation(domain.id, coverage),
       nodes: new Map([[root, {
         id: root,
         type: "root",
@@ -2283,12 +2287,26 @@ function buildRuntimeLayerTrees(items = []) {
     trees,
     activeCount: trees.filter(tree => tree.facts.length > 0).length,
     totalFacts: trees.reduce((sum, tree) => sum + tree.facts.length, 0),
+    degradedCount: trees.filter(tree => tree.degradation?.limited).length,
     highlightMap: RUNTIME_HIGHLIGHT_MAP
   };
 }
 
 function canonicalRuntimeFactForRaw(item = {}) {
   const fact = item.fact || item;
+  const stamped = fact.runtimeLayer || fact.metadata?.runtimeLayer || fact.payload?.runtimeLayer || null;
+  if (stamped?.treeId && stamped?.type) {
+    return {
+      treeId: stamped.treeId,
+      type: stamped.type,
+      nodeType: stamped.nodeType || RUNTIME_TREE_DOMAINS.find(domain => domain.id === stamped.treeId)?.nodeType || "node",
+      target: stamped.target || runtimeFactTargetId(fact, stamped.treeId, stamped.type),
+      label: stamped.label || runtimeFactNodeLabel(fact, stamped.treeId, stamped.type),
+      timestamp: Number(fact.timestamp) || Date.now(),
+      channel: item.channel || fact.channel || `${fact.source || stamped.treeId}/${fact.type || "fact"}`,
+      payload: scrubExportValue({ source: fact.source, type: fact.type, stamped })
+    };
+  }
   const source = normalizeRawFactType(fact.source || "");
   const type = normalizeRawFactType(fact.type || "fact");
   const channel = normalizeRawFactKey(item.channel || fact.channel || `${source}/${type}`);
@@ -2330,6 +2348,8 @@ function exactRuntimeFactType(source, type) {
     "dom/mutation_burst": ["dom", "DOM.ChildListChanged", "tag"],
     "dom/structure_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "dom/calendar_structure": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "browser/rendered_dom_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "runtime/structural_fallback": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "cssom/css_rule_insert": ["cssom", "CSS.RuleInserted", "rule"],
     "cssom/css_rule_delete": ["cssom", "CSS.RuleDeleted", "rule"],
     "cssom/css_animation": ["cssom", "CSS.KeyframesRuleChanged", "rule"],
@@ -2343,6 +2363,8 @@ function exactRuntimeFactType(source, type) {
     "layout/layout_type_change": ["layout", "Layout.BoxModelChanged", "box"],
     "layout/paint_order_change": ["layout", "Layout.PositionChanged", "box"],
     "layout/stacking_context_change": ["layout", "Layout.PositioningChanged", "box"],
+    "performance/layout_shift": ["layout", "Layout.LayoutShift", "box"],
+    "performance/long_task": ["js", "JSRuntime.ExecutionChanged", "context"],
     "shadow/shadow_root_created": ["shadow", "Shadow.RootAdded", "component"],
     "shadow/shadow_node": ["shadow", "Shadow.NodeChanged", "component"],
     "shadow/shadow_mapping": ["shadow", "Shadow.ComponentTreeChanged", "component"],
@@ -2357,6 +2379,12 @@ function exactRuntimeFactType(source, type) {
     "runtime/js_event_loop_idle": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
     "runtime/js_block": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/js_error": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/script_error": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/unhandled_rejection": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/technology_profile": ["js", "JSRuntime.RuntimeTopologyChanged", "context"],
+    "runtime/collector-injection-warning": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/collector_injection_warning": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/timer": ["js", "JSRuntime.TimerScheduled", "context"],
     "runtime/timeout": ["js", "JSRuntime.TimerScheduled", "context"],
     "runtime/interval": ["js", "JSRuntime.TimerScheduled", "context"],
@@ -2369,6 +2397,11 @@ function exactRuntimeFactType(source, type) {
     "multicontext/sw_register": ["worker", "Worker.ServiceWorkerRegistered", "worker"],
     "multicontext/sw_activated": ["worker", "Worker.ServiceWorkerActivated", "worker"],
     "multicontext/sw_fetch": ["worker", "Worker.ServiceWorkerFetch", "worker"],
+    "network/request": ["worker", "Worker.MessagePosted", "worker"],
+    "network/response": ["worker", "Worker.MessageReceived", "worker"],
+    "network/document_fetch": ["worker", "Worker.MessageReceived", "worker"],
+    "network/resource_map": ["worker", "Worker.MessageReceived", "worker"],
+    "network/resource_observed": ["worker", "Worker.MessageReceived", "worker"],
     "vdom/vdom_commit": ["vdom", "VDOM.Reconciled", "vnode"],
     "vdom/vdom_update": ["vdom", "VDOM.VDOMNodeUpdated", "vnode"],
     "vdom/vdom_diff": ["vdom", "VDOM.NodeDiff", "vnode"],
@@ -2377,6 +2410,38 @@ function exactRuntimeFactType(source, type) {
     "vdom/vdom_topology": ["vdom", "VDOM.VDOMTreeChanged", "vnode"]
   }[key];
   return exact ? { treeId: exact[0], type: exact[1], nodeType: exact[2] } : null;
+}
+
+function runtimeTreeCoverage(treeId, coverage = null) {
+  const map = {
+    dom: "dom",
+    cssom: "cssom",
+    layout: "layout",
+    shadow: "shadow",
+    a11y: "accessibility",
+    js: "javascript",
+    worker: "multicontext",
+    vdom: "vdom"
+  };
+  return coverage?.[map[treeId]] || null;
+}
+
+function runtimeTreeDegradation(treeId, coverage = null) {
+  if (!coverage) return { limited: false, status: "unknown", reason: "No collector capability report has arrived yet." };
+  const status = coverage.status || "unknown";
+  const limited = !["full", "best_effort"].includes(status) || coverage.evidenceCount === 0;
+  const browserBoundaries = {
+    shadow: "Closed Shadow DOM roots remain browser-protected; open roots are captured when exposed.",
+    worker: "Third-party Service Worker fetch internals are browser-protected unless a first-party helper emits them.",
+    vdom: "Framework internals are captured only when React/Vue/Svelte hooks are exposed by the page."
+  };
+  return {
+    limited,
+    status,
+    captureMode: coverage.captureMode || "unknown",
+    confidence: coverage.confidence || 0,
+    reason: coverage.reason || browserBoundaries[treeId] || "No runtime facts have arrived for this tree yet."
+  };
 }
 
 function domRuntimeFactType(type) {
@@ -2955,6 +3020,7 @@ function renderWebV2Taxonomy(model) {
 
 function renderRuntimeTreeCard(tree) {
   const active = tree.facts.length > 0;
+  const degradation = tree.degradation || {};
   const factRows = tree.factTypeCounts.slice(0, 8).map(item => `
     <div class="runtime-fact-type-line">
       <span class="runtime-highlight-dot hl-dot-${escapeHtml(item.highlightKind)}"></span>
@@ -2972,6 +3038,9 @@ function renderRuntimeTreeCard(tree) {
       <span class="runtime-tree-domain">${escapeHtml(tree.domain)}</span>
       <strong>${tree.facts.length} ${tree.facts.length === 1 ? "fact" : "facts"}</strong>
       <p class="runtime-profile-total">${tree.factTypeCounts.length} structural ${tree.factTypeCounts.length === 1 ? "type" : "types"} observed</p>
+      <p class="runtime-tree-capture ${degradation.limited ? "limited" : ""}">
+        ${escapeHtml(runtimeTreeCaptureLine(tree))}
+      </p>
       <div class="runtime-subcategory-stack runtime-fact-type-stack">
         ${factRows || `<div class="runtime-empty-line">No facts yet</div>`}
       </div>
@@ -2980,6 +3049,16 @@ function renderRuntimeTreeCard(tree) {
       </div>
     </article>
   `;
+}
+
+function runtimeTreeCaptureLine(tree) {
+  if (tree.facts.length) {
+    const mode = tree.coverage?.captureMode || tree.facts[0]?.captureMode || "runtime facts";
+    return `${tree.facts.length} facts captured through ${readableCoverageStatus(mode)}.`;
+  }
+  const degradation = tree.degradation || {};
+  if (degradation.reason) return `${readableCoverageStatus(degradation.status || "waiting")}: ${degradation.reason}`;
+  return "Waiting for live facts or collector capability evidence.";
 }
 
 function renderRuntimeTreeNode(tree, node) {
@@ -3067,6 +3146,11 @@ function renderFactMappingDebug(model, summary = null) {
       <strong>${report.categoryTotals.map(item => `${item.name}:${item.count}`).join("  ")}</strong>
       <p>Counts can exceed total facts because multi-category facts are intentionally preserved.</p>
     </article>
+    <article class="mapping-debug-card">
+      <span>Runtime Layer</span>
+      <strong>${report.runtimeLayer.activeCount} / ${RUNTIME_TREE_DOMAINS.length} trees active</strong>
+      <p>${report.runtimeLayer.totalFacts} canonical tree facts, ${report.runtimeLayer.degradedCount} degraded capture paths. Export All JSON includes tree coverage, highlight state, and blocked/limited reasons.</p>
+    </article>
     <div class="table-wrap mapping-debug-table">
       <table>
         <thead><tr><th>Raw fact</th><th>Status</th><th>Atrinit categories</th><th>SIG9 organ</th><th>Count</th></tr></thead>
@@ -3078,13 +3162,15 @@ function renderFactMappingDebug(model, summary = null) {
 
 function buildFactMappingDebugReport(model, summary = null) {
   const runtimeSummary = summary || model.runtimeEventSummary || summarizeRuntimeEvents(model.facts || []);
+  const runtimeLayer = exportRuntimeLayerSummary(model.runtimeLayerSummary || buildRuntimeLayerTrees(model.facts || [], model.layerCoverage || null));
   return {
     registryVersion: RAW_FACT_MAPPING_REGISTRY_VERSION,
     totalFacts: model.facts?.length || 0,
     categoryTotals: (runtimeSummary.categories || []).map(category => ({ name: category.name, count: category.count })),
     mappedFacts: runtimeSummary.mappedFacts || [],
     unmappedFacts: runtimeSummary.unmappedFacts || [],
-    sourceTypeCoverage: runtimeSummary.sourceTypeCoverage || []
+    sourceTypeCoverage: runtimeSummary.sourceTypeCoverage || [],
+    runtimeLayer
   };
 }
 
@@ -4513,6 +4599,7 @@ function exportRuntimeLayerSummary(runtimeLayer = {}) {
   return {
     activeCount: runtimeLayer.activeCount || 0,
     totalFacts: runtimeLayer.totalFacts || 0,
+    degradedCount: runtimeLayer.degradedCount || 0,
     domains: RUNTIME_TREE_DOMAINS.map(domain => ({ id: domain.id, domain: domain.domain, factTypes: domain.factTypes })),
     highlightMap: RUNTIME_HIGHLIGHT_MAP,
     trees: (runtimeLayer.trees || []).map(tree => ({
@@ -4521,6 +4608,8 @@ function exportRuntimeLayerSummary(runtimeLayer = {}) {
       factCount: tree.facts?.length || 0,
       nodeCount: tree.nodes?.length || 0,
       edgeCount: tree.edges?.length || 0,
+      coverage: tree.coverage || null,
+      degradation: tree.degradation || null,
       factTypeCounts: tree.factTypeCounts || [],
       recentFacts: (tree.facts || []).slice(0, 12),
       highlightedNodes: (tree.nodes || [])

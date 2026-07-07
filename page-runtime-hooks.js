@@ -62,11 +62,13 @@
     const channel = `${source}/${type}`;
     const severity = normalizeSeverity(value?.severity);
     const captureMode = metadata?.captureMode || captureModeForFact(source, type);
+    const runtimeLayer = runtimeLayerFact(source, type, value || {}, metadata || {});
     const fact = {
       timestamp,
       source,
       type,
       channel,
+      runtimeLayer,
       organ: inferOrgan(source, type),
       severity,
       confidence: confidenceForFact(source, type, metadata),
@@ -789,6 +791,79 @@
     if (/dependency|iframe|worker|message_channel|promise|vdom/.test(text)) return "Dependency";
     if (/rhythm|microtask|animation|transition|reflow|recalc|frame/.test(text)) return "Rhythm";
     return "Topology";
+  }
+
+  function runtimeLayerFact(source, type, value = {}, metadata = {}) {
+    const sourceKey = normalizeFactName(source);
+    const typeKey = normalizeFactName(type);
+    const mapped = runtimeLayerDirect(`${sourceKey}/${typeKey}`) || runtimeLayerFallback(`${sourceKey} ${typeKey}`);
+    return {
+      treeId: mapped.treeId,
+      type: mapped.type,
+      nodeType: { dom: "tag", cssom: "rule", layout: "box", shadow: "component", a11y: "role", js: "context", worker: "worker", vdom: "vnode" }[mapped.treeId] || "node",
+      highlightKind: /Added|Created|Inserted|Registered/.test(mapped.type) ? "added" : /Removed|Deleted|Detached|Terminated/.test(mapped.type) ? "removed" : "changed",
+      target: `${mapped.treeId}:${hashString(String(value.nodeId || metadata.selector || metadata.hostSelector || value.hostId || value.workerId || value.channelId || value.iframeId || value.url || metadata.url || typeKey)).slice(0, 12)}`,
+      label: String(metadata.selector || metadata.hostSelector || value.tag || value.kind || value.level || value.framework || value.area || value.url || mapped.type).slice(0, 80),
+      confidence: confidenceForFact(source, type, metadata),
+      captureMode: metadata.captureMode || captureModeForFact(source, type)
+    };
+  }
+
+  function runtimeLayerDirect(key) {
+    return {
+      "runtime/js_microtask": { treeId: "js", type: "JSRuntime.MicrotaskScheduled" },
+      "runtime/js_promise_chain": { treeId: "js", type: "JSRuntime.PromiseChainUpdated" },
+      "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+      "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
+      "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
+      "runtime/navigation": { treeId: "js", type: "JSRuntime.RuntimeTopologyChanged" },
+      "runtime/console": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "cssom/css_rule_insert": { treeId: "cssom", type: "CSS.RuleInserted" },
+      "cssom/css_rule_delete": { treeId: "cssom", type: "CSS.RuleDeleted" },
+      "cssom/forced_style_recalc": { treeId: "cssom", type: "CSS.StyleChanged" },
+      "layout/forced_reflow": { treeId: "layout", type: "Layout.Reflow" },
+      "shadow/shadow_root_created": { treeId: "shadow", type: "Shadow.RootAdded" },
+      "shadow/shadow_mapping": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
+      "shadow/shadow_topology": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
+      "shadow/slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
+      "multicontext/iframe_created": { treeId: "worker", type: "Worker.Created" },
+      "multicontext/iframe_loaded": { treeId: "worker", type: "Worker.MessageReceived" },
+      "multicontext/post_message": { treeId: "worker", type: "Worker.MessagePosted" },
+      "multicontext/worker_created": { treeId: "worker", type: "Worker.Created" },
+      "multicontext/worker_post": { treeId: "worker", type: "Worker.MessagePosted" },
+      "multicontext/worker_message": { treeId: "worker", type: "Worker.MessageReceived" },
+      "multicontext/message_channel_created": { treeId: "worker", type: "Worker.ChannelCreated" },
+      "multicontext/message_channel_message": { treeId: "worker", type: "Worker.MessagePosted" },
+      "multicontext/sw_register": { treeId: "worker", type: "Worker.ServiceWorkerRegistered" },
+      "multicontext/sw_activated": { treeId: "worker", type: "Worker.ServiceWorkerActivated" },
+      "vdom/vdom_commit": { treeId: "vdom", type: "VDOM.Reconciled" },
+      "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
+      "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" },
+      "vdom/vdom_topology": { treeId: "vdom", type: "VDOM.VDOMTreeChanged" },
+      "storage/storage_change": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "storage/storage_snapshot": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "storage/indexeddb_open": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "network/request": { treeId: "worker", type: "Worker.MessagePosted" },
+      "network/response": { treeId: "worker", type: "Worker.MessageReceived" },
+      "network/error": { treeId: "worker", type: "Worker.MessageReceived" },
+      "anti_crawler/fingerprint": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "anti_crawler/challenge": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "anti_crawler/block": { treeId: "js", type: "JSRuntime.ExecutionChanged" }
+    }[key];
+  }
+
+  function runtimeLayerFallback(text) {
+    if (/vdom|react|vue|svelte/.test(text)) return { treeId: "vdom", type: "VDOM.NodeDiff" };
+    if (/shadow|slot/.test(text)) return { treeId: "shadow", type: "Shadow.NodeChanged" };
+    if (/css|style|selector/.test(text)) return { treeId: "cssom", type: "CSS.StyleChanged" };
+    if (/layout|reflow|geometry|box|scroll|position|shift/.test(text)) return { treeId: "layout", type: "Layout.GeometryChanged" };
+    if (/worker|message|sw_|iframe|frame|network|fetch|xhr|websocket/.test(text)) return { treeId: "worker", type: "Worker.MessagePosted" };
+    if (/dom|element|attribute|text|mutation|node/.test(text)) return { treeId: "dom", type: "DOM.TreeTopologyChanged" };
+    return { treeId: "js", type: "JSRuntime.StateChanged" };
+  }
+
+  function normalizeFactName(value) {
+    return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
   }
 
   function safeMessage(value) {
