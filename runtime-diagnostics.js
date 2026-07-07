@@ -1812,8 +1812,10 @@ function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null
   const latest = records[0] || fallbackResult || {};
   const runtimeFactHistory = [];
   const runtimeFactChannels = {};
+  let runtimeLayerCoverage = latest.diagnostics?.runtimeLayerCoverage || fallbackResult?.diagnostics?.runtimeLayerCoverage || null;
   for (const record of records) {
     const diagnostics = record.diagnostics || {};
+    if (!runtimeLayerCoverage && diagnostics.runtimeLayerCoverage) runtimeLayerCoverage = diagnostics.runtimeLayerCoverage;
     for (const fact of diagnostics.runtimeFactHistory || []) runtimeFactHistory.push(fact);
     for (const [channel, facts] of Object.entries(diagnostics.runtimeFactChannels || {})) {
       runtimeFactChannels[channel] = [...(runtimeFactChannels[channel] || []), ...(facts || [])];
@@ -1823,6 +1825,7 @@ function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null
     ...(latest.diagnostics || {}),
     runtimeFactHistory,
     runtimeFactChannels,
+    runtimeLayerCoverage: runtimeLayerCoverage || {},
     runtimeFactStatus: latest.diagnostics?.runtimeFactStatus || latest.status || fallbackResult?.status || null
   };
 }

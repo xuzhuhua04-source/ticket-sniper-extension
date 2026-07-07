@@ -378,7 +378,10 @@ function sanitizeOperationalUrl(value) {
 export async function analyzeRuntimeTarget(runtimeDiagnosticsBrowser, rawUrl, options = {}) {
   validateRuntimeTargetUrl(rawUrl, options);
   try {
-    return await runtimeDiagnosticsBrowser.analyze(rawUrl);
+    const rendered = await runtimeDiagnosticsBrowser.analyze(rawUrl);
+    if (hasRuntimeFacts(rendered)) return rendered;
+    const fallback = await analyzeUrl(rawUrl);
+    return markStructuralFallback(fallback, new Error("Rendered browser inspection returned no runtime facts after sampling."));
   } catch (renderedError) {
     const fallback = await analyzeUrl(rawUrl).catch(fallbackError => {
       const error = httpError(
@@ -392,6 +395,11 @@ export async function analyzeRuntimeTarget(runtimeDiagnosticsBrowser, rawUrl, op
     });
     return markStructuralFallback(fallback, renderedError);
   }
+}
+
+function hasRuntimeFacts(result = {}) {
+  return Boolean(result?.diagnostics?.runtimeFactHistory?.length) ||
+    Object.values(result?.diagnostics?.runtimeFactChannels || {}).some(items => Array.isArray(items) && items.length);
 }
 
 function markStructuralFallback(result, renderedError) {
@@ -562,6 +570,7 @@ export function compactDiagnosticsResult(result = {}, options = {}) {
       runtimeFactChannels: channels,
       runtimeFactHistory: factHistory,
       runtimeFactStatus: sanitizeRuntimeStatus(diagnostics.runtimeFactStatus || result.status || {}),
+      runtimeLayerCoverage: sanitizeRuntimeLikeValue(diagnostics.runtimeLayerCoverage || {}),
       crawlerSignalHistory: (diagnostics.crawlerSignalHistory || []).slice(0, 20).map(sanitizeRuntimeLikeValue),
       crawlerSignalStatus: sanitizeRuntimeStatus(diagnostics.crawlerSignalStatus || {}),
       organFrequencySpectrumState: sanitizeRuntimeLikeValue(diagnostics.organFrequencySpectrumState || {}),
@@ -653,6 +662,13 @@ function sanitizeIngestedFact(fact = {}) {
     timestamp: Number(fact.timestamp) || Date.now(),
     source: String(fact.source || "runtime").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "runtime",
     type: String(fact.type || "fact").replace(/[^a-z0-9_-]/gi, "").slice(0, 80) || "fact",
+    channel: String(fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`).slice(0, 160),
+    runtimeLayer: sanitizeRuntimeLikeValue(fact.runtimeLayer || {}),
+    organ: String(fact.organ || "").slice(0, 60),
+    severity: String(fact.severity || fact.value?.severity || "low").slice(0, 20),
+    confidence: Number.isFinite(Number(fact.confidence)) ? Math.max(0, Math.min(1, Number(fact.confidence))) : undefined,
+    captureMode: String(fact.captureMode || "").slice(0, 80),
+    payload: sanitizeRuntimeLikeValue(fact.payload || {}),
     value: sanitizeRuntimeLikeValue(fact.value || {}),
     metadata: sanitizeRuntimeLikeValue(fact.metadata || {}),
     context: sanitizeRuntimeLikeValue(fact.context || {})

@@ -16,6 +16,17 @@ function fact(index) {
       authorization: "Bearer private",
       path: `/item/${index}`
     },
+    channel: "runtime/events",
+    runtimeLayer: {
+      treeId: "js",
+      type: "JSRuntime.ExecutionChanged",
+      highlightKind: "changed",
+      target: `js:event-${index}`,
+      captureMode: "page_injection"
+    },
+    captureMode: "page_injection",
+    confidence: 0.9,
+    organ: "Rhythm",
     context: {
       email: "person@example.com"
     }
@@ -49,6 +60,15 @@ test("standalone diagnostics compaction caps facts and redacts sensitive fields"
       },
       organFrequencySpectrumLatest: {
         commercialPackages: [{ id: "structure-monitor", evidence: ["runtime/events"] }]
+      },
+      runtimeLayerCoverage: {
+        javascript: {
+          status: "full",
+          captureMode: "page_injection",
+          confidence: 0.9,
+          reason: "collector active",
+          evidenceCount: 10
+        }
       }
     }
   }, { factLimit: 10, channelFactLimit: 6 });
@@ -65,4 +85,9 @@ test("standalone diagnostics compaction caps facts and redacts sensitive fields"
   assert.equal(compacted.diagnostics.runtimeFactStatus.fact.metadata.authorization, "[redacted]");
   assert.equal(compacted.diagnostics.runtimeFactStatus.fact.context.email, "[redacted]");
   assert.equal(compacted.diagnostics.organFrequencySpectrumLatest.commercialPackages[0].id, "structure-monitor");
+  assert.equal(compacted.diagnostics.runtimeLayerCoverage.javascript.status, "full");
+  assert.equal(compacted.diagnostics.runtimeFactHistory[0].runtimeLayer.treeId, "js");
+  assert.equal(compacted.diagnostics.runtimeFactHistory[0].runtimeLayer.type, "JSRuntime.ExecutionChanged");
+  assert.equal(compacted.diagnostics.runtimeFactHistory[0].captureMode, "page_injection");
+  assert.equal(compacted.diagnostics.runtimeFactHistory[0].organ, "Rhythm");
 });
