@@ -5,6 +5,7 @@ import { readFile, readdir } from "node:fs/promises";
 const runtimeCollector = await readFile(new URL("../runtime-collector.js", import.meta.url), "utf8");
 const runtimeLayer = await readFile(new URL("../runtime-layer/runtime-collector.js", import.meta.url), "utf8");
 const diagnosticsLayer = await readFile(new URL("../diagnostics-layer/diagnostics-collector.js", import.meta.url), "utf8");
+const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 
 test("required runtime-layer and diagnostics-layer module files exist", async () => {
   const runtimeFiles = new Set(await readdir(new URL("../runtime-layer/", import.meta.url)));
@@ -46,6 +47,18 @@ test("runtime collector has separate runtime and diagnostics emit/start paths", 
   assert.match(runtimeCollector, /type: "RUNTIME_FACT_DETECTED"/);
   assert.match(runtimeCollector, /type: "DIAGNOSTIC_FACT_DETECTED"/);
   assert.match(runtimeCollector, /isRuntimeStructuralFact\(source, type\)/);
+});
+
+test("extension loads layer registries before the runtime collector", () => {
+  const scripts = manifest.content_scripts?.find(entry => entry.matches?.includes("http://*/*"))?.js || [];
+  assert.ok(scripts.indexOf("runtime-layer/runtime-collector.js") > -1);
+  assert.ok(scripts.indexOf("diagnostics-layer/diagnostics-collector.js") > -1);
+  assert.ok(scripts.indexOf("runtime-collector.js") > -1);
+  assert.ok(scripts.indexOf("runtime-layer/runtime-collector.js") < scripts.indexOf("runtime-collector.js"));
+  assert.ok(scripts.indexOf("diagnostics-layer/diagnostics-collector.js") < scripts.indexOf("runtime-collector.js"));
+  assert.match(runtimeLayer, /globalThis\.TicketSniperRuntimeLayer/);
+  assert.match(diagnosticsLayer, /globalThis\.TicketSniperDiagnosticsLayer/);
+  assert.match(runtimeCollector, /globalThis\.TicketSniperRuntimeLayer/);
 });
 
 test("runtime structural allow-list and diagnostics registry classify old facts apart", () => {
@@ -95,4 +108,3 @@ test("runtimeLayerDirectMap no longer includes diagnostics-only fact families", 
     "vdom_topology"
   ]) assert.doesNotMatch(directMapSource, new RegExp(diagnostic));
 });
-

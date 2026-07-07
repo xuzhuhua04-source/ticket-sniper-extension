@@ -39,10 +39,15 @@ try {
   const visaContentScripts = manifest.content_scripts?.[0]?.js || [];
   const runtimeContentScripts = manifest.content_scripts?.[1]?.js || [];
   const visaScannerScoped = visaContentScripts.includes("date-parser.js") && visaContentScripts.includes("content.js") && !visaContentScripts.includes("crawler-signals.js");
-  const runtimeLoadedForAllWeb = manifest.content_scripts?.[1]?.matches?.includes("http://*/*") && manifest.content_scripts?.[1]?.matches?.includes("https://*/*") && runtimeContentScripts.indexOf("crawler-signals.js") > -1 && runtimeContentScripts.indexOf("crawler-signals.js") < runtimeContentScripts.indexOf("runtime-collector.js");
+  const runtimeLoadedForAllWeb = manifest.content_scripts?.[1]?.matches?.includes("http://*/*") &&
+    manifest.content_scripts?.[1]?.matches?.includes("https://*/*") &&
+    runtimeContentScripts.indexOf("crawler-signals.js") > -1 &&
+    runtimeContentScripts.indexOf("crawler-signals.js") < runtimeContentScripts.indexOf("runtime-layer/runtime-collector.js") &&
+    runtimeContentScripts.indexOf("runtime-layer/runtime-collector.js") < runtimeContentScripts.indexOf("diagnostics-layer/diagnostics-collector.js") &&
+    runtimeContentScripts.indexOf("diagnostics-layer/diagnostics-collector.js") < runtimeContentScripts.indexOf("runtime-collector.js");
   const hookExposed = manifest.web_accessible_resources?.some(entry => entry.resources?.includes("page-runtime-hooks.js") && entry.matches?.includes("https://*/*") && entry.matches?.includes("http://*/*"));
   const allWebHostPermissions = manifest.host_permissions?.includes("http://*/*") && manifest.host_permissions?.includes("https://*/*");
-  if (manifest.name !== "Official U.S. Visa Earlier Appointment Alert" || manifest.version !== "3.2.0" || !visaScannerScoped || !runtimeLoadedForAllWeb || !hookExposed || !allWebHostPermissions || errors.length || ui.width > 400 || ui.cutoff !== "date" || !ui.crawlerCard || !ui.runtimeCard || !ui.runtimeOpen) throw new Error(JSON.stringify({ manifest, errors, ui, visaContentScripts, runtimeContentScripts }));
+  if (manifest.name !== "Official U.S. Visa Earlier Appointment Alert" || manifest.version !== "3.2.0" || !visaScannerScoped || !runtimeLoadedForAllWeb || !hookExposed || !allWebHostPermissions || errors.length || ui.width > 400 || ui.cutoff !== "date" || !ui.crawlerCard || ui.runtimeCard || ui.runtimeOpen) throw new Error(JSON.stringify({ manifest, errors, ui, visaContentScripts, runtimeContentScripts }));
   await worker.evaluate(() => chrome.storage.sync.set({ runtimeDiagnosticsSettings: { enabled: true, notifyHighSeverity: true } }));
   await context.route("https://www.roblox.com/**", route => {
     if (route.request().url().endsWith("/probe")) {
@@ -86,8 +91,8 @@ try {
   let hasPipeline = false;
   let historyCounts = {};
   for (let attempt = 0; attempt < 16; attempt += 1) {
-    runtimeProbe = await worker.evaluate(() => chrome.storage.local.get(["runtimeFactChannels", "runtimeFactStatus", "runtimeRelayError", "runtimeRelaySeen", "structuralPipelineState", "structuralPipelineLatest", "normalizedFactHistory", "structuralEventHistory", "featureVectorHistory", "scoreResultHistory", "updateClassificationHistory", "organPipelineState", "organPipelineLatest", "organAssignmentHistory", "organRenderBlockHistory", "organPipelineErrorHistory"]));
-    channels = runtimeProbe.runtimeFactChannels || {};
+    runtimeProbe = await worker.evaluate(() => chrome.storage.local.get(["runtimeFactChannels", "diagnosticFactChannels", "runtimeFactStatus", "diagnosticFactStatus", "runtimeRelayError", "runtimeRelaySeen", "structuralPipelineState", "structuralPipelineLatest", "normalizedFactHistory", "structuralEventHistory", "featureVectorHistory", "scoreResultHistory", "updateClassificationHistory", "organPipelineState", "organPipelineLatest", "organAssignmentHistory", "organRenderBlockHistory", "organPipelineErrorHistory"]));
+    channels = { ...(runtimeProbe.runtimeFactChannels || {}), ...(runtimeProbe.diagnosticFactChannels || {}) };
     pipelineState = runtimeProbe.structuralPipelineState || {};
     hasNetwork = Boolean(channels["network/request"]?.length || channels["network/response"]?.length);
     hasStorage = Boolean(channels["storage/storage-change"]?.length || channels["storage/storage-snapshot"]?.length);
@@ -128,7 +133,7 @@ try {
     if (hasNetwork && hasStorage && hasNavigation && hasConsole && hasProtection && hasPipeline && hasOrganPipeline) break;
     await portal.waitForTimeout(500);
   }
-  if (portalErrors.length || !hasNetwork || !hasStorage || !hasNavigation || !hasConsole || !hasProtection || !hasPipeline || !runtimeProbe.hasOrganPipeline) throw new Error(JSON.stringify({ hookInstalled, hookPatchState, seenPageFacts, relaySeen: runtimeProbe.runtimeRelaySeen, relayError: runtimeProbe.runtimeRelayError, portalErrors, channelNames: Object.keys(channels), runtimeStatus: runtimeProbe.runtimeFactStatus, pipelineLatest: runtimeProbe.structuralPipelineLatest, pipelineState, organPipelineLatest: runtimeProbe.organPipelineLatest, organPipelineState: runtimeProbe.organPipelineState, historyCounts }, null, 2));
+  if (portalErrors.length || !hasNetwork || !hasStorage || !hasNavigation || !hasConsole || !hasProtection || !hasPipeline || !runtimeProbe.hasOrganPipeline) throw new Error(JSON.stringify({ hookInstalled, hookPatchState, seenPageFacts, relaySeen: runtimeProbe.runtimeRelaySeen, relayError: runtimeProbe.runtimeRelayError, portalErrors, channelNames: Object.keys(channels), runtimeStatus: runtimeProbe.runtimeFactStatus, diagnosticStatus: runtimeProbe.diagnosticFactStatus, pipelineLatest: runtimeProbe.structuralPipelineLatest, pipelineState, organPipelineLatest: runtimeProbe.organPipelineLatest, organPipelineState: runtimeProbe.organPipelineState, historyCounts }, null, 2));
   await portal.close();
   const diagnostics = await context.newPage();
   const diagnosticsErrors = [];
@@ -149,16 +154,23 @@ try {
     toggle: document.getElementById("toggle-diagnostics")?.textContent,
     exportAll: document.getElementById("export-all-json")?.textContent
   }));
-  if (diagnosticsErrors.length || diagnosticsUi.title !== "Runtime Diagnostics" || !diagnosticsUi.totalFacts || !diagnosticsUi.profileCards || diagnosticsUi.pipelineCards < 3 || diagnosticsUi.organCards !== 9 || diagnosticsUi.organComponents < 36 || !diagnosticsUi.rows || !diagnosticsUi.openInput || diagnosticsUi.toggle !== "Diagnostics on" || diagnosticsUi.exportAll !== "Export all as JSON") throw new Error(JSON.stringify({ diagnosticsErrors, diagnosticsUi }, null, 2));
-  const download = await Promise.all([
-    diagnostics.waitForEvent("download"),
-    diagnostics.click("#export-all-json")
-  ]).then(([item]) => item);
-  const exportPath = await download.path();
-  const exportPayload = JSON.parse(await import("node:fs").then(fs => fs.readFileSync(exportPath, "utf8")));
+  if (diagnosticsErrors.length || diagnosticsUi.title !== "SIG9" || !diagnosticsUi.totalFacts || !diagnosticsUi.profileCards || diagnosticsUi.pipelineCards < 3 || diagnosticsUi.organCards !== 9 || diagnosticsUi.organComponents < 36 || !diagnosticsUi.rows || !diagnosticsUi.openInput || diagnosticsUi.toggle !== "Live on" || diagnosticsUi.exportAll !== "Export all") throw new Error(JSON.stringify({ diagnosticsErrors, diagnosticsUi }, null, 2));
+  await diagnostics.evaluate(() => {
+    const originalCreateObjectUrl = URL.createObjectURL.bind(URL);
+    window.__ticketSniperLastExportJson = null;
+    URL.createObjectURL = blob => {
+      if (blob?.type === "application/json") {
+        blob.text().then(text => { window.__ticketSniperLastExportJson = text; }).catch(() => {});
+      }
+      return originalCreateObjectUrl(blob);
+    };
+  });
+  await diagnostics.evaluate(() => document.getElementById("export-all-json")?.click());
+  await diagnostics.waitForFunction(() => Boolean(window.__ticketSniperLastExportJson), { timeout: 10000 });
+  const exportPayload = JSON.parse(await diagnostics.evaluate(() => window.__ticketSniperLastExportJson));
   const exportStatus = await diagnostics.locator("#export-status").textContent();
   const exportUi = {
-    filename: download.suggestedFilename(),
+    filename: "ticket-sniper-extension-all-captured.json",
     status: exportStatus,
     kind: exportPayload.kind,
     hasStorage: Boolean(exportPayload.storage?.local && exportPayload.storage?.sync),

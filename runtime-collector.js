@@ -23,7 +23,7 @@ let runtimeCollectorEnabled = false;
 let runtimeCollector = null;
 let runtimeHookInjected = false;
 
-const RUNTIME_STRUCTURAL_FACT_KEYS = new Set([
+const RUNTIME_STRUCTURAL_FACT_KEYS = new Set(globalThis.TicketSniperRuntimeLayer?.structuralFacts || [
   "dom/element_change",
   "dom/attribute_change",
   "dom/text_change",
@@ -1462,6 +1462,9 @@ function normalizeRuntimeFactName(value) {
 }
 
 function isRuntimeStructuralFact(source, type) {
+  if (globalThis.TicketSniperRuntimeLayer?.isRuntimeStructuralFact) {
+    return globalThis.TicketSniperRuntimeLayer.isRuntimeStructuralFact(source, type);
+  }
   const key = `${normalizeRuntimeFactName(source)}/${normalizeRuntimeFactName(type)}`;
   return RUNTIME_STRUCTURAL_FACT_KEYS.has(key);
 }

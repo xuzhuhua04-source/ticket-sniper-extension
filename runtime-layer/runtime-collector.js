@@ -1,6 +1,6 @@
-export const RUNTIME_LAYER_VERSION = "runtime-layer-structural-v1";
+const RUNTIME_LAYER_VERSION = "runtime-layer-structural-v1";
 
-export const RUNTIME_LAYER_FILES = Object.freeze([
+const RUNTIME_LAYER_FILES = Object.freeze([
   "dom.js",
   "cssom.js",
   "layout.js",
@@ -11,7 +11,7 @@ export const RUNTIME_LAYER_FILES = Object.freeze([
   "vdom.js"
 ]);
 
-export const RUNTIME_STRUCTURAL_FACTS = Object.freeze([
+const RUNTIME_STRUCTURAL_FACTS = Object.freeze([
   "dom/element_change",
   "dom/attribute_change",
   "dom/text_change",
@@ -45,10 +45,17 @@ export const RUNTIME_STRUCTURAL_FACTS = Object.freeze([
   "vdom/vdom_diff"
 ]);
 
-export function isRuntimeStructuralFact(source, type) {
+function isRuntimeStructuralFact(source, type) {
   return RUNTIME_STRUCTURAL_FACTS.includes(`${normalizeFactPart(source)}/${normalizeFactPart(type)}`);
 }
 
-export function normalizeFactPart(value) {
+function normalizeFactPart(value) {
   return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
 }
+
+globalThis.TicketSniperRuntimeLayer = Object.freeze({
+  version: RUNTIME_LAYER_VERSION,
+  files: RUNTIME_LAYER_FILES,
+  structuralFacts: RUNTIME_STRUCTURAL_FACTS,
+  isRuntimeStructuralFact
+});

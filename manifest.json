@@ -40,7 +40,7 @@
     },
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["crawler-signals.js", "runtime-collector.js"],
+      "js": ["crawler-signals.js", "runtime-layer/runtime-collector.js", "diagnostics-layer/diagnostics-collector.js", "runtime-collector.js"],
       "run_at": "document_idle"
     }
   ],

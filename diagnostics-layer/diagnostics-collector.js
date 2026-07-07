@@ -1,6 +1,6 @@
-export const DIAGNOSTICS_LAYER_VERSION = "diagnostics-layer-v1";
+const DIAGNOSTICS_LAYER_VERSION = "diagnostics-layer-v1";
 
-export const DIAGNOSTICS_LAYER_FILES = Object.freeze([
+const DIAGNOSTICS_LAYER_FILES = Object.freeze([
   "anti-crawler.js",
   "protection-surface.js",
   "behavior.js",
@@ -14,7 +14,7 @@ export const DIAGNOSTICS_LAYER_FILES = Object.freeze([
   "bloomberg.js"
 ]);
 
-export const DIAGNOSTIC_FACTS = Object.freeze([
+const DIAGNOSTIC_FACTS = Object.freeze([
   "dom/mutation_burst",
   "dom/structure_snapshot",
   "dom/calendar_structure",
@@ -62,10 +62,17 @@ export const DIAGNOSTIC_FACTS = Object.freeze([
   "vdom/vdom_break"
 ]);
 
-export function isDiagnosticFact(source, type) {
+function isDiagnosticFact(source, type) {
   return DIAGNOSTIC_FACTS.includes(`${normalizeFactPart(source)}/${normalizeFactPart(type)}`);
 }
 
-export function normalizeFactPart(value) {
+function normalizeFactPart(value) {
   return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
 }
+
+globalThis.TicketSniperDiagnosticsLayer = Object.freeze({
+  version: DIAGNOSTICS_LAYER_VERSION,
+  files: DIAGNOSTICS_LAYER_FILES,
+  diagnosticFacts: DIAGNOSTIC_FACTS,
+  isDiagnosticFact
+});
