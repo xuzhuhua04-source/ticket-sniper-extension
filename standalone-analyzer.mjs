@@ -61,7 +61,11 @@ export function analyzeRenderedSnapshot(snapshot = {}) {
       String(runtimeFact.source).slice(0, 60),
       String(runtimeFact.type).slice(0, 80),
       runtimeFact.value || {},
-      runtimeFact.metadata || {},
+      {
+        ...(runtimeFact.metadata || {}),
+        runtimeLayer: runtimeFact.runtimeLayer || runtimeFact.metadata?.runtimeLayer || null,
+        captureMode: runtimeFact.captureMode || runtimeFact.runtimeLayer?.captureMode || runtimeFact.metadata?.captureMode || ""
+      },
       page,
       Number(runtimeFact.timestamp) || fetchedAt + 9
     ));
@@ -451,6 +455,19 @@ function fact(source, type, value, metadata, page, timestamp = Date.now()) {
 }
 
 function runtimeLayerFact(source, type, value = {}, metadata = {}) {
+  if (metadata?.runtimeLayer?.treeId && metadata?.runtimeLayer?.type) {
+    const stamped = metadata.runtimeLayer;
+    return {
+      treeId: stamped.treeId,
+      type: stamped.type,
+      nodeType: stamped.nodeType || "node",
+      highlightKind: stamped.highlightKind || (/Added|Created|Inserted|Registered/.test(stamped.type) ? "added" : /Removed|Deleted|Detached|Terminated/.test(stamped.type) ? "removed" : "changed"),
+      target: stamped.target || `${stamped.treeId}:${hashString(String(value?.signature || value?.url || metadata?.url || type)).slice(0, 12)}`,
+      label: stamped.label || String(value?.title || value?.kind || value?.provider || value?.url || stamped.type).slice(0, 80),
+      confidence: stamped.confidence || confidenceForFact(source, type, metadata),
+      captureMode: stamped.captureMode || metadata?.captureMode || captureModeForFact(source, type)
+    };
+  }
   const sourceKey = normalizeFactName(source);
   const typeKey = normalizeFactName(type);
   const mapped = {
@@ -469,6 +486,7 @@ function runtimeLayerFact(source, type, value = {}, metadata = {}) {
     "runtime/script_error": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/technology_profile": ["js", "JSRuntime.RuntimeTopologyChanged", "context"],
+    "runtime/diagnostics_tick": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
     "anti_crawler/challenge": ["js", "JSRuntime.ExecutionChanged", "context"]
   }[`${sourceKey}/${typeKey}`] || runtimeLayerFallback(`${sourceKey} ${typeKey}`);
   return {

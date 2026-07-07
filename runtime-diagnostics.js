@@ -2258,14 +2258,15 @@ function buildRuntimeLayerTrees(items = [], layerCoverage = null) {
     const timestamp = Number(item.time || item.fact?.timestamp || canonical.timestamp || Date.now()) || Date.now();
     const kind = RUNTIME_HIGHLIGHT_MAP[canonical.type] || "changed";
     const target = canonical.target || `${canonical.treeId}:${slugifyRuntimeNodeId(canonical.label || canonical.type)}`;
+    const rawFact = item.fact || {};
     const fact = {
       type: canonical.type,
       target,
       timestamp,
       summary: canonical.summary || factSummary(item.fact),
       channel: item.channel || canonical.channel || "",
-      captureMode: canonical.captureMode || fact.captureMode || "",
-      evidenceKind: runtimeEvidenceKind(canonical.captureMode || fact.captureMode || ""),
+      captureMode: canonical.captureMode || rawFact.captureMode || "",
+      evidenceKind: runtimeEvidenceKind(canonical.captureMode || rawFact.captureMode || ""),
       highlightKind: kind
     };
     tree.facts.push(fact);

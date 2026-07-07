@@ -46,6 +46,38 @@ test("rendered diagnostics expose canonical facts and layer coverage", () => {
   assert.equal(result.diagnostics.runtimeLayerCoverage.serviceWorkerFetch.status, "first_party_only");
 });
 
+test("rendered diagnostics preserve live collector runtime-layer facts", () => {
+  const result = analyzeRenderedSnapshot({
+    url: "https://example.com/app",
+    html: "<!doctype html><title>Example</title><main id='app'>Hello</main>",
+    rendered: { title: "Example", buttons: 0, scripts: 1, links: 0 },
+    runtimeFacts: [
+      {
+        timestamp: 200,
+        source: "dom",
+        type: "node_added",
+        value: { severity: "low", selector: "#app" },
+        runtimeLayer: {
+          treeId: "dom",
+          type: "DOM.NodeAdded",
+          nodeType: "tag",
+          target: "dom:app",
+          label: "main#app",
+          captureMode: "page_injection"
+        },
+        captureMode: "page_injection",
+        context: { pageUrl: "https://example.com/app" }
+      }
+    ]
+  });
+
+  const liveFact = result.diagnostics.runtimeFactHistory.find(item => item.source === "dom" && item.type === "node_added");
+  assert.equal(liveFact.runtimeLayer.treeId, "dom");
+  assert.equal(liveFact.runtimeLayer.type, "DOM.NodeAdded");
+  assert.equal(liveFact.runtimeLayer.target, "dom:app");
+  assert.equal(liveFact.captureMode, "page_injection");
+});
+
 test("Organ9 structure engine emits verifiable canonical SHA-256 signatures", () => {
   const builder = new globalThis.TicketSniperOrganPipeline.OrganGraphBuilder();
   for (const fact of [
