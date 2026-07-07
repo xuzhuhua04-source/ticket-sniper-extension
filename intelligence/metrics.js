@@ -29,7 +29,8 @@ export function metricFromFact(fact = {}) {
   if (/script|javascript|runtime|timer|error|console/.test(text)) return "js";
   if (/malicious|fingerprint|captcha|challenge|crawler|webdriver|headless/.test(text)) return "malicious";
   if (/protect|auth|login|paywall/.test(text)) return "protection";
-  if (/network|fetch|xhr|resource|websocket|request|response/.test(text)) return "network";
+  if (/network|fetch|xhr|resource|websocket|request|response|beacon/.test(text)) return "network";
+  if (/click|input|keypress|keydown|keyup|pointer|scroll|wheel|focus|blur|selection|touch|gesture/.test(text)) return "interaction";
   if (/layout|style|css|paint|shift|reflow/.test(text)) return "layout";
   if (/dom|mutation|shadow|vdom|node/.test(text)) return "dom";
   return classifyFact(fact)[0] || "behavior";

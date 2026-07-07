@@ -23,6 +23,7 @@ function actionDomainForMetric(metric) {
   if (metric === "layout") return "layout";
   if (metric === "dom") return "dom";
   if (metric === "network") return "network";
+  if (metric === "interaction") return "interaction";
   if (["malicious", "protection"].includes(metric)) return "security";
   return "runtime";
 }

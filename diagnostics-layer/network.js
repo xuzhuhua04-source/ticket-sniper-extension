@@ -1,1 +1,1 @@
-export const NETWORK_DIAGNOSTIC_FACTS = Object.freeze(["network/request", "network/response", "network/error", "network/resource_observed"]);
+export const NETWORK_DIAGNOSTIC_FACTS = Object.freeze(["network/request_start", "network/request_end", "network/response_start", "network/response_end", "network/resource_error", "network/resource_observed", "network/document_fetch"]);

@@ -19,6 +19,31 @@
     timingWindowSize: 20,
     timingVarianceThreshold: 5
   };
+  const FACT_ALIASES = Object.freeze({
+    "storage/storage-change": "storage/storage_snapshot",
+    "storage/storage_change": "storage/storage_snapshot",
+    "storage/storage-snapshot": "storage/storage_snapshot",
+    "storage/indexeddb-open": "storage/indexeddb_change",
+    "storage/indexeddb_open": "storage/indexeddb_change",
+    "runtime/console": "runtime/console_log",
+    "runtime/collector-state": "runtime/collector_state",
+    "runtime/scheduling": "runtime/timer_fired",
+    "network/request": "network/request_start",
+    "network/response": "network/response_end",
+    "network/error": "network/resource_error",
+    "network/resource-observed": "network/resource_observed",
+    "network/document-fetch": "network/document_fetch",
+    "shadow/slot_change": "shadow/shadow_slot_change",
+    "crawler/crawler-pattern": "anti_crawler/crawler_pattern",
+    "crawler/crawler_pattern": "anti_crawler/crawler_pattern",
+    "crawler/crawler-behavior": "anti_crawler/crawler_pattern",
+    "crawler/crawler_behavior": "anti_crawler/crawler_pattern",
+    "anti_crawler/challenge": "anti_crawler/crawler_challenge",
+    "anti_crawler/fingerprint": "anti_crawler/crawler_fingerprint",
+    "anti_crawler/block": "anti_crawler/crawler_block",
+    "anti_crawler/service-worker": "anti_crawler/crawler_fingerprint",
+    "anti_crawler/service_worker": "anti_crawler/crawler_fingerprint"
+  });
 
   const originals = {
     fetch: window.fetch,
@@ -58,6 +83,9 @@
   };
 
   function emit(source, type, value, metadata) {
+    const canonical = canonicalFactParts(source, type);
+    source = canonical.source;
+    type = canonical.type;
     const timestamp = Date.now();
     const channel = `${source}/${type}`;
     const severity = normalizeSeverity(value?.severity);
@@ -450,20 +478,20 @@
 
   function patchStorage() {
     Storage.prototype.setItem = function patchedSetItem(key, value) {
-      emit("storage", "storage-change", { area: storageArea(this), op: "setItem", keyHash: hashString(String(key)), valueSize: String(value || "").length });
+      emit("storage", storageArea(this) === "session" ? "session_storage" : "local_storage", { area: storageArea(this), op: "setItem", keyHash: hashString(String(key)), valueSize: String(value || "").length });
       return originals.localSetItem.apply(this, arguments);
     };
     Storage.prototype.removeItem = function patchedRemoveItem(key) {
-      emit("storage", "storage-change", { area: storageArea(this), op: "removeItem", keyHash: hashString(String(key)) });
+      emit("storage", storageArea(this) === "session" ? "session_storage" : "local_storage", { area: storageArea(this), op: "removeItem", keyHash: hashString(String(key)) });
       return originals.localRemoveItem.apply(this, arguments);
     };
     Storage.prototype.clear = function patchedClear() {
-      emit("storage", "storage-change", { area: storageArea(this), op: "clear" });
+      emit("storage", storageArea(this) === "session" ? "session_storage" : "local_storage", { area: storageArea(this), op: "clear" });
       return originals.localClear.apply(this, arguments);
     };
     if (originals.indexedOpen) {
       window.indexedDB.open = function patchedIndexedOpen(name, version) {
-        emit("storage", "indexeddb-open", { nameHash: hashString(String(name || "")), version: Number(version) || null });
+        emit("storage", "indexeddb_change", { nameHash: hashString(String(name || "")), version: Number(version) || null });
         return originals.indexedOpen(name, version);
       };
     }
@@ -819,9 +847,10 @@
       "runtime/js_ws_message": { treeId: "worker", type: "Worker.MessageReceived" },
       "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
       "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
-      "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
+      "runtime/timer_fired": { treeId: "js", type: "JSRuntime.TimerScheduled" },
       "runtime/navigation": { treeId: "js", type: "JSRuntime.RuntimeTopologyChanged" },
-      "runtime/console": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "runtime/console_log": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "runtime/console_error": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
       "cssom/css_rule_insert": { treeId: "cssom", type: "CSS.RuleInserted" },
       "cssom/css_rule_delete": { treeId: "cssom", type: "CSS.RuleDeleted" },
       "cssom/forced_style_recalc": { treeId: "cssom", type: "CSS.StyleChanged" },
@@ -829,7 +858,7 @@
       "shadow/shadow_root_created": { treeId: "shadow", type: "Shadow.RootAdded" },
       "shadow/shadow_mapping": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
       "shadow/shadow_topology": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
-      "shadow/slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
+      "shadow/shadow_slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
       "multicontext/iframe_created": { treeId: "worker", type: "Worker.Created" },
       "multicontext/iframe_loaded": { treeId: "worker", type: "Worker.MessageReceived" },
       "multicontext/post_message": { treeId: "worker", type: "Worker.MessagePosted" },
@@ -845,15 +874,22 @@
       "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
       "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" },
       "vdom/vdom_topology": { treeId: "vdom", type: "VDOM.VDOMTreeChanged" },
-      "storage/storage_change": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "storage/local_storage": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "storage/session_storage": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "storage/cookie_change": { treeId: "js", type: "JSRuntime.StateChanged" },
       "storage/storage_snapshot": { treeId: "js", type: "JSRuntime.StateChanged" },
-      "storage/indexeddb_open": { treeId: "js", type: "JSRuntime.StateChanged" },
-      "network/request": { treeId: "worker", type: "Worker.MessagePosted" },
-      "network/response": { treeId: "worker", type: "Worker.MessageReceived" },
-      "network/error": { treeId: "worker", type: "Worker.MessageReceived" },
-      "anti_crawler/fingerprint": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-      "anti_crawler/challenge": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
-      "anti_crawler/block": { treeId: "js", type: "JSRuntime.ExecutionChanged" }
+      "storage/indexeddb_change": { treeId: "js", type: "JSRuntime.StateChanged" },
+      "network/request_start": { treeId: "worker", type: "Worker.MessagePosted" },
+      "network/request_end": { treeId: "worker", type: "Worker.MessageReceived" },
+      "network/response_start": { treeId: "worker", type: "Worker.MessageReceived" },
+      "network/response_end": { treeId: "worker", type: "Worker.MessageReceived" },
+      "network/resource_error": { treeId: "worker", type: "Worker.MessageReceived" },
+      "network/resource_observed": { treeId: "worker", type: "Worker.MessageReceived" },
+      "network/document_fetch": { treeId: "worker", type: "Worker.MessageReceived" },
+      "anti_crawler/crawler_fingerprint": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "anti_crawler/crawler_challenge": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "anti_crawler/crawler_block": { treeId: "js", type: "JSRuntime.ExecutionChanged" },
+      "anti_crawler/crawler_pattern": { treeId: "js", type: "JSRuntime.ExecutionChanged" }
     }[key];
   }
 
@@ -869,6 +905,15 @@
 
   function normalizeFactName(value) {
     return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
+  }
+
+  function canonicalFactParts(source, type) {
+    const sourceKey = normalizeFactName(source);
+    const typeKey = normalizeFactName(type);
+    const rawKey = `${sourceKey}/${typeKey}`;
+    const aliasKey = `${String(source || "runtime").trim().toLowerCase()}/${String(type || "fact").trim().toLowerCase()}`;
+    const [canonicalSource, canonicalType] = (FACT_ALIASES[rawKey] || FACT_ALIASES[aliasKey] || rawKey).split("/");
+    return { source: canonicalSource || sourceKey, type: canonicalType || typeKey };
   }
 
   function safeMessage(value) {

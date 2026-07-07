@@ -1,1 +1,1 @@
-export const PROTECTION_SURFACE_DIAGNOSTIC_FACTS = Object.freeze(["anti_crawler/challenge", "anti_crawler/fingerprint"]);
+export const PROTECTION_SURFACE_DIAGNOSTIC_FACTS = Object.freeze(["anti_crawler/crawler_challenge", "anti_crawler/crawler_fingerprint"]);

@@ -26,16 +26,17 @@ test("Facts layer keeps raw facts and strips derived interpretation fields", () 
 
   assert.equal(model.totalFacts, 1);
   assert.equal(model.channelCount, 1);
-  assert.equal(model.channels["dom/element-change"].length, 1);
+  assert.equal(model.channels["dom/element_change"].length, 1);
   assert.equal(model.domains.find(domain => domain.id === "dom").total, 1);
   assert.equal(assertFactsLayerPurity(model.history[0].fact), true);
   assert.equal(model.history[0].fact.value.risk_hints, undefined);
+  assert.equal(model.history[0].fact.originalChannel, "dom/element-change");
 });
 
 test("Intelligence layer turns raw facts into metrics, hints, edges, and MSU", () => {
   const facts = [
     { timestamp: 1, source: "layout", type: "layout_shift", value: { severity: "medium" } },
-    { timestamp: 2, source: "anti_crawler", type: "challenge", value: { severity: "high" } }
+    { timestamp: 2, source: "anti_crawler", type: "crawler_challenge", value: { severity: "high" } }
   ];
   const model = buildIntelligenceLayerModel(facts);
   assert.equal(model.metrics.layout, 1);
@@ -43,6 +44,20 @@ test("Intelligence layer turns raw facts into metrics, hints, edges, and MSU", (
   assert.ok(model.edges.length >= 2);
   assert.ok(model.hints.some(hint => hint.type === "anti-crawler"));
   assert.ok(model.msu.some(msu => msu.actionDomain === "security"));
+});
+
+test("Network and interaction facts are classified into the runtime domains", () => {
+  const facts = [
+    { timestamp: 1, source: "network", type: "request", value: { kind: "fetch", status: 200 } },
+    { timestamp: 2, source: "interaction", type: "pointer_move", value: { x: 10, y: 20 } }
+  ];
+  const factsLayer = buildFactsLayerModel(facts);
+  const intelligenceLayer = buildIntelligenceLayerModel(facts);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "network").total, 1);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "interaction").total, 1);
+  assert.ok(intelligenceLayer.metrics.network >= 1);
+  assert.ok(intelligenceLayer.classifications.some(item => item.categories.includes("network")));
+  assert.ok(intelligenceLayer.msu.some(msu => msu.actionDomain === "network"));
 });
 
 test("Automation layer dispatches MSU without mutating facts", () => {

@@ -94,11 +94,11 @@ try {
     runtimeProbe = await worker.evaluate(() => chrome.storage.local.get(["runtimeFactChannels", "diagnosticFactChannels", "runtimeFactStatus", "diagnosticFactStatus", "runtimeRelayError", "runtimeRelaySeen", "structuralPipelineState", "structuralPipelineLatest", "normalizedFactHistory", "structuralEventHistory", "featureVectorHistory", "scoreResultHistory", "updateClassificationHistory", "organPipelineState", "organPipelineLatest", "organAssignmentHistory", "organRenderBlockHistory", "organPipelineErrorHistory"]));
     channels = { ...(runtimeProbe.runtimeFactChannels || {}), ...(runtimeProbe.diagnosticFactChannels || {}) };
     pipelineState = runtimeProbe.structuralPipelineState || {};
-    hasNetwork = Boolean(channels["network/request"]?.length || channels["network/response"]?.length);
-    hasStorage = Boolean(channels["storage/storage-change"]?.length || channels["storage/storage-snapshot"]?.length);
+    hasNetwork = Boolean(channels["network/request_start"]?.length || channels["network/response_end"]?.length);
+    hasStorage = Boolean(channels["storage/storage_snapshot"]?.length || channels["storage/local_storage"]?.length || channels["storage/session_storage"]?.length);
     hasNavigation = Boolean(channels["runtime/navigation"]?.length);
-    hasConsole = Boolean(channels["runtime/console"]?.length);
-    hasProtection = Boolean(channels["anti_crawler/challenge"]?.length || channels["anti_crawler/fingerprint"]?.length || channels["crawler/crawler-pattern"]?.length);
+    hasConsole = Boolean(channels["runtime/console_log"]?.length || channels["runtime/console_error"]?.length);
+    hasProtection = Boolean(channels["anti_crawler/crawler_challenge"]?.length || channels["anti_crawler/crawler_fingerprint"]?.length || channels["anti_crawler/crawler_pattern"]?.length);
     historyCounts = {
       normalized: runtimeProbe.normalizedFactHistory?.length || 0,
       events: runtimeProbe.structuralEventHistory?.length || 0,

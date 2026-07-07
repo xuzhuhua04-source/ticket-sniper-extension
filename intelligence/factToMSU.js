@@ -23,6 +23,7 @@ function actionDomainFor(metric, categories) {
   if (metric === "layout" || categories.includes("layout")) return "layout";
   if (metric === "dom" || categories.includes("structure")) return "dom";
   if (metric === "network") return "network";
+  if (metric === "interaction") return "interaction";
   if (["malicious", "protection"].includes(metric) || categories.includes("protection")) return "security";
   if (["js", "microtask", "longtask", "worker", "wasm", "webgpu", "ai"].includes(metric)) return "runtime";
   return "runtime";

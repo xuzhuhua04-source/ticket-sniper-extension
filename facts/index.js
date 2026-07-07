@@ -1,3 +1,5 @@
+import { canonicalFactParts, normalizeFactSource, normalizeFactType } from "./types.js";
+
 export const FACTS_LAYER_VERSION = "stl-web-facts-v1";
 
 export const FACT_DOMAINS = Object.freeze([
@@ -9,6 +11,7 @@ export const FACT_DOMAINS = Object.freeze([
   "a11y",
   "runtime",
   "network",
+  "interaction",
   "anti_crawler",
   "storage",
   "bloomberg_buckets"
@@ -20,7 +23,9 @@ const SOURCE_ALIASES = Object.freeze({
   performance: "runtime",
   multicontext: "runtime",
   crawler: "anti_crawler",
-  web_bloomberg: "bloomberg_buckets"
+  web_bloomberg: "bloomberg_buckets",
+  interaction: "interaction",
+  events: "interaction"
 });
 
 const DERIVED_FACT_KEYS = Object.freeze([
@@ -86,11 +91,15 @@ export function buildFactsLayerModel(facts = []) {
 export function sanitizeRawFact(fact = {}) {
   const value = stripDerivedFields(fact.value || {});
   const metadata = stripDerivedFields(fact.metadata || {});
+  const originalSource = fact.source || "runtime";
+  const originalType = fact.type || "fact";
+  const canonical = canonicalFactParts(originalSource, originalType);
   return {
     timestamp: Number(fact.timestamp) || Date.now(),
-    source: normalizeSource(fact.source || "runtime"),
-    type: normalizeType(fact.type || "fact"),
-    channel: String(fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`).slice(0, 160),
+    source: canonical.source,
+    type: canonical.type,
+    channel: `${canonical.source}/${canonical.type}`.slice(0, 160),
+    originalChannel: String(fact.channel || `${originalSource}/${originalType}`).slice(0, 160),
     value,
     metadata,
     context: stripDerivedFields(fact.context || {}),
@@ -101,6 +110,12 @@ export function sanitizeRawFact(fact = {}) {
 export function factDomain(fact = {}) {
   const source = normalizeSource(fact.source || "");
   if (SOURCE_ALIASES[source]) return SOURCE_ALIASES[source];
+  if (fact?.value?.kind === "fetch" || /fetch|xhr|request|response|websocket|beacon|resource/.test(`${fact.source || ""}/${fact.type || ""}`)) {
+    return "network";
+  }
+  if (/click|input|keypress|keydown|keyup|pointer|scroll|wheel|focus|blur|selection|touch|gesture/.test(`${fact.source || ""}/${fact.type || ""}`)) {
+    return "interaction";
+  }
   return FACT_DOMAINS.includes(source) ? source : "runtime";
 }
 
@@ -118,9 +133,9 @@ function stripDerivedFields(value) {
 }
 
 function normalizeSource(value) {
-  return String(value || "runtime").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").slice(0, 60) || "runtime";
+  return normalizeFactSource(value);
 }
 
 function normalizeType(value) {
-  return String(value || "fact").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").slice(0, 80) || "fact";
+  return normalizeFactType(value);
 }

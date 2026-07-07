@@ -8,6 +8,10 @@ import { executeA11yMSU } from "./autoA11y.js";
 import { executeShadowMSU } from "./autoShadow.js";
 import { executeVDOMMSU } from "./autoVDOM.js";
 
+function summarizeInteractionMSU(msu = {}) {
+  return "Inspect interaction bursts, focus flow, and input stability to prevent UI regressions.";
+}
+
 export const AUTOMATION_LAYER_VERSION = "stl-web-automation-v1";
 
 export function executeMSU(msu = {}, options = {}) {
@@ -21,7 +25,13 @@ export function executeMSU(msu = {}, options = {}) {
     security: executeSecurityMSU,
     a11y: executeA11yMSU,
     shadow: executeShadowMSU,
-    vdom: executeVDOMMSU
+    vdom: executeVDOMMSU,
+    interaction: (currentMSU = {}, options = {}) => ({
+      ...executeRuntimeMSU(currentMSU, options),
+      domain: "interaction",
+      summary: summarizeInteractionMSU(currentMSU),
+      status: "recommended"
+    })
   }[domain] || executeRuntimeMSU;
   return dispatcher(msu, options);
 }

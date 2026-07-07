@@ -1,1 +1,1 @@
-export const STORAGE_DIAGNOSTIC_FACTS = Object.freeze(["storage/storage_snapshot", "storage/storage_change", "storage/indexeddb_open"]);
+export const STORAGE_DIAGNOSTIC_FACTS = Object.freeze(["storage/storage_snapshot", "storage/local_storage", "storage/session_storage", "storage/cookie_change", "storage/indexeddb_change"]);

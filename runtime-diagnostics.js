@@ -1,3 +1,7 @@
+import { buildFactsLayerModel } from "./facts/index.js";
+import { buildIntelligenceLayerModel } from "./intelligence/index.js";
+import { buildAutomationLayerModel } from "./automation/exec.js";
+
 const elements = {
   skipLink: document.getElementById("skip-link"),
   languageSelect: document.getElementById("language-select"),

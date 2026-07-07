@@ -1,1 +1,1 @@
-export const LAYOUT_FACT_TYPES = Object.freeze(["layout_shift", "forced_reflow", "layout_tree"]);
+export { LAYOUT_FACT_TYPES } from "./types.js";

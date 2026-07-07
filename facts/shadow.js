@@ -1,1 +1,1 @@
-export const SHADOW_FACT_TYPES = Object.freeze(["shadow_root_created", "shadow_mapping", "slot_change", "shadow_topology"]);
+export { SHADOW_FACT_TYPES } from "./types.js";

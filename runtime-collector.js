@@ -35,7 +35,7 @@ const RUNTIME_STRUCTURAL_FACT_KEYS = new Set(globalThis.TicketSniperRuntimeLayer
   "layout/scroll",
   "shadow/shadow_root_created",
   "shadow/shadow_mapping",
-  "shadow/slot_change",
+  "shadow/shadow_slot_change",
   "a11y/a11y_role_change",
   "a11y/a11y_state_change",
   "a11y/focus_change",
@@ -43,7 +43,7 @@ const RUNTIME_STRUCTURAL_FACT_KEYS = new Set(globalThis.TicketSniperRuntimeLayer
   "runtime/js_promise_chain",
   "runtime/js_event_loop_render",
   "runtime/js_event_loop_idle",
-  "runtime/scheduling",
+  "runtime/timer_fired",
   "runtime/js_scheduler_task",
   "runtime/js_atomics_wait_async",
   "multicontext/iframe_created",
@@ -60,10 +60,25 @@ const RUNTIME_STRUCTURAL_FACT_KEYS = new Set(globalThis.TicketSniperRuntimeLayer
   "multicontext/broadcast_channel_created",
   "multicontext/broadcast_channel_message",
   "network/beacon",
+  "network/request_start",
+  "network/request_end",
+  "network/response_start",
+  "network/response_end",
+  "network/resource_observed",
+  "network/resource_error",
+  "network/document_fetch",
   "network/websocket_open",
   "network/websocket_close",
   "network/websocket_message",
-  "anti_crawler/environment_flag",
+  "interaction/click",
+  "interaction/input",
+  "interaction/key_press",
+  "interaction/pointer_move",
+  "interaction/scroll",
+  "interaction/wheel",
+  "interaction/focus",
+  "interaction/blur",
+  "interaction/selection_change",
   "vdom/vdom_commit",
   "vdom/vdom_update",
   "vdom/vdom_diff"
@@ -161,6 +176,7 @@ class RuntimeCollector {
     this.observeBroadcastChannel();
     this.observeScrollAndResize();
     this.observeFocusTopology();
+    this.observeInteractionEvents();
     this.observeWebdriverFlags();
   }
 
@@ -217,6 +233,9 @@ class RuntimeCollector {
 
   emitRuntimeFact(source, type, value = {}, metadata = {}) {
     if (!runtimeCollectorEnabled || !this.started) return;
+    const canonical = canonicalCollectorFact(source, type, "runtime");
+    source = canonical.source;
+    type = canonical.type;
     const timestamp = Date.now();
     const channel = `${source}/${type}`;
     const captureMode = metadata.captureMode || captureModeForRuntimeFact(source, type);
@@ -251,6 +270,9 @@ class RuntimeCollector {
 
   emitDiagnosticFact(source, type, value = {}, metadata = {}) {
     if (!runtimeCollectorEnabled || !this.started) return;
+    const canonical = canonicalCollectorFact(source, type, "diagnostic");
+    source = canonical.source;
+    type = canonical.type;
     const timestamp = Date.now();
     const channel = `${source}/${type}`;
     const severity = normalizeRuntimeSeverity(value?.severity);
@@ -755,6 +777,21 @@ class RuntimeCollector {
         x: window.scrollX,
         y: window.scrollY
       });
+      this.emit("interaction", "scroll", {
+        severity: "info",
+        x: window.scrollX,
+        y: window.scrollY
+      });
+    }, { passive: true });
+
+    this.addListener(window, "wheel", event => {
+      this.emit("interaction", "wheel", {
+        severity: "info",
+        deltaX: Math.round(event.deltaX || 0),
+        deltaY: Math.round(event.deltaY || 0)
+      }, {
+        target: stableDomPath(event.target)
+      });
     }, { passive: true });
 
     if (window.ResizeObserver) {
@@ -786,6 +823,34 @@ class RuntimeCollector {
       }, {
         selector: stableSelector(target),
         path: stableDomPath(target)
+      });
+      this.emit("interaction", "focus", {
+        severity: "info",
+        tag: target.tagName.toLowerCase()
+      }, {
+        selector: stableSelector(target),
+        path: stableDomPath(target)
+      });
+    }, true);
+
+    this.addListener(window, "blur", event => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      this.emit("interaction", "blur", {
+        severity: "info",
+        tag: target.tagName.toLowerCase()
+      }, {
+        selector: stableSelector(target),
+        path: stableDomPath(target)
+      });
+    }, true);
+
+    this.addListener(document, "selectionchange", () => {
+      const selection = window.getSelection?.();
+      const text = selection?.toString?.() || "";
+      this.emit("interaction", "selection_change", {
+        severity: "info",
+        length: text.length
       });
     }, true);
   }
@@ -1102,7 +1167,7 @@ class RuntimeCollector {
             }, {
               resource: sanitizeRuntimeUrl(entry.name)
             });
-            this.emit("network", "resource-observed", {
+            this.emit("network", "resource_observed", {
               initiatorType: entry.initiatorType,
               durationMs: Math.round(entry.duration || 0),
               transferBucket: bucketNumber(entry.transferSize || 0),
@@ -1118,6 +1183,48 @@ class RuntimeCollector {
     } catch {
       // Resource timing can be unavailable on some pages.
     }
+  }
+
+  observeInteractionEvents() {
+    this.addListener(document, "click", event => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      this.emit("interaction", "click", {
+        severity: "info",
+        tag: target.tagName.toLowerCase()
+      }, {
+        selector: stableSelector(target),
+        path: stableDomPath(target)
+      });
+    }, true);
+
+    this.addListener(document, "input", event => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      this.emit("interaction", "input", {
+        severity: "info",
+        tag: target.tagName.toLowerCase(),
+        valueLength: String(target.value || "").length
+      }, {
+        selector: stableSelector(target),
+        path: stableDomPath(target)
+      });
+    }, true);
+
+    this.addListener(document, "keydown", event => {
+      this.emit("interaction", "key_press", {
+        severity: "info",
+        key: String(event.key || "").slice(0, 20)
+      });
+    }, true);
+
+    this.addListener(document, "pointermove", event => {
+      this.emit("interaction", "pointer_move", {
+        severity: "info",
+        x: Math.round(event.clientX || 0),
+        y: Math.round(event.clientY || 0)
+      });
+    }, { passive: true });
   }
 
   scanExistingStructure() {
@@ -1263,7 +1370,7 @@ class RuntimeCollector {
               selectorProperties.set(key, { value, specificity: specificity.score });
             }
           }
-          this.emit("cssom", "css-rule", {
+          this.emit("cssom", "css_rule_change", {
             op: "snapshot",
             ruleType: rule.type,
             ruleHash: hashRuntimeString(rule.cssText || ""),
@@ -1289,7 +1396,7 @@ class RuntimeCollector {
       }, { conflicts, captureMode: "page_injection" });
     }
     if (this.lastStylesheetSignature && this.lastStylesheetSignature !== signature) {
-      this.emit("cssom", "stylesheet-change", {
+      this.emit("cssom", "stylesheet_change", {
         severity: "medium",
         count: sheets.length,
         signature,
@@ -1556,14 +1663,14 @@ function runtimeLayerDirectMap() {
     "layout/layout_shift": { treeId: "layout", type: "Layout.LayoutShift" },
     "shadow/shadow_root_created": { treeId: "shadow", type: "Shadow.RootAdded" },
     "shadow/shadow_mapping": { treeId: "shadow", type: "Shadow.ComponentTreeChanged" },
-    "shadow/slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
+    "shadow/shadow_slot_change": { treeId: "shadow", type: "Shadow.SlotChanged" },
     "a11y/a11y_role_change": { treeId: "a11y", type: "A11y.RoleChanged" },
     "a11y/a11y_state_change": { treeId: "a11y", type: "A11y.StateChanged" },
     "runtime/js_microtask": { treeId: "js", type: "JSRuntime.MicrotaskScheduled" },
     "runtime/js_promise_chain": { treeId: "js", type: "JSRuntime.PromiseChainUpdated" },
     "runtime/js_event_loop_render": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
     "runtime/js_event_loop_idle": { treeId: "js", type: "JSRuntime.EventLoopPhaseChanged" },
-    "runtime/scheduling": { treeId: "js", type: "JSRuntime.TimerScheduled" },
+    "runtime/timer_fired": { treeId: "js", type: "JSRuntime.TimerScheduled" },
     "runtime/js_scheduler_task": { treeId: "js", type: "JSRuntime.SchedulerTaskObserved" },
     "runtime/js_atomics_wait_async": { treeId: "js", type: "JSRuntime.AtomicsObserved" },
     "multicontext/iframe_created": { treeId: "worker", type: "Worker.Created" },
@@ -1580,13 +1687,19 @@ function runtimeLayerDirectMap() {
     "multicontext/broadcast_channel_created": { treeId: "worker", type: "Worker.BroadcastChannelCreated" },
     "multicontext/broadcast_channel_message": { treeId: "worker", type: "Worker.BroadcastChannelMessage" },
     "network/beacon": { treeId: "worker", type: "Network.BeaconSent" },
+    "network/request_start": { treeId: "worker", type: "Network.RequestStarted" },
+    "network/request_end": { treeId: "worker", type: "Network.RequestEnded" },
+    "network/response_start": { treeId: "worker", type: "Network.ResponseStarted" },
+    "network/response_end": { treeId: "worker", type: "Network.ResponseEnded" },
+    "network/resource_observed": { treeId: "worker", type: "Network.ResourceObserved" },
+    "network/resource_error": { treeId: "worker", type: "Network.ResourceError" },
+    "network/document_fetch": { treeId: "worker", type: "Network.DocumentFetch" },
     "network/websocket_open": { treeId: "worker", type: "Network.WebSocketOpened" },
     "network/websocket_close": { treeId: "worker", type: "Network.WebSocketClosed" },
     "network/websocket_message": { treeId: "worker", type: "Network.WebSocketMessage" },
     "layout/resize": { treeId: "layout", type: "Layout.ResizeObserved" },
     "layout/scroll": { treeId: "layout", type: "Layout.ScrollObserved" },
     "a11y/focus_change": { treeId: "a11y", type: "A11y.FocusChanged" },
-    "anti_crawler/environment_flag": { treeId: "worker", type: "Security.EnvironmentFlag" },
     "vdom/vdom_commit": { treeId: "vdom", type: "VDOM.Reconciled" },
     "vdom/vdom_update": { treeId: "vdom", type: "VDOM.VDOMNodeUpdated" },
     "vdom/vdom_diff": { treeId: "vdom", type: "VDOM.NodeDiff" }
@@ -1627,6 +1740,18 @@ function runtimeLayerLabel(value = {}, metadata = {}, canonicalType = "Runtime f
 
 function normalizeRuntimeFactName(value) {
   return String(value || "fact").trim().toLowerCase().replace(/-/g, "_");
+}
+
+function canonicalCollectorFact(source, type, layer = "runtime") {
+  const registry = layer === "diagnostic" ? globalThis.TicketSniperDiagnosticsLayer : globalThis.TicketSniperRuntimeLayer;
+  const key = registry?.canonicalFactKey
+    ? registry.canonicalFactKey(source, type)
+    : `${normalizeRuntimeFactName(source)}/${normalizeRuntimeFactName(type)}`;
+  const [canonicalSource, canonicalType] = String(key).split("/");
+  return {
+    source: canonicalSource || normalizeRuntimeFactName(source),
+    type: canonicalType || normalizeRuntimeFactName(type)
+  };
 }
 
 function isRuntimeStructuralFact(source, type) {
