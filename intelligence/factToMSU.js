@@ -24,7 +24,11 @@ function actionDomainFor(metric, categories) {
   if (metric === "dom" || categories.includes("structure")) return "dom";
   if (metric === "network") return "network";
   if (metric === "interaction") return "interaction";
-  if (["malicious", "protection"].includes(metric) || categories.includes("protection")) return "security";
+  if (["malicious", "protection", "security"].includes(metric) || categories.includes("protection") || categories.includes("security")) return "security";
+  if (metric === "device") return "device";
+  if (metric === "browser_internal") return "browser";
+  if (metric === "ai_runtime") return "ai";
+  if (metric === "web_runtime") return "runtime";
   if (["js", "microtask", "longtask", "worker", "wasm", "webgpu", "ai"].includes(metric)) return "runtime";
   return "runtime";
 }

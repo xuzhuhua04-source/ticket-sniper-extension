@@ -60,6 +60,22 @@ test("Network and interaction facts are classified into the runtime domains", ()
   assert.ok(intelligenceLayer.msu.some(msu => msu.actionDomain === "network"));
 });
 
+test("SIG9 IRI layer facts are classified into first-class facts domains", () => {
+  const facts = [
+    { timestamp: 1, source: "device", type: "device_cpu_usage", value: { usage: 0.4 } },
+    { timestamp: 2, source: "browser_internal", type: "renderer_layout_pass", value: { pass: 1 } },
+    { timestamp: 3, source: "security", type: "security_tls_error", value: { code: "expired" } },
+    { timestamp: 4, source: "ai", type: "ai_dom_overwrite", value: { target: "#app" } },
+    { timestamp: 5, source: "web", type: "web_fetch_request", value: { url: "https://example.com/api" } }
+  ];
+  const factsLayer = buildFactsLayerModel(facts);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "device").total, 1);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "browser_internal").total, 1);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "security").total, 1);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "ai").total, 1);
+  assert.equal(factsLayer.domains.find(domain => domain.id === "network").total, 1);
+});
+
 test("Automation layer dispatches MSU without mutating facts", () => {
   const action = executeMSU({ id: "x", actionDomain: "network", payload: { source: "network" } });
   assert.equal(action.domain, "network");

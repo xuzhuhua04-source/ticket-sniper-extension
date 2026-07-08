@@ -142,7 +142,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   ]) {
     assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  for (const treeName of ["DOM Runtime", "CSSOM Runtime", "Layout Runtime", "Shadow DOM Runtime", "Accessibility Runtime", "JS Runtime", "VDOM Runtime", "Network Runtime", "Interaction Runtime", "Storage Runtime", "Anti-Crawler Runtime"]) {
+  for (const treeName of ["DOM Runtime", "CSSOM Runtime", "Layout Runtime", "Shadow DOM Runtime", "Accessibility Runtime", "JS Runtime", "VDOM Runtime", "Device Runtime", "Browser Runtime", "Security Runtime", "AI Runtime", "Network Runtime", "Interaction Runtime", "Storage Runtime", "Anti-Crawler Runtime"]) {
     assert.match(js, new RegExp(treeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   for (const category of ["Interaction", "Presentation", "Communication", "Synchronization", "Persistence", "Execution", "Security", "Resources", "Compute"]) {
@@ -199,7 +199,7 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
 test("Atrinit Runtime Layer replaces the old nine profile cards with runtime pressure profiles", () => {
   assert.doesNotMatch(html, /Atrinit Runtime Event Profile/);
   assert.doesNotMatch(html, /0 \/ 9 runtime event categories active/);
-  assert.match(html, /0 \/ 11 runtime profiles active/);
+  assert.match(html, /0 \/ 15 runtime profiles active/);
   assert.match(js, /const RUNTIME_TREE_DOMAINS = Object\.freeze/);
   assert.match(js, /const RUNTIME_HIGHLIGHT_MAP = Object\.freeze/);
   assert.match(js, /buildRuntimeLayerTrees\(all, layerCoverage\)/);
@@ -210,6 +210,11 @@ test("Atrinit Runtime Layer replaces the old nine profile cards with runtime pre
   assert.match(js, /function storageRuntimeFactType/);
   assert.match(js, /function interactionRuntimeFactType/);
   assert.match(js, /function antiCrawlerRuntimeFactType/);
+  assert.match(js, /function iriRuntimeFactRoute/);
+  assert.match(js, /function deviceRuntimeFactType/);
+  assert.match(js, /function browserInternalRuntimeFactType/);
+  assert.match(js, /function securityRuntimeFactType/);
+  assert.match(js, /function aiRuntimeFactType/);
   assert.match(js, /function runtimeTreeCoverage/);
   assert.match(js, /function runtimeTreeDegradation/);
   assert.match(js, /function runtimeTreeCaptureLine/);
@@ -218,6 +223,9 @@ test("Atrinit Runtime Layer replaces the old nine profile cards with runtime pre
   assert.match(js, /function runtimeEvidenceKind/);
   assert.match(js, /runtime-profile-heading/);
   assert.match(js, /static fallback facts/);
+  for (const iriFact of ["device_cpu_usage", "renderer_layout_pass", "security_tls_error", "web_dom_mutation", "ai_dom_overwrite"]) {
+    assert.match(js, new RegExp(iriFact));
+  }
   assert.match(css, /\.runtime-tree-capture/);
   assert.match(css, /\.runtime-profile-heading/);
   assert.match(css, /\.runtime-profile-label/);
@@ -276,6 +284,10 @@ test("standalone UI keeps fresh analysis facts ahead of stale export or empty st
   assert.match(js, /function standaloneResultFactCount/);
   assert.match(js, /if \(!incomingFacts && currentFacts\) return false/);
   assert.match(js, /shouldRenderStandaloneStreamResult/);
+  assert.match(js, /function runtimeFactLedgerKey/);
+  assert.match(js, /function runtimeFactIsStaticSample/);
+  assert.match(js, /seenRuntimeHistoryFacts/);
+  assert.match(js, /seenRuntimeChannelFacts/);
 });
 
 test("Atrinit raw Recent Facts registry drives the profile categories", () => {

@@ -445,6 +445,34 @@ const RUNTIME_TREE_DOMAINS = Object.freeze([
     factTypes: ["VDOM.NodeDiff", "VDOM.PatchApplied", "VDOM.Reconciled", "VDOM.VDOMDiff", "VDOM.VDOMPatch", "VDOM.VDOMNodeCreated", "VDOM.VDOMNodeDeleted", "VDOM.VDOMNodeUpdated", "VDOM.VDOMTreeChanged"]
   },
   {
+    id: "device",
+    domain: "Device Runtime",
+    rootLabel: "Physical Device",
+    nodeType: "device",
+    factTypes: ["device_cpu_usage", "device_cpu_spike", "device_cpu_throttle", "device_cpu_scheduler_delay", "device_gpu_usage", "device_gpu_raster_load", "device_gpu_command_buffer", "device_gpu_overload", "device_memory_pressure", "device_memory_swap", "device_memory_low", "device_memory_gc_storm", "device_battery_drop", "device_battery_low", "device_battery_saver_mode", "device_thermal_throttle", "device_thermal_warning", "device_thermal_shutdown_prevented", "device_io_block", "device_io_latency", "device_io_write_stall", "device_io_read_stall"]
+  },
+  {
+    id: "browser_internal",
+    domain: "Browser Runtime",
+    rootLabel: "Browser Internals",
+    nodeType: "process",
+    factTypes: ["browser_process_start", "browser_process_crash", "browser_ipc_message", "renderer_process_start", "renderer_process_crash", "renderer_dom_snapshot", "renderer_cssom_snapshot", "renderer_layout_pass", "renderer_style_recalc", "renderer_js_gc", "renderer_js_exception", "renderer_shadow_internal", "compositor_frame_commit", "compositor_scroll_inertial", "compositor_scroll_begin", "compositor_scroll_end", "compositor_layer_update", "compositor_animation_tick", "gpu_process_start", "gpu_process_crash", "gpu_memory_pressure", "gpu_command_buffer", "gpu_raster_pass", "network_request_start", "network_request_end", "network_dns_lookup", "network_tls_handshake", "network_h2_stream", "network_h3_quic_event", "network_cache_hit", "network_cache_miss", "io_cookie_write", "io_cookie_delete", "io_storage_write", "io_storage_delete", "io_indexeddb_transaction", "io_service_worker_intercept"]
+  },
+  {
+    id: "security_runtime",
+    domain: "Security Runtime",
+    rootLabel: "Protection Boundary",
+    nodeType: "security",
+    factTypes: ["security_sandbox_violation", "security_sandbox_escape_attempt", "security_permission_request", "security_permission_granted", "security_permission_denied", "security_isolation_process_split", "security_isolation_cross_origin_block", "security_tls_error", "security_certificate_invalid", "security_mixed_content_block", "security_cors_violation", "security_cookie_flag_violation", "security_storage_partition_violation", "security_storage_overwrite", "security_renderer_crash", "security_gpu_crash", "security_exploit_detected", "security_ai_dom_overwrite", "security_ai_request_abuse", "security_ai_loop"]
+  },
+  {
+    id: "ai_runtime",
+    domain: "AI Runtime",
+    rootLabel: "AI Agent Surface",
+    nodeType: "agent",
+    factTypes: ["ai_action_generate", "ai_action_execute", "ai_action_fail", "ai_dom_create", "ai_dom_delete", "ai_dom_overwrite", "ai_request_generate", "ai_request_burst", "ai_interaction_click", "ai_interaction_sequence", "ai_state_change", "ai_state_loop"]
+  },
+  {
     id: "network",
     domain: "Network Runtime",
     rootLabel: "Network Flow",
@@ -645,6 +673,11 @@ const RAW_FACT_TO_SIG9_ORGAN = Object.freeze({
   model_load: ["Influence", "Compression"]
 });
 const RAW_FACT_REGISTRY_ENTRIES = Object.freeze([
+  rawFactEntry("device", ["device_cpu_usage", "device_cpu_spike", "device_cpu_throttle", "device_cpu_scheduler_delay", "device_gpu_usage", "device_gpu_raster_load", "device_gpu_command_buffer", "device_gpu_overload", "device_memory_pressure", "device_memory_swap", "device_memory_low", "device_memory_gc_storm", "device_battery_drop", "device_battery_low", "device_battery_saver_mode", "device_thermal_throttle", "device_thermal_warning", "device_thermal_shutdown_prevented", "device_io_block", "device_io_latency", "device_io_write_stall", "device_io_read_stall"], ["Compute", "Resources"], "Device Runtime L-1", "Device Runtime facts describe physical CPU, GPU, memory, battery, thermal, and IO pressure that can affect every higher runtime.", 0.9),
+  rawFactEntry("browser_internal", ["browser_process_start", "browser_process_crash", "browser_ipc_message", "renderer_process_start", "renderer_process_crash", "renderer_dom_snapshot", "renderer_cssom_snapshot", "renderer_layout_pass", "renderer_style_recalc", "renderer_js_gc", "renderer_js_exception", "renderer_shadow_internal", "compositor_frame_commit", "compositor_scroll_inertial", "compositor_scroll_begin", "compositor_scroll_end", "compositor_layer_update", "compositor_animation_tick", "gpu_process_start", "gpu_process_crash", "gpu_memory_pressure", "gpu_command_buffer", "gpu_raster_pass", "network_request_start", "network_request_end", "network_dns_lookup", "network_tls_handshake", "network_h2_stream", "network_h3_quic_event", "network_cache_hit", "network_cache_miss", "io_cookie_write", "io_cookie_delete", "io_storage_write", "io_storage_delete", "io_indexeddb_transaction", "io_service_worker_intercept"], ["Execution", "Synchronization", "Resources"], "Browser Runtime L0", "Browser Runtime facts describe renderer, compositor, GPU, network, and IO process internals when CDP or native instrumentation exposes them.", 0.88),
+  rawFactEntry("security", ["security_sandbox_violation", "security_sandbox_escape_attempt", "security_permission_request", "security_permission_granted", "security_permission_denied", "security_isolation_process_split", "security_isolation_cross_origin_block", "security_tls_error", "security_certificate_invalid", "security_mixed_content_block", "security_cors_violation", "security_cookie_flag_violation", "security_storage_partition_violation", "security_storage_overwrite", "security_renderer_crash", "security_gpu_crash", "security_exploit_detected", "security_ai_dom_overwrite", "security_ai_request_abuse", "security_ai_loop"], ["Security"], "Security Runtime L0.5", "Security Runtime facts describe sandbox, permission, isolation, TLS, CORS, storage, process, and AI-abuse boundary evidence.", 0.94),
+  rawFactEntry("web", ["web_dom_mutation", "web_dom_insert", "web_dom_remove", "web_css_change", "web_layout_shift", "web_layout_reflow", "web_js_error", "web_js_promise_rejection", "web_fetch_request", "web_fetch_response", "web_storage_set", "web_storage_get", "web_interaction_click", "web_interaction_input", "web_interaction_scroll"], ["Interaction", "Presentation", "Communication", "Persistence", "Execution"], "Web Runtime L1", "Web Runtime facts are normalized browser-exposed DOM, CSSOM, layout, JS, network, storage, and interaction facts.", 0.95),
+  rawFactEntry("ai", ["ai_action_generate", "ai_action_execute", "ai_action_fail", "ai_dom_create", "ai_dom_delete", "ai_dom_overwrite", "ai_request_generate", "ai_request_burst", "ai_interaction_click", "ai_interaction_sequence", "ai_state_change", "ai_state_loop"], ["Compute", "Execution", "Interaction", "Security"], "AI Runtime L2", "AI Runtime facts describe agent actions, AI DOM changes, AI request behavior, interaction sequences, and AI state loops.", 0.93),
   rawFactEntry("network", ["timing"], ["Communication", "Resources"], "Network", "Network timing facts describe request/resource timing.", 0.92),
   rawFactEntry("runtime", ["timing", "performance"], ["Execution", "Synchronization"], "Runtime timing", "RuntimeCollector V2 timing/performance facts describe runtime cadence.", 0.9),
   rawFactEntry("performance", ["timing", "performance", "long-task"], ["Execution", "Synchronization"], "Performance", "Performance facts describe main-thread and browser timing pressure.", 0.92),
@@ -1851,13 +1884,26 @@ function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null
   const latest = records[0] || fallbackResult || {};
   const runtimeFactHistory = [];
   const runtimeFactChannels = {};
+  const seenRuntimeHistoryFacts = new Set();
+  const seenRuntimeChannelFacts = new Set();
   let runtimeLayerCoverage = latest.diagnostics?.runtimeLayerCoverage || fallbackResult?.diagnostics?.runtimeLayerCoverage || null;
   for (const record of records) {
     const diagnostics = record.diagnostics || {};
     if (!runtimeLayerCoverage && diagnostics.runtimeLayerCoverage) runtimeLayerCoverage = diagnostics.runtimeLayerCoverage;
-    for (const fact of diagnostics.runtimeFactHistory || []) runtimeFactHistory.push(fact);
+    for (const fact of diagnostics.runtimeFactHistory || []) {
+      const channel = fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`;
+      const key = runtimeFactLedgerKey({ channel, fact });
+      if (seenRuntimeHistoryFacts.has(key)) continue;
+      seenRuntimeHistoryFacts.add(key);
+      runtimeFactHistory.push(fact);
+    }
     for (const [channel, facts] of Object.entries(diagnostics.runtimeFactChannels || {})) {
-      runtimeFactChannels[channel] = [...(runtimeFactChannels[channel] || []), ...(facts || [])];
+      for (const fact of facts || []) {
+        const key = runtimeFactLedgerKey({ channel, fact });
+        if (seenRuntimeChannelFacts.has(key)) continue;
+        seenRuntimeChannelFacts.add(key);
+        runtimeFactChannels[channel] = [...(runtimeFactChannels[channel] || []), fact];
+      }
     }
   }
   return {
@@ -2174,19 +2220,74 @@ function buildRuntimeFactLedger(data = {}) {
     .map(fact => ({ channel: fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`, fact }));
   const seen = new Set();
   return [...fromChannels, ...fromHistory].filter(item => {
-    const fact = item.fact || {};
-    const key = [
-      item.channel || "",
-      fact.source || "",
-      fact.type || "",
-      fact.timestamp || "",
-      fact.context?.pageUrl || "",
-      fact.value?.signature || fact.value?.href || fact.value?.selector || fact.value?.url || ""
-    ].join("|");
+    const key = runtimeFactLedgerKey(item);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function runtimeFactLedgerKey(item = {}) {
+  const fact = item.fact || {};
+  const value = fact.value || {};
+  const captureMode = fact.captureMode || fact.runtimeLayer?.captureMode || fact.metadata?.captureMode || value.captureMode || "";
+  const channel = item.channel || fact.channel || `${fact.source || "runtime"}/${fact.type || "fact"}`;
+  const source = normalizeRawFactType(fact.source || "");
+  const type = normalizeRawFactType(fact.type || "fact");
+  const target = fact.target || fact.nodeId || value.nodeId || value.selector || value.target || value.href || value.url || value.name || value.signature || "";
+  const pageUrl = fact.context?.pageUrl || fact.context?.url || value.pageUrl || value.url || "";
+  const staticIdentity = [
+    normalizeRawFactKey(channel),
+    source,
+    type,
+    pageUrl,
+    target,
+    runtimeFactStableValueSignature(value)
+  ].join("|");
+  if (runtimeFactIsStaticSample(fact, captureMode, channel)) return `static|${staticIdentity}`;
+  return `live|${staticIdentity}|${fact.timestamp || ""}`;
+}
+
+function runtimeFactIsStaticSample(fact = {}, captureMode = "", channel = "") {
+  const source = String(fact.source || "").toLowerCase();
+  const type = String(fact.type || "").toLowerCase();
+  const mode = String(captureMode || "").toLowerCase();
+  const text = `${source}/${type} ${channel || ""} ${mode}`;
+  return /standalone|static|fetched|snapshot|fallback|rendered_dom_snapshot|structure_snapshot|document_fetch|resource_map|technology_profile|stylesheet_snapshot|static_geometry|semantic_topology|framework_surface/.test(text);
+}
+
+function runtimeFactStableValueSignature(value = {}) {
+  const keys = [
+    "signature",
+    "selector",
+    "target",
+    "href",
+    "url",
+    "name",
+    "host",
+    "status",
+    "count",
+    "added",
+    "removed",
+    "changed",
+    "resources",
+    "scripts",
+    "stylesheets",
+    "frameworks",
+    "provider",
+    "kind",
+    "marker"
+  ];
+  const picked = {};
+  for (const key of keys) {
+    if (value[key] !== undefined) picked[key] = value[key];
+  }
+  const source = Object.keys(picked).length ? picked : value;
+  try {
+    return JSON.stringify(source, Object.keys(source).sort()).slice(0, 800);
+  } catch {
+    return String(source || "").slice(0, 200);
+  }
 }
 
 function buildDiagnosticFactLedger(data = {}) {
@@ -2431,6 +2532,8 @@ function canonicalRuntimeFactForRaw(item = {}) {
     captureMode: fact.captureMode || value.captureMode || fact.metadata?.captureMode || "",
     payload: scrubExportValue({ source, type, channel, value })
   };
+  const iriDirect = iriRuntimeFactRoute(source, type, channel);
+  if (iriDirect) return { ...base, ...iriDirect };
   const direct = exactRuntimeFactType(source, type);
   if (direct) return { ...base, ...direct };
   const routed = runtimeProfileRouteForRaw(source, type, channel, "");
@@ -2450,6 +2553,8 @@ function canonicalRuntimeFactForRaw(item = {}) {
 
 function runtimeProfileRouteForRaw(source, type, channel, fallbackTreeId = "") {
   const text = `${source || ""}/${type || ""} ${channel || ""}`.toLowerCase();
+  const iriDirect = iriRuntimeFactRoute(source, type, channel);
+  if (iriDirect) return iriDirect;
   if (/^network\//.test(text) || /fetch|xhr|request|response|websocket|beacon|resource|document_fetch/.test(text)) {
     return { treeId: "network", type: networkRuntimeFactType(type), nodeType: "request" };
   }
@@ -2470,6 +2575,50 @@ function runtimeProfileRouteForRaw(source, type, channel, fallbackTreeId = "") {
     type: "JSRuntime.StateChanged",
     nodeType: "context"
   };
+}
+
+function iriRuntimeFactRoute(source = "", type = "", channel = "") {
+  const src = normalizeRawFactType(source || "");
+  const rawType = normalizeRawFactType(type || "");
+  const text = `${src}/${rawType} ${channel || ""}`.toLowerCase();
+  if (src === "device" || /^device_/.test(rawType)) {
+    return { treeId: "device", type: deviceRuntimeFactType(rawType), nodeType: "device" };
+  }
+  if (
+    src === "browser_internal" ||
+    ["renderer", "compositor", "browser_process", "gpu_process", "io_thread"].includes(src) ||
+    /^(browser|renderer|compositor|gpu|io)_/.test(rawType) ||
+    /^network_(dns|tls|h2|h3|cache)/.test(rawType)
+  ) {
+    return { treeId: "browser_internal", type: browserInternalRuntimeFactType(rawType), nodeType: "process" };
+  }
+  if (src === "security" || /^security_/.test(rawType)) {
+    return { treeId: "security_runtime", type: securityRuntimeFactType(rawType), nodeType: "security" };
+  }
+  if (src === "ai" || /^ai_/.test(rawType)) {
+    return { treeId: "ai_runtime", type: aiRuntimeFactType(rawType), nodeType: "agent" };
+  }
+  if (src === "web" || /^web_/.test(rawType) || /^web\//.test(text)) {
+    return webRuntimeFactRoute(rawType);
+  }
+  return null;
+}
+
+function webRuntimeFactRoute(type = "") {
+  if (/dom_mutation|dom_insert/.test(type)) return { treeId: "dom", type: "DOM.NodeAdded", nodeType: "tag" };
+  if (/dom_remove/.test(type)) return { treeId: "dom", type: "DOM.NodeRemoved", nodeType: "tag" };
+  if (/css/.test(type)) return { treeId: "cssom", type: "CSS.RuleChanged", nodeType: "rule" };
+  if (/layout_shift/.test(type)) return { treeId: "layout", type: "Layout.LayoutShift", nodeType: "box" };
+  if (/layout_reflow/.test(type)) return { treeId: "layout", type: "Layout.Reflow", nodeType: "box" };
+  if (/js_promise/.test(type)) return { treeId: "js", type: "JSRuntime.PromiseChainUpdated", nodeType: "context" };
+  if (/js_error/.test(type)) return { treeId: "js", type: "JSRuntime.ExecutionChanged", nodeType: "context" };
+  if (/fetch_request/.test(type)) return { treeId: "network", type: "request_start", nodeType: "request" };
+  if (/fetch_response/.test(type)) return { treeId: "network", type: "response_end", nodeType: "request" };
+  if (/storage/.test(type)) return { treeId: "storage", type: "storage_snapshot", nodeType: "store" };
+  if (/interaction_click/.test(type)) return { treeId: "interaction", type: "click", nodeType: "event" };
+  if (/interaction_input/.test(type)) return { treeId: "interaction", type: "input", nodeType: "event" };
+  if (/interaction_scroll/.test(type)) return { treeId: "interaction", type: "scroll", nodeType: "event" };
+  return { treeId: "js", type: "JSRuntime.StateChanged", nodeType: "context" };
 }
 
 function exactRuntimeFactType(source, type) {
@@ -2596,7 +2745,11 @@ function runtimeTreeCoverage(treeId, coverage = null) {
     network: "framesWorkers",
     interaction: "dom",
     storage: "javascript",
-    anti_crawler: "javascript"
+    anti_crawler: "javascript",
+    device: "device",
+    browser_internal: "browserInternal",
+    security_runtime: "security",
+    ai_runtime: "aiRuntime"
   };
   return coverage?.[map[treeId]] || null;
 }
@@ -2608,7 +2761,11 @@ function runtimeTreeDegradation(treeId, coverage = null) {
   const browserBoundaries = {
     shadow: "Closed Shadow DOM roots remain browser-protected; open roots are captured when exposed.",
     network: "Third-party Service Worker fetch internals are browser-protected unless a first-party helper emits them.",
-    vdom: "Framework internals are captured only when React/Vue/Svelte hooks are exposed by the page."
+    vdom: "Framework internals are captured only when React/Vue/Svelte hooks are exposed by the page.",
+    device: "Physical device telemetry requires browser/device APIs or a native collector; public pages expose only limited approximations.",
+    browser_internal: "Browser process internals require CDP/native instrumentation; standard web APIs cannot expose renderer process state directly.",
+    security_runtime: "Security boundary facts are captured when the browser exposes permission, TLS, CORS, sandbox, or challenge evidence.",
+    ai_runtime: "AI runtime facts require visible agent actions, model/network signatures, or instrumented AI execution hooks."
   };
   return {
     limited,
@@ -2748,6 +2905,22 @@ function vdomRuntimeFactType(type) {
   return "VDOM.NodeDiff";
 }
 
+function deviceRuntimeFactType(type) {
+  return normalizeRawFactType(type || "device_runtime_fact");
+}
+
+function browserInternalRuntimeFactType(type) {
+  return normalizeRawFactType(type || "browser_runtime_fact");
+}
+
+function securityRuntimeFactType(type) {
+  return normalizeRawFactType(type || "security_runtime_fact");
+}
+
+function aiRuntimeFactType(type) {
+  return normalizeRawFactType(type || "ai_runtime_fact");
+}
+
 function runtimeEvidenceKind(captureMode = "") {
   const mode = String(captureMode || "").toLowerCase();
   if (/standalone|fetched|static|snapshot|fallback/.test(mode)) return "static";
@@ -2788,6 +2961,11 @@ function runtimeFactSubcategory(mapping = {}) {
   if (source === "multicontext") return "Frames / Workers";
   if (source === "network") return "Network";
   if (source === "storage") return "Storage";
+  if (source === "device") return "Device Runtime L-1";
+  if (source === "browser_internal" || source === "renderer" || source === "compositor") return "Browser Runtime L0";
+  if (source === "security") return "Security Runtime L0.5";
+  if (source === "web") return "Web Runtime L1";
+  if (source === "ai") return "AI Runtime L2";
   if (source === "anti_crawler" || source === "crawler") return "Security / Crawler";
   if (source === "browser") return "Rendered Browser";
   if (source === "web_bloomberg") return "Signal Windows";
@@ -2808,6 +2986,11 @@ function inferRuntimeFactSubcategory(mapping = {}) {
   if (/a11y|accessibility|aria|role/.test(text)) return "Accessibility";
   if (/request|response|network|fetch|xhr|websocket|beacon/.test(text)) return "Network";
   if (/storage|cookie|indexeddb|localstorage|session/.test(text)) return "Storage";
+  if (/device_|cpu|gpu|battery|thermal|memory|io_/.test(text)) return "Device Runtime L-1";
+  if (/browser_|renderer_|compositor_|gpu_process|network_dns|network_tls|network_h2|network_h3|network_cache|io_cookie|io_storage|io_indexeddb/.test(text)) return "Browser Runtime L0";
+  if (/security_|sandbox|permission|cors|tls|certificate|mixed_content|isolation|exploit/.test(text)) return "Security Runtime L0.5";
+  if (/^web\s|web_/.test(text)) return "Web Runtime L1";
+  if (/ai_|model|inference|agent/.test(text)) return "AI Runtime L2";
   if (/worker|message|channel|service-worker|sw_/.test(text)) return "Frames/workers";
   if (/console|error|rejection/.test(text)) return "Runtime errors";
   if (/timing|performance|scheduling|timer|microtask|promise|navigation|lifecycle|heartbeat|runtime|script/.test(text)) return "Runtime timing";
@@ -3623,6 +3806,11 @@ function runtimeSubcategoryDisplayName(name) {
     "network": "Network facts",
     "storage": "Storage facts",
     "interaction": "Interaction facts",
+    "device runtime l-1": "Device Runtime facts",
+    "browser runtime l0": "Browser Runtime facts",
+    "security runtime l0.5": "Security Runtime facts",
+    "web runtime l1": "Web Runtime facts",
+    "ai runtime l2": "AI Runtime facts",
     "rendered surface": "Rendered surface facts",
     "communication": "Communication facts",
     "synchronization": "Synchronization facts",
@@ -3701,7 +3889,11 @@ function normalizeLayerCoverage(rawCoverage, facts = []) {
     shadow: coverageEntry("best_effort", "page_injection", 0.68, "Open shadow roots require rendered page access."),
     multicontext: coverageEntry("best_effort", "page_injection", 0.68, "Iframes and Workers require runtime page access."),
     vdom: coverageEntry("best_effort", "framework_runtime_hooks", 0.62, "Framework internals are captured only when hooks are exposed."),
-    serviceWorkerFetch: coverageEntry("first_party_only", "first_party_helper", 0.6, "Arbitrary third-party Service Worker fetch handlers are browser-protected.")
+    serviceWorkerFetch: coverageEntry("first_party_only", "first_party_helper", 0.6, "Arbitrary third-party Service Worker fetch handlers are browser-protected."),
+    device: coverageEntry("best_effort", "browser_device_api_or_native_collector", 0.45, "Device Runtime L-1 facts require browser/device APIs or a native collector."),
+    browserInternal: coverageEntry("best_effort", "cdp_or_native_browser_collector", 0.55, "Browser Runtime L0 internals require CDP or native browser instrumentation."),
+    security: coverageEntry("best_effort", "browser_security_surface", 0.65, "Security Runtime L0.5 facts are captured when browser-visible permission, TLS, CORS, sandbox, or challenge evidence exists."),
+    aiRuntime: coverageEntry("best_effort", "agent_or_model_runtime_hooks", 0.55, "AI Runtime L2 facts require visible agent behavior, AI request patterns, or model/runtime hooks.")
   };
   if (rawCoverage && typeof rawCoverage === "object") {
     for (const [name, value] of Object.entries(rawCoverage)) base[name] = { ...base[name], ...value };
@@ -3727,6 +3919,10 @@ function coverageEntry(status, captureMode, confidence, reason) {
 }
 
 function layerNameForFact(channel) {
+  if (/^device\//.test(channel) || /\/device_/.test(channel)) return "device";
+  if (/^browser_internal\//.test(channel) || /^renderer\//.test(channel) || /^compositor\//.test(channel) || /\/(browser|renderer|compositor|gpu|io)_/.test(channel) || /\/network_(dns|tls|h2|h3|cache)/.test(channel)) return "browserInternal";
+  if (/^security\//.test(channel) || /\/security_/.test(channel)) return "security";
+  if (/^ai\//.test(channel) || /\/ai_/.test(channel)) return "aiRuntime";
   if (channel.startsWith("dom/")) return "dom";
   if (channel.startsWith("layout/")) return "layout";
   if (channel.startsWith("cssom/")) return "cssom";
@@ -3748,7 +3944,11 @@ function readableCoverageName(name) {
     shadow: "Shadow DOM",
     multicontext: "Frames/workers",
     vdom: "VDOM",
-    serviceWorkerFetch: "SW fetch"
+    serviceWorkerFetch: "SW fetch",
+    device: "Device runtime",
+    browserInternal: "Browser runtime",
+    security: "Security runtime",
+    aiRuntime: "AI runtime"
   })[name] || name;
 }
 

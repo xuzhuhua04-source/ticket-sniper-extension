@@ -14,12 +14,22 @@ export const FACT_DOMAINS = Object.freeze([
   "interaction",
   "anti_crawler",
   "storage",
+  "device",
+  "browser_internal",
+  "security",
+  "ai",
   "bloomberg_buckets"
 ]);
 
 const SOURCE_ALIASES = Object.freeze({
   accessibility: "a11y",
   browser: "dom",
+  browser_internal: "browser_internal",
+  renderer: "browser_internal",
+  compositor: "browser_internal",
+  device: "device",
+  security: "security",
+  ai: "ai",
   performance: "runtime",
   multicontext: "runtime",
   crawler: "anti_crawler",
@@ -109,6 +119,11 @@ export function sanitizeRawFact(fact = {}) {
 
 export function factDomain(fact = {}) {
   const source = normalizeSource(fact.source || "");
+  const type = normalizeType(fact.type || "");
+  if (/^device_/.test(type)) return "device";
+  if (/^(browser|renderer|compositor|gpu|io)_/.test(type) || /^network_(dns|tls|h2|h3|cache)/.test(type)) return "browser_internal";
+  if (/^security_/.test(type)) return "security";
+  if (/^ai_/.test(type)) return "ai";
   if (SOURCE_ALIASES[source]) return SOURCE_ALIASES[source];
   if (fact?.value?.kind === "fetch" || /fetch|xhr|request|response|websocket|beacon|resource/.test(`${fact.source || ""}/${fact.type || ""}`)) {
     return "network";

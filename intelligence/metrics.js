@@ -8,6 +8,11 @@ export const INTELLIGENCE_METRICS = Object.freeze([
   "network",
   "malicious",
   "protection",
+  "device",
+  "browser_internal",
+  "security",
+  "web_runtime",
+  "ai_runtime",
   "ai",
   "worker",
   "wasm",
@@ -19,6 +24,11 @@ export const INTELLIGENCE_METRICS = Object.freeze([
 
 export function metricFromFact(fact = {}) {
   const text = `${fact.source || ""}/${fact.type || ""}`.toLowerCase();
+  if (/device_|cpu|battery|thermal|memory_pressure|io_/.test(text)) return "device";
+  if (/browser_|renderer_|compositor_|gpu_process|network_dns|network_tls|network_h2|network_h3|network_cache|io_cookie|io_storage|io_indexeddb/.test(text)) return "browser_internal";
+  if (/security_|sandbox|permission|isolation|certificate|mixed_content|cors|exploit/.test(text)) return "security";
+  if (/^ai\/|\/ai_|ai_action|ai_dom|ai_request|ai_interaction|ai_state/.test(text)) return "ai_runtime";
+  if (/^web\/|\/web_/.test(text)) return "web_runtime";
   if (/ai|inference|model|embedding/.test(text)) return "ai";
   if (/wasm|webassembly/.test(text)) return "wasm";
   if (/webgpu|gpu/.test(text)) return "webgpu";

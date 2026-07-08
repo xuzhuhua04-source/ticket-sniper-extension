@@ -1,6 +1,11 @@
 export function classifyFact(fact = {}) {
   const text = `${fact.source || ""}/${fact.type || ""} ${JSON.stringify(fact.value || {})}`.toLowerCase();
   const categories = [];
+  if (/device_|cpu|gpu|battery|thermal|memory_pressure|io_/.test(text)) categories.push("device");
+  if (/browser_|renderer_|compositor_|gpu_process|network_dns|network_tls|network_h2|network_h3|network_cache|io_cookie|io_storage|io_indexeddb/.test(text)) categories.push("browser_internal");
+  if (/security_|sandbox|permission|isolation|certificate|mixed_content|cors|exploit/.test(text)) categories.push("security");
+  if (/^ai\/|\/ai_|ai_action|ai_dom|ai_request|ai_interaction|ai_state/.test(text)) categories.push("ai_runtime");
+  if (/^web\/|\/web_/.test(text)) categories.push("web_runtime");
   if (/captcha|challenge|fingerprint|crawler|webdriver|headless|bot|block/.test(text)) categories.push("protection");
   if (/malicious|exploit|injection|suspicious/.test(text)) categories.push("malicious");
   if (/ai|inference|model|embedding|wasm|webassembly|webgpu|gpu/.test(text)) categories.push("ai");
