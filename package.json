@@ -7,6 +7,7 @@
     "start": "node standalone-server.mjs",
     "check": "node --check standalone-server.mjs && node --check runtime-language-packets.js && node --check runtime-diagnostics.js",
     "verify": "npm run check && npm test",
+    "verify:runtime-bridge": "node verify-runtime-bridge.mjs",
     "test": "node --test tests/*.test.mjs date-parser.test.cjs"
   },
   "engines": {

@@ -241,6 +241,10 @@ test("collector, secure browser, and standalone analyzer emit canonical runtime 
   assert.match(runtimeCollector, /runtimeLayerHighlightKind/);
   assert.match(pageRuntimeHooks, /runtimeLayerDirect/);
   assert.match(secureBrowserRuntime, /ensureRuntimeLayerFact/);
+  assert.match(secureBrowserRuntime, /\["RUNTIME_FACT_DETECTED", "DIAGNOSTIC_FACT_DETECTED"\]/);
+  assert.match(secureBrowserRuntime, /bridgeProvenance/);
+  assert.match(secureBrowserRuntime, /runtime-layer\/runtime-collector\.js/);
+  assert.match(secureBrowserRuntime, /diagnostics-layer\/diagnostics-collector\.js/);
   assert.match(standaloneAnalyzer, /browser\/rendered_dom_snapshot/);
   for (const standaloneFact of [
     "stylesheet-snapshot",

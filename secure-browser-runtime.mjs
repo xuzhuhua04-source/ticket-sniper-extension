@@ -24,8 +24,11 @@ export class SecureBrowserRuntime {
     this.bridgeInstalled = false;
     this.collectorSource = null;
     this.pageHooksSource = null;
+    this.runtimeRegistrySource = null;
+    this.diagnosticsRegistrySource = null;
     this.profileDir = options.profileDir || DEFAULT_PROFILE_DIR;
     this.profileLabel = options.profileLabel || "secure-browser";
+    this.headless = Boolean(options.headless);
     this.localAppOrigins = new Set((options.localAppOrigins || []).map(value => String(value || "").replace(/\/+$/, "")));
     this.activeAnalysisKey = "";
     this.contextClosed = true;
@@ -247,7 +250,7 @@ export class SecureBrowserRuntime {
 
   launchPersistentContext(profileDir) {
     return chromium.launchPersistentContext(profileDir, {
-      headless: false,
+      headless: this.headless,
       executablePath: findBrowserExecutable(),
       viewport: { width: 1320, height: 860 },
       acceptDownloads: false
@@ -257,12 +260,17 @@ export class SecureBrowserRuntime {
   async installCollectorBridge() {
     if (this.bridgeInstalled) return;
     this.pageHooksSource = this.pageHooksSource || await readFile(resolve(import.meta.dirname, "page-runtime-hooks.js"), "utf8");
+    this.runtimeRegistrySource = this.runtimeRegistrySource || await readFile(resolve(import.meta.dirname, "runtime-layer/runtime-collector.js"), "utf8");
+    this.diagnosticsRegistrySource = this.diagnosticsRegistrySource || await readFile(resolve(import.meta.dirname, "diagnostics-layer/diagnostics-collector.js"), "utf8");
     this.collectorSource = this.collectorSource || await readFile(resolve(import.meta.dirname, "runtime-collector.js"), "utf8");
-    await this.context.exposeBinding("__ticketSniperRuntimeBridge", async (_source, message) => {
-      this.acceptRuntimeMessage(message);
+    await this.context.exposeBinding("__ticketSniperRuntimeBridge", async (source, message) => {
+      this.acceptRuntimeMessage(message, bridgeProvenance(source));
       return { ok: true };
     });
     await this.context.addInitScript(collectorBootstrapSource(this.pageHooksSource));
+    await this.context.addInitScript(this.pageHooksSource);
+    await this.context.addInitScript(this.runtimeRegistrySource);
+    await this.context.addInitScript(this.diagnosticsRegistrySource);
     await this.context.addInitScript(this.collectorSource);
     this.bridgeInstalled = true;
   }
@@ -396,7 +404,10 @@ export class SecureBrowserRuntime {
     if (!page || page.isClosed() || isBlankPage(page)) return;
     try {
       await page.evaluate(collectorBootstrapSource(this.pageHooksSource || await readFile(resolve(import.meta.dirname, "page-runtime-hooks.js"), "utf8")));
-      await page.addScriptTag({ content: this.collectorSource || await readFile(resolve(import.meta.dirname, "runtime-collector.js"), "utf8") });
+      await page.evaluate(this.pageHooksSource || await readFile(resolve(import.meta.dirname, "page-runtime-hooks.js"), "utf8"));
+      await page.evaluate(this.runtimeRegistrySource || await readFile(resolve(import.meta.dirname, "runtime-layer/runtime-collector.js"), "utf8"));
+      await page.evaluate(this.diagnosticsRegistrySource || await readFile(resolve(import.meta.dirname, "diagnostics-layer/diagnostics-collector.js"), "utf8"));
+      await page.evaluate(this.collectorSource || await readFile(resolve(import.meta.dirname, "runtime-collector.js"), "utf8"));
     } catch (error) {
       this.recordLocalFact(page, "runtime", "collector-injection-warning", {
         severity: "medium",
@@ -458,9 +469,18 @@ export class SecureBrowserRuntime {
     return fact;
   }
 
-  acceptRuntimeMessage(message) {
-    if (message?.type !== "RUNTIME_FACT_DETECTED" || !message.payload?.fact) return;
-    const fact = ensureRuntimeLayerFact(message.payload.fact);
+  acceptRuntimeMessage(message, provenance = {}) {
+    if (!["RUNTIME_FACT_DETECTED", "DIAGNOSTIC_FACT_DETECTED"].includes(message?.type) || !message.payload?.fact) return;
+    const fact = ensureRuntimeLayerFact({
+      ...message.payload.fact,
+      transportLayer: message.type === "RUNTIME_FACT_DETECTED" ? "facts" : "diagnostics",
+      context: {
+        ...(message.payload.fact.context || {}),
+        bridgePageUrl: provenance.pageUrl || "",
+        bridgeFrameUrl: provenance.frameUrl || "",
+        bridgeFrameKind: provenance.isMainFrame === false ? "child" : "main"
+      }
+    });
     if (!this.factBelongsToActiveTarget(fact)) return;
     this.runtimeFacts.push(fact);
     this.runtimeFacts = this.runtimeFacts.slice(-MAX_FACTS);
@@ -483,7 +503,7 @@ export class SecureBrowserRuntime {
 
   factBelongsToActiveTarget(fact) {
     if (!this.activeAnalysisKey) return true;
-    const pageUrl = fact?.context?.pageUrl || fact?.metadata?.url || "";
+    const pageUrl = fact?.context?.bridgePageUrl || fact?.context?.pageUrl || fact?.metadata?.url || "";
     if (!pageUrl) return true;
     return analysisTargetKey(pageUrl) === this.activeAnalysisKey;
   }
@@ -568,6 +588,22 @@ function pageContextFromUrl(value) {
   } catch {
     return { host: "", path: "" };
   }
+}
+
+function bridgeProvenance(source = {}) {
+  let pageUrl = "";
+  let frameUrl = "";
+  let isMainFrame = true;
+  try { pageUrl = source.page?.url?.() || ""; } catch {}
+  try {
+    frameUrl = source.frame?.url?.() || "";
+    isMainFrame = source.page?.mainFrame?.() === source.frame;
+  } catch {}
+  return {
+    pageUrl: sanitizeLocalUrl(pageUrl),
+    frameUrl: sanitizeLocalUrl(frameUrl),
+    isMainFrame
+  };
 }
 
 function sanitizeLocalUrl(value) {
