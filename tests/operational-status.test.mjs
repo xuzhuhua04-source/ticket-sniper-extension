@@ -29,7 +29,7 @@ test("runtime diagnostics status is safe before first sample", () => {
   assert.equal(status.ok, true);
   assert.equal(status.latest, null);
   assert.equal(status.historyCount, 0);
-  assert.equal(status.storagePolicy.latestFactLimit, 240);
+  assert.equal(status.storagePolicy.latestFactLimit, 1000);
 });
 
 test("runtime diagnostics health survives a closed browser context", () => {

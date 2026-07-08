@@ -79,6 +79,7 @@ const elements = {
   streamState: document.getElementById("stream-state"),
   systemHealth: document.getElementById("system-health"),
   totalFacts: document.getElementById("total-facts"),
+  distinctFactTypes: document.getElementById("distinct-fact-types"),
   channelCount: document.getElementById("channel-count"),
   highCount: document.getElementById("high-count"),
   mediumCount: document.getElementById("medium-count"),
@@ -1873,11 +1874,14 @@ async function loadStandaloneDashboardDiagnostics(result) {
 }
 
 function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null) {
+  const targetKey = standaloneResultTargetKey(fallbackResult || payload.latest);
   const records = [
     fallbackResult,
     payload.latest,
     ...(Array.isArray(payload.history) ? payload.history : [])
-  ].filter(Boolean).filter((record, index, all) => {
+  ].filter(Boolean)
+    .filter(record => !targetKey || standaloneResultTargetKey(record) === targetKey)
+    .filter((record, index, all) => {
     const key = `${record.analyzedAt || ""}:${record.finalUrl || record.requestedUrl || ""}`;
     return all.findIndex(item => `${item.analyzedAt || ""}:${item.finalUrl || item.requestedUrl || ""}` === key) === index;
   });
@@ -1913,6 +1917,15 @@ function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null
     runtimeLayerCoverage: runtimeLayerCoverage || {},
     runtimeFactStatus: latest.diagnostics?.runtimeFactStatus || latest.status || fallbackResult?.status || null
   };
+}
+
+function standaloneResultTargetKey(record = {}) {
+  try {
+    const url = new URL(record.finalUrl || record.requestedUrl || "");
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "";
+  }
 }
 
 function setStandaloneTargetStatus(title, detail, state = "") {
@@ -3149,7 +3162,9 @@ function runtimeEventCount(model, names = []) {
 function renderSummary(model) {
   const high = model.facts.filter(item => item.severity === "high").length;
   const medium = model.facts.filter(item => item.severity === "medium").length;
+  const distinctFactTypes = new Set(model.facts.map(item => `${item.fact?.source || "runtime"}/${item.fact?.type || "fact"}`)).size;
   elements.totalFacts.textContent = String(model.facts.length);
+  elements.distinctFactTypes.textContent = String(distinctFactTypes);
   elements.channelCount.textContent = String(Object.keys(model.channels).length);
   elements.highCount.textContent = String(high);
   elements.mediumCount.textContent = String(medium);

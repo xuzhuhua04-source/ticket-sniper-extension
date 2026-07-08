@@ -11,10 +11,10 @@ import { buildAutomationLayerModel } from "./automation/exec.js";
 import "./organ-frequency-engine.js";
 
 const MAX_STANDALONE_HISTORY = 12;
-const MAX_LATEST_FACTS = 240;
-const MAX_HISTORY_FACTS = 120;
-const MAX_CHANNEL_FACTS = 40;
-const MAX_STREAM_FACTS = 120;
+const MAX_LATEST_FACTS = 1000;
+const MAX_HISTORY_FACTS = 250;
+const MAX_CHANNEL_FACTS = 250;
+const MAX_STREAM_FACTS = 500;
 const MAX_INGEST_FACTS = 1000;
 
 const root = resolve(import.meta.dirname);

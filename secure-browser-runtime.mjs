@@ -7,7 +7,7 @@ import { analyzeRenderedSnapshot } from "./standalone-analyzer.mjs";
 const DEFAULT_PROFILE_DIR = resolve(import.meta.dirname, ".ticket-sniper-secure-browser");
 const MAX_EVENTS = 80;
 const MAX_FACTS = 1200;
-const TRANSPORT_FACTS = 240;
+const TRANSPORT_FACTS = 1000;
 
 export class SecureBrowserRuntime {
   constructor(options = {}) {

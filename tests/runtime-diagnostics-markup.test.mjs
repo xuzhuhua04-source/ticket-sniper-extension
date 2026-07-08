@@ -12,6 +12,8 @@ const standaloneAnalyzer = await readFile(new URL("../standalone-analyzer.mjs", 
 const secureBrowserRuntime = await readFile(new URL("../secure-browser-runtime.mjs", import.meta.url), "utf8");
 
 test("runtime diagnostics controls expose production-grade button semantics", () => {
+  assert.match(html, /id="distinct-fact-types"/);
+  assert.match(js, /distinctFactTypes/);
   const buttons = [...html.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
   assert.ok(buttons.length >= 20, "expected the commercial dashboard to expose its full explicit control set");
   for (const button of buttons) {

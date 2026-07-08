@@ -373,7 +373,7 @@ function diagnosticsPayload({ facts, page, statusMessage, state, category, reque
     status,
     diagnostics: {
       runtimeFactChannels: channels,
-      runtimeFactHistory: facts.slice(0, 160),
+      runtimeFactHistory: facts.slice(0, 1000),
       runtimeFactStatus: status,
       runtimeLayerCoverage: layerCoverage,
       crawlerSignalHistory: facts.filter(item => item.source === "anti_crawler").map(item => statusForFact(item, page)).slice(0, 20),
