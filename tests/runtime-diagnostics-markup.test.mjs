@@ -177,9 +177,12 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
   assert.match(js, /DOM\.NodeAdded/);
   assert.match(js, /CSS\.RuleInserted/);
   assert.match(js, /Layout\.Reflow/);
+  assert.match(js, /layout\/cdp_layout_pass/);
   assert.match(js, /Shadow\.RootAdded/);
   assert.match(js, /A11y\.RoleChanged/);
   assert.match(js, /JSRuntime\.MicrotaskScheduled/);
+  assert.match(js, /runtime\/cdp_script_duration/);
+  assert.match(js, /JSRuntime\.MacrotaskExecuted/);
   assert.match(js, /VDOM\.NodeDiff/);
   assert.match(js, /request_start/);
   assert.match(js, /local_storage/);
@@ -256,6 +259,10 @@ test("collector, secure browser, and standalone analyzer emit canonical runtime 
   assert.match(pageRuntimeHooks, /reportCooldownMs: 250/);
   assert.match(secureBrowserRuntime, /ensureRuntimeLayerFact/);
   assert.match(secureBrowserRuntime, /stimulateRuntimeActivity/);
+  assert.match(secureBrowserRuntime, /collectPerformanceProfileBurst/);
+  assert.match(secureBrowserRuntime, /Performance\.getMetrics/);
+  assert.match(secureBrowserRuntime, /cdp_layout_pass/);
+  assert.match(secureBrowserRuntime, /cdp_script_duration/);
   assert.match(secureBrowserRuntime, /const MAX_FACTS = 5000/);
   assert.match(secureBrowserRuntime, /const TRANSPORT_FACTS = 2500/);
   assert.match(secureBrowserRuntime, /const MAX_CHANNEL_FACTS = 300/);

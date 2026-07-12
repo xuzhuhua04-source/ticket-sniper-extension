@@ -575,6 +575,7 @@ function diagnosticsPayload({ facts, page, statusMessage, state, category, reque
   const spectrum = buildStandaloneSpectrum(facts);
   const layerCoverage = buildLayerCoverage(facts);
   const latestFact = facts[0] || null;
+  const exportedHistory = selectExportedRuntimeFactHistory(facts, 1000);
   const status = {
     state: latestFact ? state : "standalone_no_facts",
     message: latestFact ? statusMessage : "No structural facts were produced.",
@@ -592,7 +593,7 @@ function diagnosticsPayload({ facts, page, statusMessage, state, category, reque
     status,
     diagnostics: {
       runtimeFactChannels: channels,
-      runtimeFactHistory: facts.slice(0, 1000),
+      runtimeFactHistory: exportedHistory,
       runtimeFactStatus: status,
       runtimeLayerCoverage: layerCoverage,
       crawlerSignalHistory: facts.filter(item => item.source === "anti_crawler").map(item => statusForFact(item, page)).slice(0, 20),
@@ -610,6 +611,43 @@ function diagnosticsPayload({ facts, page, statusMessage, state, category, reque
       }
     }
   };
+}
+
+function selectExportedRuntimeFactHistory(facts = [], limit = 1000) {
+  const ranked = [...facts].sort((left, right) => {
+    const priorityDelta = exportFactPriority(right) - exportFactPriority(left);
+    if (priorityDelta) return priorityDelta;
+    return Number(right.timestamp || 0) - Number(left.timestamp || 0);
+  });
+  const selected = [];
+  const selectedKeys = new Set();
+  const latestByChannel = new Map();
+  for (const fact of ranked) {
+    const channel = `${fact.source || ""}/${fact.type || ""}`;
+    const current = latestByChannel.get(channel);
+    if (!current || Number(fact.timestamp || 0) > Number(current.timestamp || 0)) latestByChannel.set(channel, fact);
+  }
+  for (const fact of latestByChannel.values()) addSelectedFact(fact, selected, selectedKeys, limit);
+  for (const fact of ranked) addSelectedFact(fact, selected, selectedKeys, limit);
+  return selected.sort((left, right) => Number(right.timestamp || 0) - Number(left.timestamp || 0));
+}
+
+function addSelectedFact(fact, selected, selectedKeys, limit) {
+  if (selected.length >= limit || !fact) return;
+  const key = `${fact.source || ""}/${fact.type || ""}/${fact.timestamp || ""}/${JSON.stringify(fact.value || {}).slice(0, 80)}`;
+  if (selectedKeys.has(key)) return;
+  selected.push(fact);
+  selectedKeys.add(key);
+}
+
+function exportFactPriority(fact = {}) {
+  const captureMode = String(fact.captureMode || fact.runtimeLayer?.captureMode || fact.metadata?.captureMode || "").toLowerCase();
+  const channel = `${fact.source || ""}/${fact.type || ""}`.toLowerCase();
+  if (/chrome_devtools_protocol|page_injection|secure_browser|secure-bridge/.test(captureMode)) return 4;
+  if (/^runtime\/cdp_|^layout\/cdp_|^a11y\/cdp_/.test(channel)) return 4;
+  if (/^runtime\/|^layout\/|^performance\//.test(channel)) return 3;
+  if (/^dom\/|^network\/|^interaction\/|^cssom\/|^vdom\//.test(channel)) return 2;
+  return 1;
 }
 
 function buildStandaloneSpectrum(facts) {

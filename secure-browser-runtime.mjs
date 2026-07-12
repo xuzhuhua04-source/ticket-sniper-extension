@@ -71,6 +71,7 @@ export class SecureBrowserRuntime {
     await this.stimulateRuntimeActivity(this.page);
     await this.page.waitForTimeout(320).catch(() => {});
     await this.forceCollectorSample(this.page);
+    await this.collectPerformanceProfileBurst(this.page);
     await this.page.waitForTimeout(140).catch(() => {});
     const diagnosticsTick = this.recordDiagnosticsTick(this.page);
     const snapshot = await this.page.evaluate(() => {
@@ -631,6 +632,138 @@ export class SecureBrowserRuntime {
       await session?.detach?.().catch(() => {});
     }
   }
+
+  async collectPerformanceProfileBurst(page) {
+    if (!page || page.isClosed()) return;
+    let session = null;
+    try {
+      session = await this.context.newCDPSession(page);
+      await session.send("Performance.enable", { timeDomain: "timeTicks" }).catch(() => session.send("Performance.enable"));
+      const before = performanceMetricMap(await session.send("Performance.getMetrics"));
+      await page.evaluate(() => {
+        const nodes = Array.from(document.querySelectorAll("body, main, section, article, div, button, input, a")).slice(0, 80);
+        for (const node of nodes) {
+          node.getBoundingClientRect();
+          getComputedStyle(node).display;
+        }
+        queueMicrotask(() => document.documentElement.toggleAttribute("data-sig9-cdp-microtask"));
+        setTimeout(() => document.documentElement.toggleAttribute("data-sig9-cdp-timer"), 0);
+        requestAnimationFrame(() => document.documentElement.toggleAttribute("data-sig9-cdp-raf"));
+      }).catch(() => {});
+      await page.waitForTimeout(220).catch(() => {});
+      const after = performanceMetricMap(await session.send("Performance.getMetrics"));
+      const delta = (name) => Math.max(0, Number(after[name] || 0) - Number(before[name] || 0));
+      const absolute = (name) => Number(after[name] || 0);
+      const layoutCount = delta("LayoutCount");
+      const styleCount = delta("RecalcStyleCount");
+      const scriptDurationMs = Math.round(delta("ScriptDuration") * 1000);
+      const taskDurationMs = Math.round(delta("TaskDuration") * 1000);
+      const heapDeltaBytes = Math.round(delta("JSHeapUsedSize"));
+      const totalLayoutCount = Math.round(absolute("LayoutCount"));
+      const totalStyleCount = Math.round(absolute("RecalcStyleCount"));
+      const totalScriptDurationMs = Math.round(absolute("ScriptDuration") * 1000);
+      const totalTaskDurationMs = Math.round(absolute("TaskDuration") * 1000);
+      const eventListeners = absolute("JSEventListeners");
+      let emittedLayoutProfile = false;
+      let emittedScriptProfile = false;
+      if (layoutCount > 0 || totalLayoutCount > 0) {
+        emittedLayoutProfile = true;
+        this.recordLocalFact(page, "layout", "cdp_layout_pass", {
+          severity: layoutCount > 8 ? "medium" : "low",
+          count: layoutCount,
+          totalCount: totalLayoutCount,
+          windowMs: 220
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.96 });
+      }
+      if (styleCount > 0 || totalStyleCount > 0) {
+        this.recordLocalFact(page, "layout", "cdp_style_recalc", {
+          severity: styleCount > 12 ? "medium" : "low",
+          count: styleCount,
+          totalCount: totalStyleCount,
+          windowMs: 220
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.96 });
+      }
+      if (scriptDurationMs > 0 || totalScriptDurationMs > 0) {
+        emittedScriptProfile = true;
+        this.recordLocalFact(page, "runtime", "cdp_script_duration", {
+          severity: scriptDurationMs > 80 ? "medium" : "low",
+          durationMs: scriptDurationMs,
+          totalDurationMs: totalScriptDurationMs,
+          windowMs: 220
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.94 });
+      }
+      if (taskDurationMs > 0 || totalTaskDurationMs > 0) {
+        this.recordLocalFact(page, "runtime", "cdp_task_duration", {
+          severity: taskDurationMs > 120 ? "medium" : "low",
+          durationMs: taskDurationMs,
+          totalDurationMs: totalTaskDurationMs,
+          windowMs: 220
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.94 });
+      }
+      if (heapDeltaBytes > 0) {
+        this.recordLocalFact(page, "runtime", "cdp_js_heap_delta", {
+          severity: heapDeltaBytes > 1_000_000 ? "medium" : "low",
+          bytes: heapDeltaBytes,
+          windowMs: 220
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.9 });
+      }
+      if (eventListeners > 0) {
+        this.recordLocalFact(page, "runtime", "cdp_event_listeners", {
+          severity: "low",
+          count: eventListeners
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.9 });
+      }
+      if (!emittedLayoutProfile) {
+        const snapshot = await session.send("DOMSnapshot.captureSnapshot", { computedStyles: ["display", "position"] }).catch(() => null);
+        const documents = Array.isArray(snapshot?.documents) ? snapshot.documents : [];
+        const layoutNodeCount = documents.reduce((sum, document) => {
+          const layout = document?.layout || {};
+          return sum + (Array.isArray(layout.nodeIndex) ? layout.nodeIndex.length : 0);
+        }, 0);
+        if (layoutNodeCount > 0) {
+          this.recordLocalFact(page, "layout", "cdp_layout_pass", {
+            severity: layoutNodeCount > 1500 ? "medium" : "low",
+            count: 0,
+            totalCount: layoutNodeCount,
+            source: "DOMSnapshot.captureSnapshot",
+            windowMs: 220
+          }, { captureMode: "chrome_devtools_protocol", confidence: 0.92 });
+        }
+      }
+      if (!emittedScriptProfile) {
+        const scriptStartedAt = Date.now();
+        await session.send("Runtime.evaluate", {
+          expression: "(() => { queueMicrotask(() => 0); return { now: performance.now(), scripts: document.scripts.length }; })()",
+          returnByValue: true,
+          awaitPromise: false
+        }).catch(() => null);
+        const observedDurationMs = Math.max(0, Date.now() - scriptStartedAt);
+        this.recordLocalFact(page, "runtime", "cdp_script_duration", {
+          severity: observedDurationMs > 80 ? "medium" : "low",
+          durationMs: observedDurationMs,
+          source: "Runtime.evaluate",
+          windowMs: 220
+        }, { captureMode: "chrome_devtools_protocol", confidence: 0.88 });
+      }
+    } catch (error) {
+      this.recordLocalFact(page, "runtime", "cdp_profile_unavailable", {
+        severity: "low",
+        status: "best_effort",
+        reason: String(error?.message || error).slice(0, 180)
+      }, { captureMode: "chrome_devtools_protocol", confidence: 0.35 });
+    } finally {
+      await session?.send?.("Performance.disable").catch(() => {});
+      await session?.detach?.().catch(() => {});
+    }
+  }
+}
+
+function performanceMetricMap(result = {}) {
+  const map = {};
+  for (const metric of Array.isArray(result.metrics) ? result.metrics : []) {
+    map[String(metric.name || "")] = Number(metric.value) || 0;
+  }
+  return map;
 }
 
 function pageContextFromUrl(value) {
@@ -798,6 +931,13 @@ function runtimeLayerFact(source, type, value = {}, metadata = {}) {
     "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
     "a11y/cdp_ax_tree": ["a11y", "A11y.SemanticTopologyChanged", "role"],
     "a11y/cdp_ax_unavailable": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "layout/cdp_layout_pass": ["layout", "Layout.Reflow", "box"],
+    "layout/cdp_style_recalc": ["layout", "Layout.RecalcStyle", "box"],
+    "runtime/cdp_script_duration": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/cdp_task_duration": ["js", "JSRuntime.MacrotaskExecuted", "context"],
+    "runtime/cdp_js_heap_delta": ["js", "JSRuntime.MemoryChanged", "context"],
+    "runtime/cdp_event_listeners": ["js", "JSRuntime.RuntimeTopologyChanged", "context"],
+    "runtime/cdp_profile_unavailable": ["js", "JSRuntime.ExecutionChanged", "context"],
     "browser/rendered_dom_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "network/request_failed": ["worker", "Worker.MessageReceived", "worker"],
     "network/response_status": ["worker", "Worker.MessageReceived", "worker"]

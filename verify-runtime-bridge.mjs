@@ -94,7 +94,9 @@ try {
     "dom/text_change",
     "network/resource_observed",
     "interaction/click",
-    "interaction/input"
+    "interaction/input",
+    "layout/cdp_layout_pass",
+    "runtime/cdp_script_duration"
   ]) {
     assert.ok(channels.has(requiredChannel), `exported facts missing ${requiredChannel}`);
   }
