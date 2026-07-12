@@ -170,7 +170,7 @@ try {
   const exportPayload = JSON.parse(await diagnostics.evaluate(() => window.__ticketSniperLastExportJson));
   const exportStatus = await diagnostics.locator("#export-status").textContent();
   const exportUi = {
-    filename: "ticket-sniper-extension-all-captured.json",
+    filename: "sig9-runtime-diagnostics-all-captured.json",
     status: exportStatus,
     kind: exportPayload.kind,
     hasStorage: Boolean(exportPayload.storage?.local && exportPayload.storage?.sync),
@@ -180,7 +180,7 @@ try {
     hasTabs: Array.isArray(exportPayload.openInspectableTabs),
     version: exportPayload.extension?.version
   };
-  if (!exportUi.filename.startsWith("ticket-sniper-extension-all-") || !/\.json$/.test(exportUi.filename) || exportUi.status !== "Full extension JSON exported with sensitive fields redacted." || exportUi.kind !== "ticket-sniper-extension-full-export" || !exportUi.hasStorage || !exportUi.hasSnapshot || !exportUi.hasStructuralPipeline || !exportUi.hasOrganPipeline || !exportUi.hasTabs || exportUi.version !== manifest.version) throw new Error(JSON.stringify({ exportUi }, null, 2));
+  if (!exportUi.filename.startsWith("sig9-runtime-diagnostics-all-") || !/\.json$/.test(exportUi.filename) || exportUi.status !== "Full SIG9 diagnostics JSON exported with sensitive fields redacted." || exportUi.kind !== "sig9-runtime-diagnostics-full-export" || !exportUi.hasStorage || !exportUi.hasSnapshot || !exportUi.hasStructuralPipeline || !exportUi.hasOrganPipeline || !exportUi.hasTabs || exportUi.version !== manifest.version) throw new Error(JSON.stringify({ exportUi }, null, 2));
   await diagnostics.close();
   console.log(JSON.stringify({ extensionId, name: manifest.name, version: manifest.version, ui, diagnosticsUi, exportUi, runtimeProbe: { hasNetwork, hasStorage, hasNavigation, hasConsole, hasProtection, hasPipeline, hasOrganPipeline: runtimeProbe.hasOrganPipeline }, errors }, null, 2));
 } finally {

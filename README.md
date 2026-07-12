@@ -68,7 +68,16 @@ Optional display labels:
 
 Optional production behavior-stream protection:
 
-- `WEB_BLOOMBERG_INGEST_KEY`
+- `SIG9_BEHAVIOR_INGEST_KEY`
+- `WEB_BLOOMBERG_INGEST_KEY` is still accepted as a legacy alias.
+
+Canonical SIG9 runtime endpoints:
+
+- `POST /api/behavior-stream` accepts compact behavior windows. When `SIG9_BEHAVIOR_INGEST_KEY` is configured, send it with `X-SIG9-Ingest-Key`.
+- `GET /api/sig9/terminal` returns the live signal console model.
+- `GET /api/sig9/export` returns the bounded signal-window export.
+
+Legacy `/api/web-bloomberg/*` routes remain available only for backward compatibility with older local tools.
 
 Use `.env.example` as the deployment checklist. This project does not load `.env` automatically; either export variables in your shell, set them in your process manager, or configure them in your hosting provider.
 

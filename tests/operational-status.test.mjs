@@ -12,7 +12,7 @@ test("operational status exposes commercial runtime health", () => {
   });
 
   assert.equal(status.ok, true);
-  assert.equal(status.service, "organ9-runtime-diagnostics");
+  assert.equal(status.service, "sig9-runtime-diagnostics");
   assert.equal(status.billing.packageCount, 6);
   assert.equal(status.runtimeDiagnostics.storagePolicy.historyLimit, 12);
   assert.ok(["healthy", "degraded"].includes(status.health));
@@ -30,6 +30,7 @@ test("runtime diagnostics status is safe before first sample", () => {
   assert.equal(status.latest, null);
   assert.equal(status.historyCount, 0);
   assert.equal(status.storagePolicy.latestFactLimit, 1000);
+  assert.equal(status.storagePolicy.channelFactLimit, 300);
 });
 
 test("runtime diagnostics health survives a closed browser context", () => {

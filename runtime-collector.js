@@ -1,5 +1,5 @@
 const RUNTIME_DEFAULTS = Object.freeze({
-  reportCooldownMs: 1000,
+  reportCooldownMs: 250,
   mutationWindowMs: 1000,
   mutationBurstThreshold: 80,
   stylesheetCheckMs: 4000,
@@ -329,9 +329,99 @@ class RuntimeCollector {
     this.runSampleScan("vdom", 10000, false, () => this.scanVirtualDomSurface());
     this.runSampleScan("protection", 15000, dirty, () => this.scanProtectionSurface());
     this.emitLayerCoverage(reason);
+    this.emitForcedSurfaceSnapshot(reason);
     this.emitHeartbeat();
     this.flushWebBloombergWindow(reason);
     this.dirtySinceSample = false;
+  }
+
+  emitForcedSurfaceSnapshot(reason) {
+    const sampleMeta = { captureMode: "page_injection_force_sample", reason, sequence: this.sampleSequence };
+    const elements = [...document.querySelectorAll("body *")].filter(node => !isSensitiveRuntimeElement(node));
+    for (const element of elements.slice(0, 80)) {
+      const tag = element.tagName.toLowerCase();
+      this.emitRuntimeFact("dom", "element_change", {
+        severity: "low",
+        operation: "sampled",
+        tag,
+        childCount: element.children.length,
+        attributeCount: element.attributes.length
+      }, {
+        ...sampleMeta,
+        selector: stableSelector(element),
+        path: stableDomPath(element),
+        rect: rectSnapshot(element)
+      });
+    }
+    for (const element of elements.filter(node => node.attributes?.length).slice(0, 80)) {
+      for (const attribute of [...element.attributes].slice(0, 4)) {
+        if (isSensitiveRuntimeName(attribute.name)) continue;
+        this.emitRuntimeFact("dom", "attribute_change", {
+          severity: /^aria-|role|class|style$/i.test(attribute.name) ? "low" : "info",
+          operation: "sampled",
+          tag: element.tagName.toLowerCase(),
+          name: attribute.name
+        }, {
+          ...sampleMeta,
+          selector: stableSelector(element),
+          path: stableDomPath(element)
+        });
+      }
+    }
+    for (const element of elements.filter(node => node.textContent?.trim()).slice(0, 45)) {
+      const text = element.textContent.trim().replace(/\s+/g, " ");
+      if (text.length < 16) continue;
+      this.emitRuntimeFact("dom", "text_change", {
+        severity: "info",
+        operation: "sampled",
+        length: text.length,
+        bucket: text.length > 120 ? "large" : text.length > 40 ? "medium" : "small"
+      }, {
+        ...sampleMeta,
+        selector: stableSelector(element),
+        path: stableDomPath(element)
+      });
+    }
+    for (const element of elements.filter(node => /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/i.test(node.tagName)).slice(0, 60)) {
+      const tag = element.tagName.toLowerCase();
+      this.emitRuntimeFact("interaction", tag === "input" || tag === "select" || tag === "textarea" ? "input" : "click", {
+        severity: tag === "input" && element.type === "password" ? "medium" : "low",
+        operation: "sampled",
+        tag,
+        named: Boolean(element.getAttribute("aria-label") || element.getAttribute("aria-labelledby") || element.getAttribute("title") || element.getAttribute("name") || element.id)
+      }, {
+        ...sampleMeta,
+        selector: stableSelector(element),
+        path: stableDomPath(element)
+      });
+    }
+    for (const node of [...document.querySelectorAll("script[src],link[rel~='stylesheet'][href],img[src],iframe[src],source[src]")].slice(0, 100)) {
+      const url = node.getAttribute("src") || node.getAttribute("href") || "";
+      this.emitRuntimeFact("network", "resource_observed", {
+        severity: node.tagName === "IFRAME" ? "medium" : "low",
+        operation: "sampled",
+        tag: node.tagName.toLowerCase(),
+        url: sanitizeRuntimeUrl(url)
+      }, {
+        ...sampleMeta,
+        selector: stableSelector(node),
+        path: stableDomPath(node)
+      });
+    }
+    for (const element of elements.filter(node => node.hasAttribute("role") || [...node.attributes].some(attr => attr.name.startsWith("aria-"))).slice(0, 70)) {
+      const ariaState = [...element.attributes].find(attr => /^aria-(expanded|selected|checked|disabled|hidden|pressed|current|invalid)$/i.test(attr.name));
+      this.emitRuntimeFact("a11y", ariaState ? "a11y_state_change" : "a11y_role_change", {
+        severity: "low",
+        operation: "sampled",
+        tag: element.tagName.toLowerCase(),
+        role: element.getAttribute("role") || "",
+        attribute: ariaState?.name || "role"
+      }, {
+        ...sampleMeta,
+        selector: stableSelector(element),
+        path: stableDomPath(element)
+      });
+    }
   }
 
   recordWebBloombergFact(fact) {

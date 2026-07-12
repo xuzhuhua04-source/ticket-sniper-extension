@@ -22,6 +22,7 @@ test(".env.example documents all commercial package checkout variables", async (
     "AUTHORIZE_NET_ANALYTICS_AMOUNT",
     "AUTHORIZE_NET_OEM_PLATFORM_AMOUNT",
     "AUTHORIZE_NET_MERCHANT_PORTAL_URL",
+    "SIG9_BEHAVIOR_INGEST_KEY",
     "WEB_BLOOMBERG_INGEST_KEY"
   ]) {
     assert.match(template, new RegExp(`^#?\\s*${key}=`, "m"), `${key} is missing from .env.example`);

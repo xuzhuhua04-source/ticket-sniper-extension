@@ -214,7 +214,83 @@ function buildFacts({ url, requestedUrl, response, html, bytes, headers, started
       ...calendar
     }, { note: "Standalone URL analysis reads fetched markup only; authenticated dynamic calendars may not be present in server HTML.", captureMode: "standalone_static_projection" }, page, fetchedAt + 10));
   }
+  appendStaticProjectionFacts(facts, { html, url, resources, cssom, layout, a11y, page, fetchedAt });
   return facts.sort((left, right) => right.timestamp - left.timestamp);
+}
+
+function appendStaticProjectionFacts(facts, { html, url, resources, cssom, layout, a11y, page, fetchedAt }) {
+  const projectionMeta = { source: "standalone-static-atomic-projection", captureMode: "standalone_static_projection" };
+  let offset = 20;
+  for (const item of resources.resourceUrls.slice(0, 180)) {
+    facts.push(fact("network", "resource_observed", {
+      severity: item.kind === "iframe" ? "medium" : "low",
+      kind: item.kind,
+      host: resourceHost(item.url),
+      url: sanitizeUrl(item.url)
+    }, { ...projectionMeta, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractElementObservations(html).slice(0, 180)) {
+    facts.push(fact("dom", "element_change", {
+      severity: "low",
+      operation: "observed",
+      tag: item.tag,
+      hasId: item.hasId,
+      classCount: item.classCount,
+      attributeCount: item.attributeCount
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractAttributeObservations(html).slice(0, 120)) {
+    facts.push(fact("dom", "attribute_change", {
+      severity: item.name.startsWith("aria-") ? "medium" : "low",
+      operation: "observed",
+      attribute: item.name,
+      tag: item.tag
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractTextObservations(html).slice(0, 80)) {
+    facts.push(fact("dom", "text_change", {
+      severity: "low",
+      operation: "observed",
+      textLength: item.textLength,
+      wordCount: item.wordCount
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractStylesheetObservations(html, url).slice(0, 120)) {
+    facts.push(fact("cssom", item.kind === "link" ? "stylesheet_change" : "css_rule_change", {
+      severity: item.kind === "inline-style-attribute" && cssom.inlineStyleAttributes > 40 ? "medium" : "low",
+      operation: "observed",
+      kind: item.kind,
+      host: item.url ? resourceHost(item.url) : "",
+      url: item.url ? sanitizeUrl(item.url) : ""
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractLayoutObservations(html).slice(0, 140)) {
+    facts.push(fact("layout", "layout_tree", {
+      severity: layout.positionedElements > 80 && item.positioned ? "medium" : "low",
+      tag: item.tag,
+      positioned: item.positioned,
+      flex: item.flex,
+      grid: item.grid,
+      scrollContainer: item.scrollContainer
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractInteractionObservations(html).slice(0, 100)) {
+    facts.push(fact("interaction", item.kind === "input" ? "input" : "click", {
+      severity: item.kind === "password" ? "medium" : "low",
+      kind: item.kind,
+      tag: item.tag,
+      named: item.named
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
+  for (const item of extractA11yObservations(html).slice(0, 100)) {
+    facts.push(fact("a11y", item.kind === "state" ? "a11y_state_change" : item.kind === "break" ? "a11y_break" : "a11y_role_change", {
+      severity: item.kind === "break" || a11y.unnamedInteractive > 0 ? "medium" : "low",
+      operation: "observed",
+      kind: item.kind,
+      tag: item.tag,
+      attribute: item.attribute
+    }, { ...projectionMeta, target: item.target, ordinal: item.index }, page, fetchedAt + offset++));
+  }
 }
 
 function structuralSummary(html) {
@@ -251,15 +327,158 @@ function resourceSummary(html, baseUrl) {
   const styles = extractUrls(html, /<link\b[^>]*href=["']([^"']+)["'][^>]*rel=["']?stylesheet|<link\b[^>]*rel=["']?stylesheet[^>]*href=["']([^"']+)["']/gi, baseUrl);
   const images = extractUrls(html, /<(?:img|source)\b[^>]*src=["']([^"']+)["']/gi, baseUrl);
   const iframes = extractUrls(html, /<iframe\b[^>]*src=["']([^"']+)["']/gi, baseUrl);
+  const resourceUrls = [
+    ...scripts.map((item, index) => ({ kind: "script", url: item, index })),
+    ...styles.map((item, index) => ({ kind: "stylesheet", url: item, index })),
+    ...images.map((item, index) => ({ kind: "image", url: item, index })),
+    ...iframes.map((item, index) => ({ kind: "iframe", url: item, index }))
+  ];
   return {
     scripts: scripts.length,
     stylesheets: styles.length,
     images: images.length,
     iframes: iframes.length,
+    resourceUrls,
     scriptHosts: uniqueHosts(scripts),
     styleHosts: uniqueHosts(styles),
     iframeHosts: uniqueHosts(iframes)
   };
+}
+
+function extractElementObservations(html) {
+  const observations = [];
+  const elementRegex = /<([a-z][a-z0-9-]*)\b([^>]*)>/gi;
+  let index = 0;
+  for (const match of html.matchAll(elementRegex)) {
+    const tag = match[1].toLowerCase();
+    if (/^(html|head|meta|title|link|script|style)$/i.test(tag)) continue;
+    const attrs = match[2] || "";
+    observations.push({
+      index: index++,
+      tag,
+      hasId: /\sid\s*=/.test(attrs),
+      classCount: classCount(attrs),
+      attributeCount: attributeCount(attrs),
+      target: `${tag}:${index}:${hashString(attrs).slice(0, 8)}`
+    });
+  }
+  return observations;
+}
+
+function extractAttributeObservations(html) {
+  const observations = [];
+  const elementRegex = /<([a-z][a-z0-9-]*)\b([^>]*)>/gi;
+  let index = 0;
+  for (const match of html.matchAll(elementRegex)) {
+    const tag = match[1].toLowerCase();
+    const attrs = match[2] || "";
+    for (const attr of attrs.matchAll(/\s([a-z_:][-a-z0-9_:.]*)\s*=/gi)) {
+      const name = attr[1].toLowerCase();
+      if (/^(src|href)$/i.test(name)) continue;
+      observations.push({
+        index: index++,
+        tag,
+        name,
+        target: `${tag}:${name}:${index}`
+      });
+    }
+  }
+  return observations;
+}
+
+function extractTextObservations(html) {
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, "\n");
+  return text.split(/\n+/)
+    .map(item => item.replace(/\s+/g, " ").trim())
+    .filter(item => item.length >= 24)
+    .slice(0, 160)
+    .map((item, index) => ({
+      index,
+      textLength: item.length,
+      wordCount: item.split(/\s+/).filter(Boolean).length,
+      target: `text:${index}:${hashString(item).slice(0, 8)}`
+    }));
+}
+
+function extractStylesheetObservations(html, baseUrl) {
+  const observations = [];
+  let index = 0;
+  for (const url of extractUrls(html, /<link\b[^>]*href=["']([^"']+)["'][^>]*rel=["']?stylesheet|<link\b[^>]*rel=["']?stylesheet[^>]*href=["']([^"']+)["']/gi, baseUrl)) {
+    observations.push({ index: index++, kind: "link", url, target: `stylesheet:${hashString(url).slice(0, 10)}` });
+  }
+  for (const match of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    observations.push({ index: index++, kind: "style-block", target: `style:${index}:${hashString(match[1] || "").slice(0, 10)}` });
+  }
+  for (const match of html.matchAll(/\sstyle=["']([^"']+)["']/gi)) {
+    observations.push({ index: index++, kind: "inline-style-attribute", target: `inline-style:${index}:${hashString(match[1] || "").slice(0, 10)}` });
+  }
+  for (const match of html.matchAll(/@(?:media|supports|container|(?:-\w+-)?keyframes)\b[^{}]*(?:\{)?/gi)) {
+    observations.push({ index: index++, kind: "at-rule", target: `rule:${index}:${hashString(match[0] || "").slice(0, 10)}` });
+  }
+  return observations;
+}
+
+function extractLayoutObservations(html) {
+  const observations = [];
+  const layoutRegex = /<(main|section|article|aside|nav|header|footer|form|table|ul|ol|li|div|canvas|svg|img|video)\b([^>]*)>/gi;
+  let index = 0;
+  for (const match of html.matchAll(layoutRegex)) {
+    const tag = match[1].toLowerCase();
+    const attrs = match[2] || "";
+    const style = /\sstyle=["']([^"']+)["']/i.exec(attrs)?.[1] || "";
+    observations.push({
+      index: index++,
+      tag,
+      positioned: /position\s*:\s*(absolute|fixed|sticky|relative)|\b(top|left|right|bottom)\s*:/i.test(style),
+      flex: /display\s*:\s*flex|\bflex\b/i.test(style),
+      grid: /display\s*:\s*grid|\bgrid\b/i.test(style),
+      scrollContainer: /overflow(?:-[xy])?\s*:\s*(auto|scroll|hidden)/i.test(style),
+      target: `${tag}:layout:${index}:${hashString(attrs).slice(0, 8)}`
+    });
+  }
+  return observations;
+}
+
+function extractInteractionObservations(html) {
+  const observations = [];
+  const interactiveRegex = /<(button|a|input|select|textarea|summary)\b([^>]*)>/gi;
+  let index = 0;
+  for (const match of html.matchAll(interactiveRegex)) {
+    const tag = match[1].toLowerCase();
+    const attrs = match[2] || "";
+    const inputType = /\stype=["']?([^"'\s>]+)/i.exec(attrs)?.[1]?.toLowerCase() || "";
+    observations.push({
+      index: index++,
+      tag,
+      kind: tag === "input" || tag === "select" || tag === "textarea" ? (inputType === "password" ? "password" : "input") : "click",
+      named: /\s(aria-label|aria-labelledby|title|name|id)\s*=/.test(attrs),
+      target: `${tag}:interaction:${index}:${hashString(attrs).slice(0, 8)}`
+    });
+  }
+  return observations;
+}
+
+function extractA11yObservations(html) {
+  const observations = [];
+  const elementRegex = /<([a-z][a-z0-9-]*)\b([^>]*)>/gi;
+  let index = 0;
+  for (const match of html.matchAll(elementRegex)) {
+    const tag = match[1].toLowerCase();
+    const attrs = match[2] || "";
+    const target = `${tag}:a11y:${index}:${hashString(attrs).slice(0, 8)}`;
+    if (/\srole=["'][^"']+["']/i.test(attrs)) observations.push({ index: index++, kind: "role", tag, attribute: "role", target });
+    for (const attr of attrs.matchAll(/\s(aria-[a-z-]+)\s*=/gi)) {
+      const name = attr[1].toLowerCase();
+      observations.push({ index: index++, kind: /expanded|selected|checked|disabled|hidden|pressed|current|invalid/.test(name) ? "state" : "role", tag, attribute: name, target });
+    }
+    if (/^(button|a|input|select|textarea|summary)$/i.test(tag) && !/\s(aria-label|aria-labelledby|title|name|id)\s*=/.test(attrs)) {
+      observations.push({ index: index++, kind: "break", tag, attribute: "missing-accessible-name", target });
+    }
+  }
+  return observations;
 }
 
 function cssomSummary(html) {
@@ -473,16 +692,28 @@ function runtimeLayerFact(source, type, value = {}, metadata = {}) {
   const mapped = {
     "browser/rendered_dom_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "dom/structure_snapshot": ["dom", "DOM.TreeTopologyChanged", "tag"],
+    "dom/element_change": ["dom", "DOM.NodeAdded", "tag"],
+    "dom/attribute_change": ["dom", "DOM.AttributeChanged", "tag"],
+    "dom/text_change": ["dom", "DOM.TextChanged", "text"],
     "dom/calendar_structure": ["dom", "DOM.TreeTopologyChanged", "tag"],
     "cssom/stylesheet_snapshot": ["cssom", "CSS.RuleChanged", "rule"],
+    "cssom/stylesheet_change": ["cssom", "CSS.StyleChanged", "rule"],
+    "cssom/css_rule_change": ["cssom", "CSS.RuleChanged", "rule"],
     "layout/static_geometry_snapshot": ["layout", "Layout.GeometryChanged", "box"],
+    "layout/layout_tree": ["layout", "Layout.BoxCreated", "box"],
     "a11y/semantic_topology": ["a11y", "A11y.SemanticTopologyChanged", "role"],
+    "a11y/a11y_role_change": ["a11y", "A11y.RoleChanged", "role"],
+    "a11y/a11y_state_change": ["a11y", "A11y.StateChanged", "role"],
+    "a11y/a11y_break": ["a11y", "A11y.SemanticTopologyChanged", "role"],
     "multicontext/iframe_observed": ["worker", "Worker.Created", "worker"],
     "vdom/framework_surface": ["vdom", "VDOM.VDOMTreeChanged", "vnode"],
     "network/document_fetch": ["worker", "Worker.MessageReceived", "worker"],
     "network/resource_map": ["worker", "Worker.MessageReceived", "worker"],
+    "network/resource_observed": ["worker", "Worker.MessageReceived", "worker"],
     "network/response_status": ["worker", "Worker.MessageReceived", "worker"],
     "network/request_failed": ["worker", "Worker.MessageReceived", "worker"],
+    "interaction/click": ["dom", "DOM.NodeVisibilityChanged", "tag"],
+    "interaction/input": ["dom", "DOM.AttributeChanged", "tag"],
     "runtime/script_error": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/technology_profile": ["js", "JSRuntime.RuntimeTopologyChanged", "context"],
@@ -629,6 +860,19 @@ function uniqueHosts(urls) {
   return [...new Set(urls.map(item => {
     try { return new URL(item).hostname; } catch { return ""; }
   }).filter(Boolean))].slice(0, 40);
+}
+
+function resourceHost(value) {
+  try { return new URL(value).hostname; } catch { return ""; }
+}
+
+function classCount(attrs = "") {
+  const value = /\sclass=["']([^"']+)["']/i.exec(attrs)?.[1] || "";
+  return value.split(/\s+/).filter(Boolean).length;
+}
+
+function attributeCount(attrs = "") {
+  return [...String(attrs || "").matchAll(/\s([a-z_:][-a-z0-9_:.]*)\s*=/gi)].length;
 }
 
 function textBetween(value, startRegex, endRegex) {

@@ -14,6 +14,9 @@ const secureBrowserRuntime = await readFile(new URL("../secure-browser-runtime.m
 test("runtime diagnostics controls expose production-grade button semantics", () => {
   assert.match(html, /id="distinct-fact-types"/);
   assert.match(js, /distinctFactTypes/);
+  assert.match(js, /sig9-runtime-diagnostics-full-export/);
+  assert.match(js, /sig9-runtime-diagnostics-all/);
+  assert.match(js, /Full SIG9 diagnostics JSON exported with sensitive fields redacted\./);
   const buttons = [...html.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
   assert.ok(buttons.length >= 20, "expected the commercial dashboard to expose its full explicit control set");
   for (const button of buttons) {
@@ -98,18 +101,20 @@ test("pricing cards expose package price state and guard checkout redirects", ()
 
 test("Live Signal Console panels are present in the dashboard", () => {
   for (const id of [
-    "web-bloomberg-status",
-    "web-bloomberg-frequency",
-    "web-bloomberg-storms",
-    "web-bloomberg-deviation",
-    "web-bloomberg-risk",
-    "web-bloomberg-dependencies",
-    "web-bloomberg-windows"
+    "sig9-signal-status",
+    "sig9-signal-frequency",
+    "sig9-signal-storms",
+    "sig9-signal-deviation",
+    "sig9-signal-risk",
+    "sig9-signal-dependencies",
+    "sig9-signal-windows"
   ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /Live Signal Console/);
   assert.match(js, /function renderLiveSignalConsole/);
+  assert.match(js, /sig9-signal-update/);
+  assert.match(js, /web-bloomberg-update/);
   assert.match(css, /\.signal-console/);
 });
 
@@ -140,10 +145,13 @@ test("Web Version 2 taxonomy maps market modules to runtime events", () => {
     "function runtimeProfileStats",
     "function pressureBar",
     "function exportRuntimeLayerSummary",
-    "function renderWebV2Taxonomy"
+    "function renderWebV2Taxonomy",
+    "function captureEvidenceTitle"
   ]) {
     assert.match(js, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+  assert.match(js, /standaloneState\.operationalStatus/);
+  assert.match(js, /payload\.captureEvidence/);
   for (const treeName of ["DOM Runtime", "CSSOM Runtime", "Layout Runtime", "Shadow DOM Runtime", "Accessibility Runtime", "JS Runtime", "VDOM Runtime", "Device Runtime", "Browser Runtime", "Security Runtime", "AI Runtime", "Network Runtime", "Interaction Runtime", "Storage Runtime", "Anti-Crawler Runtime"]) {
     assert.match(js, new RegExp(treeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
@@ -241,8 +249,19 @@ test("collector, secure browser, and standalone analyzer emit canonical runtime 
   }
   assert.match(runtimeCollector, /runtimeLayerDirectMap/);
   assert.match(runtimeCollector, /runtimeLayerHighlightKind/);
+  assert.match(runtimeCollector, /emitForcedSurfaceSnapshot/);
+  assert.match(runtimeCollector, /page_injection_force_sample/);
   assert.match(pageRuntimeHooks, /runtimeLayerDirect/);
+  assert.match(pageRuntimeHooks, /const BRIDGE_BUFFER_LIMIT = 180/);
+  assert.match(pageRuntimeHooks, /reportCooldownMs: 250/);
   assert.match(secureBrowserRuntime, /ensureRuntimeLayerFact/);
+  assert.match(secureBrowserRuntime, /stimulateRuntimeActivity/);
+  assert.match(secureBrowserRuntime, /const MAX_FACTS = 5000/);
+  assert.match(secureBrowserRuntime, /const TRANSPORT_FACTS = 2500/);
+  assert.match(secureBrowserRuntime, /const MAX_CHANNEL_FACTS = 300/);
+  assert.match(secureBrowserRuntime, /requestAnimationFrame/);
+  assert.match(secureBrowserRuntime, /requestIdleCallback/);
+  assert.match(secureBrowserRuntime, /collector-stimulation-warning/);
   assert.match(secureBrowserRuntime, /\["RUNTIME_FACT_DETECTED", "DIAGNOSTIC_FACT_DETECTED"\]/);
   assert.match(secureBrowserRuntime, /bridgeProvenance/);
   assert.match(secureBrowserRuntime, /runtime-layer\/runtime-collector\.js/);
@@ -383,7 +402,7 @@ test("Atrinit profile registry has concrete old-runtime fact families for all ni
   }
 });
 
-test("paid Organ9 packages have separate module pages and locked states", () => {
+test("paid SIG9 packages have separate module pages and locked states", () => {
   assert.match(html, /id="nav-modules"/);
   assert.match(html, /id="modules-view"/);
   assert.match(html, /id="module-tabs"/);
@@ -446,7 +465,7 @@ test("commercial website exposes language packets and persistent localization co
   for (const locale of ["en", "zh", "es"]) {
     assert.match(languagePackets, new RegExp(`${locale}: Object\\.freeze`));
   }
-  for (const key of ["ORGAN9_LANGUAGE_STORAGE_KEY", "ORGAN9_LANGUAGE_PACKETS", "getOrgan9LanguagePacket"]) {
+  for (const key of ["SIG9_LANGUAGE_STORAGE_KEY", "SIG9_LANGUAGE_PACKETS", "getSIG9LanguagePacket", "ORGAN9_LANGUAGE_STORAGE_KEY", "ORGAN9_LANGUAGE_PACKETS", "getOrgan9LanguagePacket"]) {
     assert.match(languagePackets, new RegExp(key));
   }
   for (const phrase of ["Commercial browser monitoring", "运行时智能平台", "Monitoreo comercial"]) {

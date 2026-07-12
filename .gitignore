@@ -1,12 +1,15 @@
 node_modules/
+**/node_modules/
 .env
 .env.local
 .ticket-sniper-secure-browser/
 .ticket-sniper-visa-secure-browser/
 .ticket-sniper-runtime-diagnostics-browser/
 .ticket-sniper-*-fallback-*/
+companion-app/dist-app/
 standalone-server.*.log
 server-*.log
 *.log
 qa-*.png
+**/qa-*.png
 runtime-diagnostics-snippet.js

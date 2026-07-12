@@ -147,19 +147,19 @@ const elements = {
   rankingExport: document.getElementById("ranking-export"),
   packageSuiteSummary: document.getElementById("package-suite-summary"),
   packageSuiteGrid: document.getElementById("package-suite-grid"),
-  webBloombergStatus: document.getElementById("web-bloomberg-status"),
-  webBloombergFrequency: document.getElementById("web-bloomberg-frequency"),
-  webBloombergFrequencyDetail: document.getElementById("web-bloomberg-frequency-detail"),
-  webBloombergStorms: document.getElementById("web-bloomberg-storms"),
-  webBloombergStormDetail: document.getElementById("web-bloomberg-storm-detail"),
-  webBloombergDeviation: document.getElementById("web-bloomberg-deviation"),
-  webBloombergDeviationDetail: document.getElementById("web-bloomberg-deviation-detail"),
-  webBloombergRisk: document.getElementById("web-bloomberg-risk"),
-  webBloombergRiskDetail: document.getElementById("web-bloomberg-risk-detail"),
-  webBloombergDependencyCount: document.getElementById("web-bloomberg-dependency-count"),
-  webBloombergDependencies: document.getElementById("web-bloomberg-dependencies"),
-  webBloombergWindowCount: document.getElementById("web-bloomberg-window-count"),
-  webBloombergWindows: document.getElementById("web-bloomberg-windows"),
+  sig9SignalStatus: document.getElementById("sig9-signal-status"),
+  sig9SignalFrequency: document.getElementById("sig9-signal-frequency"),
+  sig9SignalFrequencyDetail: document.getElementById("sig9-signal-frequency-detail"),
+  sig9SignalStorms: document.getElementById("sig9-signal-storms"),
+  sig9SignalStormDetail: document.getElementById("sig9-signal-storm-detail"),
+  sig9SignalDeviation: document.getElementById("sig9-signal-deviation"),
+  sig9SignalDeviationDetail: document.getElementById("sig9-signal-deviation-detail"),
+  sig9SignalRisk: document.getElementById("sig9-signal-risk"),
+  sig9SignalRiskDetail: document.getElementById("sig9-signal-risk-detail"),
+  sig9SignalDependencyCount: document.getElementById("sig9-signal-dependency-count"),
+  sig9SignalDependencies: document.getElementById("sig9-signal-dependencies"),
+  sig9SignalWindowCount: document.getElementById("sig9-signal-window-count"),
+  sig9SignalWindows: document.getElementById("sig9-signal-windows"),
   webV2ModuleGrid: document.getElementById("web-v2-module-grid"),
   runtimeEventGrid: document.getElementById("runtime-event-grid"),
   runtimeEventSummary: document.getElementById("runtime-event-summary"),
@@ -208,6 +208,7 @@ const standaloneState = {
   reconnectTimer: null,
   inputDebounce: null,
   source: "secure",
+  operationalStatus: null,
   lastResult: null,
   lastUrl: new URLSearchParams(location.search).get("url") || ""
 };
@@ -817,6 +818,7 @@ function normalizeLanguage(locale) {
 }
 
 function languagePacket(locale = activeLanguage) {
+  if (typeof globalThis.getSIG9LanguagePacket === "function") return globalThis.getSIG9LanguagePacket(locale);
   if (typeof globalThis.getOrgan9LanguagePacket === "function") return globalThis.getOrgan9LanguagePacket(locale);
   return (globalThis.SIG9_LANGUAGE_PACKETS || {}).en || { meta: { label: "English", dir: "ltr" }, labels: {} };
 }
@@ -1284,7 +1286,7 @@ function setPlanStatus(message, state = "") {
 
 async function loadBillingStatus() {
   try {
-    const response = await fetch("/api/billing/status", { headers: accountState.email ? { "X-Organ9-Account-Email": accountState.email } : {} });
+    const response = await fetch("/api/billing/status", { headers: accountState.email ? { "X-SIG9-Account-Email": accountState.email } : {} });
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error || "Billing status unavailable.");
     entitlementState = payload.entitlements || payload.billing?.entitlements || entitlementState;
@@ -1368,7 +1370,7 @@ async function choosePlan(plan, button = null) {
   try {
     const response = await fetch("/api/billing/checkout", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(accountState.email ? { "X-Organ9-Account-Email": accountState.email } : {}) },
+      headers: { "Content-Type": "application/json", ...(accountState.email ? { "X-SIG9-Account-Email": accountState.email } : {}) },
       body: JSON.stringify({ priceId: normalizedPlan, email: accountState.email })
     });
     const payload = await response.json();
@@ -1922,7 +1924,7 @@ function buildStandaloneAggregateDiagnostics(payload = {}, fallbackResult = null
 function standaloneResultTargetKey(record = {}) {
   try {
     const url = new URL(record.finalUrl || record.requestedUrl || "");
-    return `${url.origin}${url.pathname}`;
+    return url.origin;
   } catch {
     return "";
   }
@@ -1941,6 +1943,7 @@ async function exportStandaloneJson() {
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error || `Export failed with HTTP ${response.status}`);
     payload.rawFactMapping = snapshot ? buildFactMappingDebugReport(snapshot) : null;
+    payload.captureEvidence = standaloneState.operationalStatus?.latest?.captureEvidence || null;
     downloadJson(payload, "standalone-runtime-diagnostics");
     setExportStatus("Standalone diagnostics JSON exported from backend memory.", "success");
   } catch (error) {
@@ -2011,7 +2014,7 @@ function connectStandaloneDiagnosticsStream() {
       renderFacts();
       return;
     }
-    if (payload.kind === "web-bloomberg-update") {
+    if (payload.kind === "sig9-signal-update" || payload.kind === "web-bloomberg-update") {
       renderLiveSignalConsole(payload.terminal || null);
       return;
     }
@@ -2045,20 +2048,37 @@ async function loadOperationalStatus() {
     const runtime = payload.runtimeDiagnostics || {};
     const billing = payload.billing || {};
     const warnings = payload.warnings || [];
+    standaloneState.operationalStatus = runtime;
+    const captureEvidence = runtime.latest?.captureEvidence || null;
     const parts = [
       `System ${health}`,
       `${runtime.historyCount || 0} samples`,
       `${runtime.streamClients || 0} live stream${runtime.streamClients === 1 ? "" : "s"}`,
+      captureEvidence ? `${captureEvidence.factCount || 0} facts / ${captureEvidence.channelCount || 0} channels` : "no capture yet",
       billing.configured ? "billing connected" : "demo billing"
     ];
     elements.systemHealth.textContent = parts.join(" - ");
     elements.systemHealth.dataset.state = health === "healthy" ? "connected" : warnings.length ? "warning" : "";
-    elements.systemHealth.title = warnings.join("\n") || "All local Runtime Diagnostics systems are responding.";
+    elements.systemHealth.title = warnings.join("\n") || captureEvidenceTitle(captureEvidence) || "All local Runtime Diagnostics systems are responding.";
   } catch (error) {
+    standaloneState.operationalStatus = null;
     elements.systemHealth.textContent = "Analyzer bridge offline";
     elements.systemHealth.dataset.state = "reconnecting";
     elements.systemHealth.title = `${error.message || String(error)}. Start the local Runtime Diagnostics server and refresh this page.`;
   }
+}
+
+function captureEvidenceTitle(captureEvidence) {
+  if (!captureEvidence) return "";
+  const modes = (captureEvidence.captureModes || []).map(entry => `${entry.mode}: ${entry.count}`).join(", ");
+  const channels = (captureEvidence.topChannels || []).slice(0, 5).map(entry => `${entry.channel}: ${entry.count}`).join(", ");
+  const age = captureEvidence.latestFactAgeMs == null ? "no latest fact" : `${Math.round(captureEvidence.latestFactAgeMs / 1000)}s since latest fact`;
+  return [
+    `Capture evidence: ${captureEvidence.factCount || 0} facts across ${captureEvidence.channelCount || 0} channels.`,
+    modes ? `Capture modes: ${modes}.` : "",
+    channels ? `Top channels: ${channels}.` : "",
+    age
+  ].filter(Boolean).join("\n");
 }
 
 function safeLocalSet(key, value) {
@@ -4171,22 +4191,22 @@ function renderCommercialPackageSuite(model) {
 }
 
 function renderLiveSignalConsole(terminal) {
-  if (!elements.webBloombergStatus) return;
+  if (!elements.sig9SignalStatus) return;
   const model = terminal && terminal.ok !== false ? terminal : null;
   if (!model) {
-    elements.webBloombergStatus.textContent = "No windows";
-    elements.webBloombergFrequency.textContent = "0 events/s";
-    elements.webBloombergFrequencyDetail.textContent = "Waiting for compact behavior windows.";
-    elements.webBloombergStorms.textContent = "0 storms";
-    elements.webBloombergStormDetail.textContent = "No storm pressure yet.";
-    elements.webBloombergDeviation.textContent = "0%";
-    elements.webBloombergDeviationDetail.textContent = "No deviation baseline yet.";
-    elements.webBloombergRisk.textContent = "Calm";
-    elements.webBloombergRiskDetail.textContent = "Risk will update as windows arrive.";
-    elements.webBloombergDependencyCount.textContent = "0 edges";
-    elements.webBloombergDependencies.textContent = "No dependency chains yet.";
-    elements.webBloombergWindowCount.textContent = "0 windows";
-    elements.webBloombergWindows.textContent = "No compact windows have been ingested.";
+    elements.sig9SignalStatus.textContent = "No windows";
+    elements.sig9SignalFrequency.textContent = "0 events/s";
+    elements.sig9SignalFrequencyDetail.textContent = "Waiting for compact behavior windows.";
+    elements.sig9SignalStorms.textContent = "0 storms";
+    elements.sig9SignalStormDetail.textContent = "No storm pressure yet.";
+    elements.sig9SignalDeviation.textContent = "0%";
+    elements.sig9SignalDeviationDetail.textContent = "No deviation baseline yet.";
+    elements.sig9SignalRisk.textContent = "Calm";
+    elements.sig9SignalRiskDetail.textContent = "Risk will update as windows arrive.";
+    elements.sig9SignalDependencyCount.textContent = "0 edges";
+    elements.sig9SignalDependencies.textContent = "No dependency chains yet.";
+    elements.sig9SignalWindowCount.textContent = "0 windows";
+    elements.sig9SignalWindows.textContent = "No compact windows have been ingested.";
     return;
   }
   const frequency = model.frequency || {};
@@ -4196,21 +4216,21 @@ function renderLiveSignalConsole(terminal) {
   const dependencies = model.dependencies || {};
   const windows = model.windows || [];
   const latestDeviation = deviations.at(-1);
-  elements.webBloombergStatus.textContent = `${model.summary?.windowCount || windows.length || 0} windows`;
-  elements.webBloombergFrequency.textContent = `${Math.round(Number(frequency.latestTotal) || 0)} events/s`;
-  elements.webBloombergFrequencyDetail.textContent = readableMetricSummary(frequency.latestMetrics || {});
-  elements.webBloombergStorms.textContent = `${storms.length} ${storms.length === 1 ? "storm" : "storms"}`;
-  elements.webBloombergStormDetail.textContent = storms.at(-1)?.summary || "No storm pressure in the current window.";
-  elements.webBloombergDeviation.textContent = `${Math.round((latestDeviation?.score || 0) * 100)}%`;
-  elements.webBloombergDeviationDetail.textContent = latestDeviation?.summary || "Deviation baseline is still forming.";
-  elements.webBloombergRisk.textContent = `${risk.label || "Calm"} ${Math.round((risk.score || 0) * 100)}%`;
-  elements.webBloombergRiskDetail.textContent = (risk.drivers || []).map(item => `${item.label}: ${Math.round((item.value || 0) * 100)}%`).join(" | ") || "No risk drivers yet.";
-  elements.webBloombergDependencyCount.textContent = `${dependencies.edgeCount || 0} edges`;
-  elements.webBloombergDependencies.innerHTML = (dependencies.chains || []).length
+  elements.sig9SignalStatus.textContent = `${model.summary?.windowCount || windows.length || 0} windows`;
+  elements.sig9SignalFrequency.textContent = `${Math.round(Number(frequency.latestTotal) || 0)} events/s`;
+  elements.sig9SignalFrequencyDetail.textContent = readableMetricSummary(frequency.latestMetrics || {});
+  elements.sig9SignalStorms.textContent = `${storms.length} ${storms.length === 1 ? "storm" : "storms"}`;
+  elements.sig9SignalStormDetail.textContent = storms.at(-1)?.summary || "No storm pressure in the current window.";
+  elements.sig9SignalDeviation.textContent = `${Math.round((latestDeviation?.score || 0) * 100)}%`;
+  elements.sig9SignalDeviationDetail.textContent = latestDeviation?.summary || "Deviation baseline is still forming.";
+  elements.sig9SignalRisk.textContent = `${risk.label || "Calm"} ${Math.round((risk.score || 0) * 100)}%`;
+  elements.sig9SignalRiskDetail.textContent = (risk.drivers || []).map(item => `${item.label}: ${Math.round((item.value || 0) * 100)}%`).join(" | ") || "No risk drivers yet.";
+  elements.sig9SignalDependencyCount.textContent = `${dependencies.edgeCount || 0} edges`;
+  elements.sig9SignalDependencies.innerHTML = (dependencies.chains || []).length
     ? `<ul>${dependencies.chains.slice(0, 8).map(chain => `<li>${escapeHtml(chain)}</li>`).join("")}</ul>`
     : "No dependency chains yet.";
-  elements.webBloombergWindowCount.textContent = `${windows.length} windows`;
-  elements.webBloombergWindows.innerHTML = hasDevModeAccess()
+  elements.sig9SignalWindowCount.textContent = `${windows.length} windows`;
+  elements.sig9SignalWindows.innerHTML = hasDevModeAccess()
     ? renderTerminalWindowRows(windows)
     : `<div class="locked-evidence"><strong>Dev Mode Pro locked</strong><p>Upgrade to inspect raw compact windows, aggregation inputs, and dependency edges. Normal mode still shows storm, deviation, and risk summaries.</p></div>`;
 }
@@ -5258,7 +5278,7 @@ async function exportAllJson() {
     const manifest = chrome.runtime.getManifest();
     const payload = scrubExportValue({
       exportedAt: new Date().toISOString(),
-      kind: "ticket-sniper-extension-full-export",
+      kind: "sig9-runtime-diagnostics-full-export",
       extension: {
         id: chrome.runtime.id,
         name: manifest.name,
@@ -5269,8 +5289,8 @@ async function exportAllJson() {
       openInspectableTabs: tabs.filter(tab => isInspectableUrl(tab.url || "")).map(sanitizeExportTab),
       storage: { local, sync, session }
     });
-    downloadJson(payload, "ticket-sniper-extension-all");
-    setExportStatus("Full extension JSON exported with sensitive fields redacted.", "success");
+    downloadJson(payload, "sig9-runtime-diagnostics-all");
+    setExportStatus("Full SIG9 diagnostics JSON exported with sensitive fields redacted.", "success");
   } catch (error) {
     setExportStatus(`Full export failed: ${error.message || String(error)}`, "error");
   }

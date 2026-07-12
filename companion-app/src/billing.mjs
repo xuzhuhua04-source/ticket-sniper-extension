@@ -85,7 +85,7 @@ export async function createCheckoutSession(selection, account = {}, env = proce
   const amount = authorizeNetAmount(item, env);
   if (!credentials || !amount) throw httpError(503, `${item.name} checkout is not configured.`);
   if (typeof fetchImpl !== "function") throw httpError(500, "Authorize.Net checkout requires fetch support.");
-  const referenceId = `organ9-${Date.now()}-${randomUUID().slice(0, 8)}`;
+  const referenceId = `sig9-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const payload = {
     getHostedPaymentPageRequest: {
       merchantAuthentication: credentials,
@@ -100,9 +100,9 @@ export async function createCheckoutSession(selection, account = {}, env = proce
         customer: account.email ? { email: account.email } : undefined,
         userFields: {
           userField: [
-            { name: "organ9_item_id", value: item.id },
-            { name: "organ9_item_kind", value: item.kind },
-            { name: "organ9_account_email", value: account.email || "" }
+            { name: "sig9_item_id", value: item.id },
+            { name: "sig9_item_kind", value: item.kind },
+            { name: "sig9_account_email", value: account.email || "" }
           ]
         }
       },
@@ -187,8 +187,8 @@ export function entitlementsFromAuthorizeNetEvent(event = {}) {
     .filter(Boolean)
     .map(field => [normalizeBillingId(field.name), String(field.value || "")]));
   const status = normalizeAuthorizeNetStatus(event.eventType || payload.responseCode || payload.transactionStatus || "");
-  const itemId = normalizeBillingId(fieldMap.organ9_item_id || payload.merchantReferenceId || payload.invoiceNumber || payload.order?.invoiceNumber || "");
-  const email = payload.email || payload.customer?.email || fieldMap.organ9_account_email || "";
+  const itemId = normalizeBillingId(fieldMap.sig9_item_id || fieldMap.organ9_item_id || payload.merchantReferenceId || payload.invoiceNumber || payload.order?.invoiceNumber || "");
+  const email = payload.email || payload.customer?.email || fieldMap.sig9_account_email || fieldMap.organ9_account_email || "";
   const patch = { email, status, source: "authorize_net_webhook" };
   const item = itemId ? resolveBillingItem(itemId, { optional: true }) : null;
   if (item?.kind === "plan") patch.plan = item.id;

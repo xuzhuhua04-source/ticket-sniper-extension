@@ -38,8 +38,8 @@ test("Authorize.Net Accept Hosted token creation validates provider response", a
     AUTHORIZE_NET_API_LOGIN_ID: "login",
     AUTHORIZE_NET_TRANSACTION_KEY: "transaction",
     AUTHORIZE_NET_PROFESSIONAL_AMOUNT: "1999.00",
-    AUTHORIZE_NET_SUCCESS_URL: "https://organ9.example/success",
-    AUTHORIZE_NET_CANCEL_URL: "https://organ9.example/cancel"
+    AUTHORIZE_NET_SUCCESS_URL: "https://sig9.example/success",
+    AUTHORIZE_NET_CANCEL_URL: "https://sig9.example/cancel"
   };
   const calls = [];
   const session = await createCheckoutSession({ planId: "professional" }, { email: "buyer@example.com" }, env, async (url, options) => {
@@ -55,7 +55,7 @@ test("Authorize.Net Accept Hosted token creation validates provider response", a
   assert.equal(session.formFields.token, "hosted-token-123");
   assert.equal(calls[0].url, "https://apitest.authorize.net/xml/v1/request.api");
   assert.match(String(calls[0].options.body), /getHostedPaymentPageRequest/);
-  assert.match(String(calls[0].options.body), /organ9_item_id/);
+  assert.match(String(calls[0].options.body), /sig9_item_id/);
 });
 
 test("entitlements unlock Dev Mode Pro only through addon or enterprise", () => {
@@ -74,7 +74,7 @@ test("merchant portal accepts only Authorize.Net merchant portal hosts", () => {
 });
 
 test("Authorize.Net webhook rejects invalid signatures and accepts valid signed payloads", () => {
-  const body = JSON.stringify({ eventType: "net.authorize.payment.authcapture.created", payload: { userFields: { userField: [{ name: "organ9_item_id", value: "enterprise" }] } } });
+  const body = JSON.stringify({ eventType: "net.authorize.payment.authcapture.created", payload: { userFields: { userField: [{ name: "sig9_item_id", value: "enterprise" }] } } });
   const secret = "00112233445566778899AABBCCDDEEFF";
   const signature = createHmac("sha512", Buffer.from(secret, "hex")).update(body).digest("hex").toUpperCase();
   assert.equal(verifyAuthorizeNetWebhook(body, `sha512=${signature}`, { AUTHORIZE_NET_SIGNATURE_KEY: secret }).eventType, "net.authorize.payment.authcapture.created");
@@ -102,7 +102,7 @@ test("account entitlements API returns server-side access state", async () => {
   const app = await startStandaloneServer({ port: 4793 });
   try {
     const response = await fetch(`${app.url}/api/account/entitlements`, {
-      headers: { "X-Organ9-Account-Email": "buyer@example.com", "X-Organ9-Plan": "enterprise" }
+      headers: { "X-SIG9-Account-Email": "buyer@example.com", "X-SIG9-Plan": "enterprise" }
     });
     const payload = await response.json();
     assert.equal(response.status, 200);

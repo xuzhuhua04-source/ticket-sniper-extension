@@ -13,7 +13,7 @@ import "./organ-frequency-engine.js";
 const MAX_STANDALONE_HISTORY = 12;
 const MAX_LATEST_FACTS = 1000;
 const MAX_HISTORY_FACTS = 250;
-const MAX_CHANNEL_FACTS = 250;
+const MAX_CHANNEL_FACTS = 300;
 const MAX_STREAM_FACTS = 500;
 const MAX_INGEST_FACTS = 1000;
 
@@ -111,20 +111,20 @@ export async function startStandaloneServer(options = {}) {
           page_id: body.page_id || "",
           client_segment: body.client_segment || "direct-api"
         });
-        broadcastDiagnostics({ ok: true, kind: "web-bloomberg-update", terminal: result.terminal, status: result.status });
+        broadcastDiagnostics({ ok: true, kind: "sig9-signal-update", terminal: result.terminal, status: result.status });
         return json(response, result.rejected ? 207 : 200, result);
       }
       if (url.pathname === "/api/behavior-stream/status" && request.method === "GET") {
         return json(response, 200, webBloombergStore.status());
       }
-      if (url.pathname === "/api/web-bloomberg/terminal" && request.method === "GET") {
+      if ((url.pathname === "/api/web-bloomberg/terminal" || url.pathname === "/api/sig9/terminal") && request.method === "GET") {
         return json(response, 200, webBloombergStore.terminal({
           site_id: url.searchParams.get("site_id") || "",
           page_id: url.searchParams.get("page_id") || "",
           window: url.searchParams.get("window") || ""
         }));
       }
-      if (url.pathname === "/api/web-bloomberg/export" && request.method === "GET") {
+      if ((url.pathname === "/api/web-bloomberg/export" || url.pathname === "/api/sig9/export") && request.method === "GET") {
         return json(response, 200, webBloombergStore.export());
       }
       if (url.pathname === "/api/runtime-diagnostics/export" && request.method === "GET") {
@@ -221,7 +221,7 @@ export async function startStandaloneServer(options = {}) {
     server.once("error", reject);
     server.listen(port, host, resolveListen);
   });
-  console.log(`Organ9 Runtime Diagnostics: http://${displayHost}:${port} listening on ${host}`);
+  console.log(`SIG9 Runtime Diagnostics: http://${displayHost}:${port} listening on ${host}`);
   return { server, host, port, url: `http://${displayHost}:${port}` };
 }
 
@@ -282,7 +282,7 @@ export function buildOperationalStatus({ runtimeDiagnosticsBrowser, visaSecureBr
   ].filter(Boolean);
   return {
     ok: true,
-    service: "organ9-runtime-diagnostics",
+    service: "sig9-runtime-diagnostics",
     version: "3.3.0",
     checkedAt: new Date().toISOString(),
     url: `http://${host}:${port}`,
@@ -315,6 +315,7 @@ export function buildRuntimeDiagnosticsStatus({ runtimeDiagnosticsBrowser, host 
   const latestDiagnostics = latest?.diagnostics || {};
   const spectrum = latestDiagnostics.organFrequencySpectrumLatest || latestDiagnostics.organFrequencySpectrumState || {};
   const packageSuite = spectrum.commercialPackages || {};
+  const captureEvidence = buildCaptureEvidenceSummary(latestDiagnostics);
   return {
     ok: true,
     checkedAt: new Date().toISOString(),
@@ -329,6 +330,7 @@ export function buildRuntimeDiagnosticsStatus({ runtimeDiagnosticsBrowser, host 
       fallbackUsed: Boolean(latest.fallback?.used),
       factCount: latestDiagnostics.runtimeFactHistory?.length || 0,
       channelCount: Object.keys(latestDiagnostics.runtimeFactChannels || {}).length,
+      captureEvidence,
       packageCount: packageSuite.packages?.length || 0,
       activePackages: packageSuite.summary?.activePackages || 0,
       spectraCount: Object.keys(latestDiagnostics.organFrequencySpectrumState?.spectra || spectrum.spectra || {}).length
@@ -339,6 +341,34 @@ export function buildRuntimeDiagnosticsStatus({ runtimeDiagnosticsBrowser, host 
       historyFactLimit: MAX_HISTORY_FACTS,
       channelFactLimit: MAX_CHANNEL_FACTS
     }
+  };
+}
+
+function buildCaptureEvidenceSummary(diagnostics = {}) {
+  const facts = Array.isArray(diagnostics.runtimeFactHistory) ? diagnostics.runtimeFactHistory : [];
+  const channels = diagnostics.runtimeFactChannels && typeof diagnostics.runtimeFactChannels === "object"
+    ? diagnostics.runtimeFactChannels
+    : {};
+  const modes = new Map();
+  let latestTimestamp = 0;
+  for (const fact of facts) {
+    const captureMode = sanitizeOperationalText(fact?.captureMode || fact?.runtimeLayer?.captureMode || fact?.metadata?.captureMode || fact?.value?.captureMode || "unknown");
+    modes.set(captureMode || "unknown", (modes.get(captureMode || "unknown") || 0) + 1);
+    latestTimestamp = Math.max(latestTimestamp, Number(fact?.timestamp || fact?.time) || 0);
+  }
+  const sortedChannels = Object.entries(channels)
+    .map(([channel, values]) => ({ channel: sanitizeOperationalText(channel), count: Array.isArray(values) ? values.length : 0 }))
+    .sort((left, right) => right.count - left.count || left.channel.localeCompare(right.channel))
+    .slice(0, 12);
+  return {
+    factCount: facts.length,
+    channelCount: Object.keys(channels).length,
+    latestFactAgeMs: latestTimestamp ? Math.max(0, Date.now() - latestTimestamp) : null,
+    captureModes: [...modes.entries()]
+      .map(([mode, count]) => ({ mode, count }))
+      .sort((left, right) => right.count - left.count || left.mode.localeCompare(right.mode))
+      .slice(0, 8),
+    topChannels: sortedChannels
   };
 }
 
@@ -1207,15 +1237,15 @@ async function readRawBody(request) {
 }
 
 function accountFromRequest(request = {}, body = {}) {
-  const email = sanitizeAccountEmail(body.email || request.headers["x-organ9-account-email"] || "");
+  const email = sanitizeAccountEmail(body.email || request.headers["x-sig9-account-email"] || request.headers["x-organ9-account-email"] || "");
   const stored = email ? accountEntitlementStore.get(email) : null;
   return {
     ...(stored || {}),
     email,
-    plan: stored?.plan || normalizeLocalHeader(request.headers["x-organ9-plan"]) || body.plan || "",
-    modules: stored?.modules || parseCsvHeader(request.headers["x-organ9-modules"]),
-    addons: stored?.addons || parseCsvHeader(request.headers["x-organ9-addons"]),
-    status: stored?.status || normalizeLocalHeader(request.headers["x-organ9-status"]) || (email ? "demo" : "signed_out"),
+    plan: stored?.plan || normalizeLocalHeader(request.headers["x-sig9-plan"] || request.headers["x-organ9-plan"]) || body.plan || "",
+    modules: stored?.modules || parseCsvHeader(request.headers["x-sig9-modules"] || request.headers["x-organ9-modules"]),
+    addons: stored?.addons || parseCsvHeader(request.headers["x-sig9-addons"] || request.headers["x-organ9-addons"]),
+    status: stored?.status || normalizeLocalHeader(request.headers["x-sig9-status"] || request.headers["x-organ9-status"]) || (email ? "demo" : "signed_out"),
     source: stored?.source || "server"
   };
 }
@@ -1307,11 +1337,11 @@ function setHeaders(request, response, pathname = "") {
 }
 
 function verifyBehaviorStreamKey(request = {}) {
-  const configured = String(process.env.WEB_BLOOMBERG_INGEST_KEY || "").trim();
+  const configured = String(process.env.SIG9_BEHAVIOR_INGEST_KEY || process.env.WEB_BLOOMBERG_INGEST_KEY || "").trim();
   if (!configured) return true;
-  const provided = String(request.headers?.["x-web-bloomberg-ingest-key"] || "").trim();
+  const provided = String(request.headers?.["x-sig9-ingest-key"] || request.headers?.["x-web-bloomberg-ingest-key"] || "").trim();
   if (provided && provided === configured) return true;
-  throw httpError(401, "Behavior stream ingest key is invalid.", "WEB_BLOOMBERG_INGEST_KEY_INVALID");
+  throw httpError(401, "Behavior stream ingest key is invalid.", "SIG9_BEHAVIOR_INGEST_KEY_INVALID");
 }
 
 function json(response, status, value) {

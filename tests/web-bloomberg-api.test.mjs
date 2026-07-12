@@ -43,7 +43,7 @@ test("behavior stream API accepts compact windows and terminal endpoint returns 
     assert.equal(status.acceptedWindowCount >= 1, true);
     assert.equal(status.activeSites.includes("example.com"), true);
 
-    const terminal = await fetch(`${app.url}/api/web-bloomberg/terminal?site_id=example.com`).then(response => response.json());
+    const terminal = await fetch(`${app.url}/api/sig9/terminal?site_id=example.com`).then(response => response.json());
     assert.equal(terminal.ok, true);
     assert.ok(terminal.frequency);
     assert.ok(Array.isArray(terminal.storms));
@@ -51,6 +51,9 @@ test("behavior stream API accepts compact windows and terminal endpoint returns 
     assert.ok(terminal.risk);
     assert.ok(terminal.dependencies);
     assert.ok(Array.isArray(terminal.windows));
+
+    const legacyTerminal = await fetch(`${app.url}/api/web-bloomberg/terminal?site_id=example.com`).then(response => response.json());
+    assert.equal(legacyTerminal.ok, true);
   } finally {
     await new Promise(resolve => app.server.close(resolve));
   }
@@ -81,5 +84,46 @@ test("behavior stream API rejects raw event uploads", async () => {
     assert.equal(payload.errors[0].code, "RAW_EVENT_STREAM_REJECTED");
   } finally {
     await new Promise(resolve => app.server.close(resolve));
+  }
+});
+
+test("behavior stream API honors SIG9 ingest key header", async () => {
+  const previous = process.env.SIG9_BEHAVIOR_INGEST_KEY;
+  process.env.SIG9_BEHAVIOR_INGEST_KEY = "test-ingest-secret";
+  const app = await startStandaloneServer({ port: 4797 });
+  try {
+    const start = Date.now() - 1000;
+    const body = JSON.stringify({
+      windows: [{
+        window_id: "secured-window-1",
+        site_id: "secured.example",
+        page_id: "/",
+        client_segment: "secured-test",
+        start_ts: start,
+        end_ts: start + 1000,
+        bucket_ms: 1000,
+        metrics: { js: 2 }
+      }]
+    });
+    const rejected = await fetch(`${app.url}/api/behavior-stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+    const rejectedPayload = await rejected.json();
+    assert.equal(rejected.status, 401);
+    assert.equal(rejectedPayload.code, "SIG9_BEHAVIOR_INGEST_KEY_INVALID");
+
+    const accepted = await fetch(`${app.url}/api/behavior-stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-SIG9-Ingest-Key": "test-ingest-secret" },
+      body
+    }).then(response => response.json());
+    assert.equal(accepted.accepted, 1);
+    assert.equal(accepted.rejected, 0);
+  } finally {
+    await new Promise(resolve => app.server.close(resolve));
+    if (previous === undefined) delete process.env.SIG9_BEHAVIOR_INGEST_KEY;
+    else process.env.SIG9_BEHAVIOR_INGEST_KEY = previous;
   }
 });

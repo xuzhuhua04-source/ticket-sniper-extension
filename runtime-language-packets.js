@@ -1,4 +1,5 @@
-const ORGAN9_LANGUAGE_STORAGE_KEY = "organ9WebsiteLanguage";
+const SIG9_LANGUAGE_STORAGE_KEY = "sig9WebsiteLanguage";
+const ORGAN9_LANGUAGE_STORAGE_KEY = SIG9_LANGUAGE_STORAGE_KEY;
 
 const ORGAN9_LANGUAGE_PACKETS = Object.freeze({
   en: Object.freeze({
@@ -1256,14 +1257,22 @@ const ORGAN9_LANGUAGE_SUBSTITUTIONS = Object.freeze({
   })
 });
 
-function getOrgan9LanguagePacket(locale) {
+function getSIG9LanguagePacket(locale) {
   const requested = String(locale || "").toLowerCase();
   if (ORGAN9_LANGUAGE_PACKETS[requested]) return ORGAN9_LANGUAGE_PACKETS[requested];
   const base = requested.split("-")[0];
   return ORGAN9_LANGUAGE_PACKETS[base] || ORGAN9_LANGUAGE_PACKETS.en;
 }
 
+const SIG9_LANGUAGE_PACKETS = ORGAN9_LANGUAGE_PACKETS;
+const SIG9_LANGUAGE_SUBSTITUTIONS = ORGAN9_LANGUAGE_SUBSTITUTIONS;
+const getOrgan9LanguagePacket = getSIG9LanguagePacket;
+
 if (typeof window !== "undefined") {
+  window.SIG9_LANGUAGE_STORAGE_KEY = SIG9_LANGUAGE_STORAGE_KEY;
+  window.SIG9_LANGUAGE_PACKETS = SIG9_LANGUAGE_PACKETS;
+  window.SIG9_LANGUAGE_SUBSTITUTIONS = SIG9_LANGUAGE_SUBSTITUTIONS;
+  window.getSIG9LanguagePacket = getSIG9LanguagePacket;
   window.ORGAN9_LANGUAGE_STORAGE_KEY = ORGAN9_LANGUAGE_STORAGE_KEY;
   window.ORGAN9_LANGUAGE_PACKETS = ORGAN9_LANGUAGE_PACKETS;
   window.ORGAN9_LANGUAGE_SUBSTITUTIONS = ORGAN9_LANGUAGE_SUBSTITUTIONS;
@@ -1271,5 +1280,14 @@ if (typeof window !== "undefined") {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { ORGAN9_LANGUAGE_STORAGE_KEY, ORGAN9_LANGUAGE_PACKETS, ORGAN9_LANGUAGE_SUBSTITUTIONS, getOrgan9LanguagePacket };
+  module.exports = {
+    SIG9_LANGUAGE_STORAGE_KEY,
+    SIG9_LANGUAGE_PACKETS,
+    SIG9_LANGUAGE_SUBSTITUTIONS,
+    getSIG9LanguagePacket,
+    ORGAN9_LANGUAGE_STORAGE_KEY,
+    ORGAN9_LANGUAGE_PACKETS,
+    ORGAN9_LANGUAGE_SUBSTITUTIONS,
+    getOrgan9LanguagePacket
+  };
 }

@@ -3,7 +3,7 @@
   window.__ticketSniperRuntimeHooksInstalling = true;
 
   const VERSION = "3.2.0";
-  const BRIDGE_BUFFER_LIMIT = 48;
+  const BRIDGE_BUFFER_LIMIT = 180;
   const BRIDGE_ATTRIBUTE_LIMIT = 48000;
   const sessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const lastReports = new Map();
@@ -13,7 +13,7 @@
   const bridgeBuffer = [];
   let bridgeSequence = 0;
   const options = {
-    reportCooldownMs: 1000,
+    reportCooldownMs: 250,
     networkBurstWindowMs: 300,
     networkBurstThreshold: 50,
     timingWindowSize: 20,

@@ -6,8 +6,9 @@ import { analyzeRenderedSnapshot } from "./standalone-analyzer.mjs";
 
 const DEFAULT_PROFILE_DIR = resolve(import.meta.dirname, ".ticket-sniper-secure-browser");
 const MAX_EVENTS = 80;
-const MAX_FACTS = 1200;
-const TRANSPORT_FACTS = 1000;
+const MAX_FACTS = 5000;
+const TRANSPORT_FACTS = 2500;
+const MAX_CHANNEL_FACTS = 300;
 
 export class SecureBrowserRuntime {
   constructor(options = {}) {
@@ -67,7 +68,10 @@ export class SecureBrowserRuntime {
     this.attachPage(this.page);
     const startedAt = Date.now();
     await this.forceCollectorSample(this.page);
-    await this.page.waitForTimeout(60).catch(() => {});
+    await this.stimulateRuntimeActivity(this.page);
+    await this.page.waitForTimeout(320).catch(() => {});
+    await this.forceCollectorSample(this.page);
+    await this.page.waitForTimeout(140).catch(() => {});
     const diagnosticsTick = this.recordDiagnosticsTick(this.page);
     const snapshot = await this.page.evaluate(() => {
       const text = selector => document.querySelector(selector)?.textContent?.trim() || "";
@@ -446,6 +450,54 @@ export class SecureBrowserRuntime {
     }).catch(() => {});
   }
 
+  async stimulateRuntimeActivity(page) {
+    if (!page || page.isClosed()) return;
+    await page.evaluate(async () => {
+      const nodes = [...document.querySelectorAll("body *")].slice(0, 80);
+      for (const node of nodes.slice(0, 40)) {
+        try { node.getBoundingClientRect?.(); } catch {}
+        try { getComputedStyle(node); } catch {}
+      }
+      await new Promise(resolve => {
+        try {
+          queueMicrotask(() => resolve());
+        } catch {
+          resolve();
+        }
+      });
+      await new Promise(resolve => {
+        try {
+          requestAnimationFrame(() => resolve());
+        } catch {
+          resolve();
+        }
+      });
+      await new Promise(resolve => {
+        try {
+          if (typeof requestIdleCallback === "function") requestIdleCallback(() => resolve(), { timeout: 120 });
+          else setTimeout(resolve, 20);
+        } catch {
+          resolve();
+        }
+      });
+      try {
+        const marker = document.createElement("meta");
+        marker.setAttribute("data-sig9-runtime-probe", String(Date.now()));
+        document.documentElement.appendChild(marker);
+        marker.setAttribute("data-sig9-runtime-probe-state", "sampled");
+        marker.remove();
+      } catch {
+        // Some pages reject DOM writes; layout/runtime reads above are still useful.
+      }
+    }).catch(error => {
+      this.recordLocalFact(page, "runtime", "collector-stimulation-warning", {
+        severity: "low",
+        message: "The runtime bridge could not stimulate every browser surface for this sample.",
+        reason: String(error?.message || error).slice(0, 180)
+      }, { source: "secure-browser-stimulation" });
+    });
+  }
+
   recordDiagnosticsTick(page) {
     let pageUrl = "";
     try { pageUrl = page?.url() || ""; } catch { pageUrl = ""; }
@@ -487,7 +539,7 @@ export class SecureBrowserRuntime {
     const channel = `${fact.source || "unknown"}/${fact.type || "fact"}`;
     this.runtimeFactChannels[channel] = this.runtimeFactChannels[channel] || [];
     this.runtimeFactChannels[channel].push(fact);
-    this.runtimeFactChannels[channel] = this.runtimeFactChannels[channel].slice(-120);
+    this.runtimeFactChannels[channel] = this.runtimeFactChannels[channel].slice(-MAX_CHANNEL_FACTS);
   }
 
   resetTransportIfTargetChanged(pageUrl) {
@@ -618,7 +670,7 @@ function sanitizeLocalUrl(value) {
 function analysisTargetKey(value) {
   try {
     const url = new URL(value);
-    return `${url.origin}${url.pathname}`;
+    return url.origin;
   } catch {
     return "";
   }
@@ -741,6 +793,7 @@ function runtimeLayerFact(source, type, value = {}, metadata = {}) {
   const mapped = {
     "runtime/diagnostics_tick": ["js", "JSRuntime.EventLoopPhaseChanged", "context"],
     "runtime/collector_injection_warning": ["js", "JSRuntime.ExecutionChanged", "context"],
+    "runtime/collector_stimulation_warning": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/script_error": ["js", "JSRuntime.ExecutionChanged", "context"],
     "runtime/console": ["js", "JSRuntime.ExecutionChanged", "context"],
     "a11y/cdp_ax_tree": ["a11y", "A11y.SemanticTopologyChanged", "role"],
